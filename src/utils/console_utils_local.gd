@@ -1,10 +1,11 @@
 
 const EditorConsole = preload("res://addons/godot_console/src/editor_console.gd")
 
-const DefaultCommands = preload("res://addons/godot_console/command_sets/default.gd")
+const DefaultCommands = preload("res://addons/godot_console/src/default_commands/default.gd")
 const ConsoleCfg = preload("res://addons/godot_console/src/default_commands/console_cfg.gd")
 const ConsoleHelp = preload("res://addons/godot_console/src/default_commands/console_help.gd")
 const ConsoleOS = preload("res://addons/godot_console/src/default_commands/console_os.gd")
+const ConsoleMisc = preload("res://addons/godot_console/src/default_commands/console_misc.gd")
 
 const ConsoleGlobalClass = preload("res://addons/godot_console/src/default_commands/console_global_class.gd")
 const ConsoleScript = preload("res://addons/godot_console/src/default_commands/console_script.gd")

@@ -1,0 +1,50 @@
+{
+	"export_root": "res://addons/godot_console/export_ignore/exports",
+	"exports": [
+		{
+			"exclude": {
+				"directories": [
+					"res://addons/godot_console/export_ignore"
+				],
+				"file_extensions": [],
+				"files": []
+			},
+			"export_folder": "godot-console{{version=godot_console}}/godot_console",
+			"other_transfers": [
+				{
+					"from":"res://addons/gdterm/terminal/main.gd",
+					"to":"gdterm/terminal/main.gd"
+				},
+				{
+					"from":"res://addons/gdterm/terminal.gd",
+					"to":"gdterm/terminal.gd"
+				},
+				{
+					"to":"gdterm/.gdignore"
+				}
+			],
+			"remote_dir": "res://addons/godot_console/src/remote",
+			"source": "res://addons/godot_console"
+		},
+	],
+	"options": {
+		"include_import": true,
+		"include_uid": true,
+		"overwrite": true,
+		"parser_settings": {
+			"parse_cs": {
+				"namespace_rename": {
+				}
+			},
+			"parse_gd": {
+				"class_rename_ignore": {
+				}
+			},
+			"parse_tscn": {
+			}
+		}
+	},
+	"plugin_folder": "GodotConsole{{version=godot_console}}",
+	"post_script": "res://addons/godot_console/export_ignore/pre_post_export.gd",
+	"pre_script": "res://addons/godot_console/export_ignore/pre_post_export.gd"
+}

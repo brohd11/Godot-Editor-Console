@@ -3,8 +3,8 @@ extends "res://addons/godot_console/src/class/console_command_base.gd"
 const ConsoleScript = UtilsLocal.ConsoleScript
 
 const _CLASS_VALID_MSG = \
-"Class valid: %s, add arg -m for methods, -p for properties, -s for signals, -c for constants, e for enum
-Add -c for underlying class ie. -m-c for methods."
+"Class valid: %s
+" + ConsoleScript.SCRIPT_HELP
 
 static func get_completion(raw_text, commands:Array, args:Array, editor_console:EditorConsole) -> Dictionary:
 	if commands[0] != "global":
@@ -39,7 +39,6 @@ static func get_completion(raw_text, commands:Array, args:Array, editor_console:
 				completion_data[name] = {}
 			
 		return completion_data
-	
 	
 	if not has_class:
 		return {}

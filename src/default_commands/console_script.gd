@@ -1,16 +1,20 @@
 extends "res://addons/godot_console/src/class/console_command_base.gd"
 
+const _ARG_CLASS_COLOR_SETTING = "text_editor/theme/highlighting/base_type_color"
+
 const CALL_COMMAND = "call"
 const ARG_COMMAND = "args"
 const LIST_COMMAND = "list"
 
-const LIST_COMMANDS_SCRIPT = ["--methods", "--signals", "--constants", "--properties"]
-const LIST_COMMANDS_OPTIONS = ["--methods", "--signals", "--constants", "--properties", "--enums", "--inherited", "--lines"]
-const LIST_COMMANDS_CLASS = ["-m-c", "-s-c", "-c-c", "-p-c", "-e-c"]
+const LIST_COMMANDS_OPTIONS = ["--methods", "--signals", "--constants", "--properties",
+"--enums", "--inherited", "--lines"]
 
-const CMD_HELP=\
+const SCRIPT_HELP=\
 "Call static methods on current script, or create an instance.
--call - call method
+call - call method -- <method_name, arg1, arg2, ... >
+args - list arguments for method -- <method_name>
+list - list members of script -- <list_flags> (--methods, --signals, --constants,\
+--properties, --enums, --inherited, --lines)
 "
 
 static func _get_commands() -> Dictionary: 
@@ -23,14 +27,12 @@ static func _get_commands() -> Dictionary:
 
 static func get_completion(raw_text:String, commands:Array, args:Array, editor_console:EditorConsole) -> Dictionary:
 	var completion_data = {}
-	
 	var registered = _get_commands()
 	
 	if raw_text.find(" -- ") == -1:
 		for cmd in registered:
 			if cmd in commands:
 				return {" -- ":{}}
-		
 		return get_valid_commands(commands, registered)
 	
 	if commands.size() > 1:
@@ -49,8 +51,8 @@ static func get_completion(raw_text:String, commands:Array, args:Array, editor_c
 	return completion_data
 
 static func parse(commands:Array, arguments:Array, editor_console):
-	if commands.size() == 1:
-		print("Call static methods on current script, or create an instance.")
+	if commands.size() == 1 or UtilsLocal.check_help(commands):
+		print(SCRIPT_HELP)
 		return
 	var script = EditorInterface.get_script_editor().get_current_script()
 	var args = editor_console.tokenizer.get_arg_variables(arguments)
@@ -64,7 +66,6 @@ static func parse(commands:Array, arguments:Array, editor_console):
 		list_args(script, args)
 	elif c_2 == LIST_COMMAND:
 		var script_name = script.resource_path.get_file()
-		#print_class_members(script_name, args, script)
 		print_members(script_name, args, script)
 		return
 
@@ -83,6 +84,7 @@ static func call_method(script:Script, args:Array):
 		return
 	#print(script.get_script_method_list())
 	script.callv(method_name, args)
+
 
 static func list_args(script:Script, args:Array):
 	if args.size() < 1:
@@ -104,39 +106,37 @@ static func list_args(script:Script, args:Array):
 	if args_array.is_empty():
 		print("No args to list.")
 		return
+	var class_name_color = EditorInterface.get_editor_settings().get_setting(_ARG_CLASS_COLOR_SETTING).to_html()
 	var args_strings = []
 	for dict in args_array:
 		var name = dict.get("name")
 		var type = dict.get("type")
-		var arg_str = "%s:%s" % [name, type_string(type)]
+		var arg_str = "%s:[color=%s]%s[/color]" % [name, class_name_color, type_string(type)]
 		args_strings.append(arg_str)
 	
-	print("  ".join(args_strings))
+	print_rich("  ".join(args_strings))
+
 
 static func get_valid_commands(current_commands, command_list):
 	var completion_data = {}
 	var has_list_command = false
 	for cmd in command_list.keys():
 		if cmd in current_commands:
-			#if cmd in LIST_COMMANDS_CLASS or cmd in LIST_COMMANDS_SCRIPT:
-				#has_list_command = true
 			continue
 		var metadata = command_list.get(cmd, {})
 		completion_data[cmd] = command_list.get(cmd)
-	#if has_list_command:
-		#completion_data.erase(CALL_COMMAND)
+	
 	return completion_data
+
 
 static func get_list_commands(current_args:Array):
 	var completion_data = {}
 	for cmd in LIST_COMMANDS_OPTIONS:
 		if cmd not in current_args:
 			completion_data[cmd] = {}
-	#for cmd in LIST_COMMANDS_CLASS:
-		#if cmd not in current_args:
-			#completion_data[cmd] = {}
 	
 	return completion_data
+
 
 static func get_method_completions(script, current_args):
 	var completion_data = {}
@@ -152,8 +152,9 @@ static func get_method_completions(script, current_args):
 
 
 static func print_members(script_name:String, args:Array, script:Script):
-	var lines_cmd = LIST_COMMANDS_OPTIONS[LIST_COMMANDS_OPTIONS.size() - 1]
-	var inherited_cmd = LIST_COMMANDS_OPTIONS[LIST_COMMANDS_OPTIONS.size() - 2]
+	var list_opt_size = LIST_COMMANDS_OPTIONS.size()
+	var lines_cmd = LIST_COMMANDS_OPTIONS[list_opt_size - 1]
+	var inherited_cmd = LIST_COMMANDS_OPTIONS[list_opt_size - 2]
 	var print_lines = lines_cmd in args
 	if print_lines:
 		var idx = args.find(lines_cmd)
@@ -165,10 +166,11 @@ static func print_members(script_name:String, args:Array, script:Script):
 	var args_size = args.size()
 	if args_size == 0:
 		if print_lines or inherited:
-			print("'--lines' and '--inherited' should be passed with another another argument.")
+			print("'--lines' and '--inherited' should be passed with another argument.")
 		else:
 			print("Pass arguments for the list command.")
-		
+		return
+	
 	for i in range(args_size):
 		var command = args[i]
 		if command == lines_cmd or command == inherited_cmd:

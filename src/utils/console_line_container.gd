@@ -7,7 +7,6 @@ const PopupKeys = UtilsRemote.PopupHelper.ParamKeys
 
 var console_panel:PanelContainer
 var console_hsplit:HSplitContainer
-#var console_line_edit:LineEdit
 var console_line_edit:CodeEdit
 var console_button:Button
 var os_label:RichTextLabel
@@ -26,22 +25,16 @@ func _ready() -> void:
 	os_label.fit_content = true
 	os_label.custom_minimum_size = Vector2(50,0)
 	os_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	#os_label.hide()
 	os_label.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
-	var color = EditorInterface.get_editor_theme().get_color("accent_color", &"Editor").to_html()
-	os_label.text = "[color=%s]Console $[/color]" % color
 	
 	console_line_edit = ConsoleLineEdit.new()
 	var h_bar = console_line_edit.get_h_scroll_bar()
 	h_bar.visibility_changed.connect(_on_scroll_bar_vis_changed.bind(h_bar))
 	var v_bar = console_line_edit.get_v_scroll_bar()
 	v_bar.visibility_changed.connect(_on_scroll_bar_vis_changed.bind(v_bar))
-	
 	console_line_edit.hide()
-	
 	var syntax := UtilsLocal.SyntaxHl.new()
 	console_line_edit.syntax_highlighter = syntax
-	
 	
 	console_button = Button.new()
 	console_button.icon = EditorInterface.get_editor_theme().get_icon("Terminal", &"EditorIcons")
@@ -61,7 +54,6 @@ func apply_styleboxes(line_edit:LineEdit):
 	console_line_edit.add_theme_stylebox_override("read_only", StyleBoxEmpty.new())
 	console_line_edit.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	console_line_edit.add_theme_constant_override("caret_width", 8)
-	
 	console_line_edit.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	
 	var log_text_edit = get_parent().get_parent().get_child(0) as RichTextLabel
@@ -76,9 +68,7 @@ func _on_scroll_bar_vis_changed(scrollbar):
 class ConsoleLineEdit extends CodeEdit:
 	var editor_console:EditorConsole
 	var variable_dict = {}
-	var command_dict = {}
-	#var var_names = []
-	#var cmd_names = []
+	var scope_dict = {}
 	var os_mode:= false
 	
 	func _ready() -> void:
@@ -92,11 +82,10 @@ class ConsoleLineEdit extends CodeEdit:
 		if os_mode:
 			return
 		var completions = {}
-		#print(command_dict)
-		var cmd_names = command_dict.keys()
+		var scope_names = scope_dict.keys()
 		if text.is_empty():
-			for cmd_nm in cmd_names:
-				completions[cmd_nm] = {}
+			for scope in scope_names:
+				completions[scope] = {}
 			_build_popup(completions)
 			return
 		
@@ -110,33 +99,28 @@ class ConsoleLineEdit extends CodeEdit:
 		
 		var words = text.split(" ", false)
 		var first_word = words[0]
-		if first_word in cmd_names:
-			var cmd_data = command_dict.get(first_word)
-			var script = cmd_data.get("script")
-			if "get_completion" in script:
-				var comp_data = _get_script_completion(script)
-				if not comp_data.is_empty():
-					completions = comp_data
-				#_get_script_completion(script, completions)
-				var tokenizer = UtilsLocal.ConsoleTokenizer.new()
-				var result = tokenizer.parse_command_string(text)
-				var script_comp_data = script.get_completion(text, result.commands, result.args, editor_console)
-				if script_comp_data == null:
-					script_comp_data = {}
-				if not script_comp_data.is_empty():
-					completions = script_comp_data
+		if first_word in scope_names:
+			var scope_data = scope_dict.get(first_word)
+			var script = scope_data.get("script")
+			if script != null:
+				if "get_completion" in script:
+					var comp_data = _get_script_completion(script)
+					if not comp_data.is_empty():
+						completions = comp_data
+			
 		elif first_word in global_class_names:
 			print("YES")
 			var script = UtilsLocal.ConsoleGlobalClass
-			var comp_data = _get_script_completion(script)
-			if not comp_data.is_empty():
-				completions = comp_data
+			if script != null:
+				var comp_data = _get_script_completion(script)
+				if not comp_data.is_empty():
+					completions = comp_data
 		else:
 			if words.size() != 1:
 				return
-			for _name in cmd_names:
-				if _name.to_lower().begins_with(first_word.to_lower()):
-					completions[_name] = {PopupKeys.METADATA_KEY:{ParsePopupKeys.REPLACE_WORD:true}}
+			for scope in scope_names:
+				if scope.to_lower().begins_with(first_word.to_lower()):
+					completions[scope] = {PopupKeys.METADATA_KEY:{ParsePopupKeys.REPLACE_WORD:true}}
 			_build_popup(completions)
 			return
 		
@@ -149,7 +133,6 @@ class ConsoleLineEdit extends CodeEdit:
 		_build_popup(completions)
 	
 	func _build_popup(item_dict):
-		#print(completions)
 		if item_dict.is_empty():
 			return
 		await get_tree().process_frame
@@ -200,5 +183,3 @@ class ConsoleLineEdit extends CodeEdit:
 		if script_comp_data == null:
 			script_comp_data = {}
 		return script_comp_data
-		#if not script_comp_data.is_empty():
-			#completions_dict = script_comp_data

@@ -5,8 +5,9 @@ var default_text_color = EditorInterface.get_editor_settings().get("text_editor/
 var var_names = []
 var var_color = Color.html("96f442")
 
-var cmd_names = []
-var cmd_color = Color.DODGER_BLUE
+var scope_names = []
+var scope_color = Color.SKY_BLUE
+var hidden_scope_names = []
 
 var os_mode:bool
 
@@ -14,15 +15,15 @@ func _get_line_syntax_highlighting(line: int) -> Dictionary:
 	var text_edit = get_text_edit()
 	var line_text = text_edit.get_line(line)
 	if os_mode:
-		return check_keyword(line_text, ["os"], cmd_color)
+		return check_keyword(line_text, ["os"], scope_color)
 	
 	var hl_info = {}
-	var cmd_name_hl = check_keyword(line_text, cmd_names, cmd_color)
-	hl_info.merge(cmd_name_hl)
+	var scope_hl = check_keyword(line_text, scope_names, scope_color)
+	hl_info.merge(scope_hl)
+	var hidden_scope_hl = check_keyword(line_text, hidden_scope_names, scope_color)
+	hl_info.merge(hidden_scope_hl)
 	var var_name_hl = check_keyword(line_text, var_names, var_color)
 	hl_info.merge(var_name_hl)
-	
-	
 	
 	
 	var hl_info_keys = hl_info.keys()

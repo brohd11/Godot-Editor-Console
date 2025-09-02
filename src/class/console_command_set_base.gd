@@ -2,7 +2,7 @@ const UtilsLocal = preload("res://addons/godot_console/src/utils/console_utils_l
 const UtilsRemote = preload("res://addons/godot_console/src/utils/console_utils_remote.gd")
 
 
-static func register_commands():
+static func register_scopes():
 	return {}
 
 static func register_variables():

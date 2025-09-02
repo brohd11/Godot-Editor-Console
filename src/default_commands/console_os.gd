@@ -1,11 +1,8 @@
+extends "res://addons/godot_console/src/class/console_command_base.gd"
 
-const UtilsLocal = preload("res://addons/godot_console/src/utils/console_utils_local.gd")
-
-const UtilsRemote = preload("res://addons/godot_console/src/utils/console_utils_remote.gd")
 const UFile = UtilsRemote.UFile
 
 const EMULATED_COMMANDS = ["cd", "ls"]
-
 const COMMAND_NEED_SCAN = ["rm", "mkdir", "touch"]
 
 static func get_os_string():
@@ -21,7 +18,7 @@ static func get_os_string():
 			if not hostname:
 				hostname = "linux-pc"
 		
-		return "%s@%s:" % [user, hostname]
+		return "%s@%s" % [user, hostname]
 		
 	elif system == "Windows":
 		pass

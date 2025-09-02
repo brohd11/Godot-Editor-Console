@@ -37,6 +37,8 @@ var last_command:String
 var previous_commands = []
 var current_command_index:int = -1
 
+const OS_LAB_CONSOLE_STR = "[color=%s]Console$[/color]"
+const OS_LAB_OS_STR = "[color=%s]%s[/color]:[color=%s]~%s[/color]$"
 var os_label:RichTextLabel
 var os_mode:= false
 var os_user:String
@@ -52,10 +54,15 @@ var os_cwd:String:
 var scope_names = []
 var scope_dict = {}
 
+var hidden_scope_dict = {}
+
 var _manual_reg_scope_data = {}
 
 var variable_dict = {}
 var working_variable_dict = {}
+
+const COLOR_OS_USER = "88e134"
+const COLOR_OS_PATH = "659cce"
 
 const COLOR_VAR_GREEN = "96f442"
 const COLOR_VAR_RED = "cc000c"
@@ -114,11 +121,14 @@ func register_scope(scope_data:Dictionary) -> void:
 		}
 	
 	set_var_highlighter()
+	_load_default_commands()
 
 ## need register scope to have a callback or something
 
 func _load_default_commands():
 	scope_dict.clear()
+	hidden_scope_dict = {}
+	hidden_scope_dict.clear()
 	variable_dict.clear()
 	
 	_get_command_data(UtilsLocal.DefaultCommands)
@@ -132,11 +142,12 @@ func _load_default_commands():
 
 func set_var_highlighter():
 	var syn:UtilsLocal.SyntaxHl = console_line_edit.syntax_highlighter
-	syn.cmd_names = scope_dict.keys()
+	syn.scope_names = scope_dict.keys()
+	syn.hidden_scope_names = hidden_scope_dict.keys()
 	syn.var_names = variable_dict.keys()
 	syn.clear_highlighting_cache()
 	
-	console_line_edit.command_dict = scope_dict
+	console_line_edit.scope_dict = scope_dict
 	console_line_edit.variable_dict = variable_dict
 	console_line_edit.editor_console = self
 
@@ -165,28 +176,42 @@ func _get_command_data(path_or_script):
 	else:
 		script = load(path_or_script)
 	
-	if "register_commands" in script:
-		var register_commands = script.register_commands()
-		for cmd in register_commands.keys():
-			var cmd_data = register_commands.get(cmd)
-			var command_script = cmd_data.get("script")
-			if command_script == null:
-				register_commands[cmd]["script"] = script
-			#var callable = register_commands.get("callable")
-		
-		scope_dict.merge(register_commands)
+	if "register_scopes" in script:
+		var register_scopes = script.register_scopes()
+		scope_dict.merge(_process_scope_data(script, register_scopes))
+	
+	if "register_hidden_scopes" in script:
+		var register_hidden_scopes = script.register_hidden_scopes()
+		hidden_scope_dict.merge(_process_scope_data(script, register_hidden_scopes))
 	
 	if "register_variables" in script:
 		var register_variables = script.register_variables()
 		variable_dict.merge(register_variables)
+
+func _process_scope_data(script:Script, scope_data_dict:Dictionary) -> Dictionary:
+	var temp_dict = {}
+	for scope in scope_data_dict.keys():
+		var scope_data = scope_data_dict.get(scope)
+		var scope_script = scope_data.get("script")
+		var scope_callable = scope_data.get("callable")
+		temp_dict[scope] = {}
+		if scope_callable != null:
+			temp_dict[scope]["callable"] = scope_callable
+		elif scope_script != null:
+			temp_dict[scope]["script"] = scope_script
+		else:
+			temp_dict[scope]["script"] = script
+	return temp_dict
 
 
 func _update_os_string():
 	var display_cwd = os_cwd.trim_prefix(os_home_dir)
 	if display_cwd == "":
 		display_cwd = "/"
-	os_string_raw = "%s ~%s $ " % [os_user, display_cwd]
-	os_string = "[color=88e134]%s[/color] [color=659cce]~%s $[/color]" % [os_user, display_cwd]
+	os_string_raw = "%s:~%s$ " % [os_user, display_cwd]
+	var user_col = COLOR_OS_USER
+	var path_col = COLOR_OS_PATH
+	os_string = OS_LAB_OS_STR % [user_col, os_user, path_col, display_cwd]
 	if os_label:
 		os_label.text = os_string
 
@@ -196,12 +221,12 @@ func _toggle_os_mode():
 	console_line_edit.os_mode = os_mode
 	if os_mode:
 		_update_os_string()
-		print_rich("[color=%s]Console $[/color] Entered OS mode." % _accent_color)
+		print_rich("%s Entered OS mode." % OS_LAB_CONSOLE_STR % _accent_color)
 		if console_line_edit.visible:
 			os_label.show()
 	else:
-		os_label.text = "[color=%s]Console $[/color]" % _accent_color
-		print_rich("[color=%s]Console $[/color] Exited OS mode." % _accent_color)
+		os_label.text = OS_LAB_CONSOLE_STR % _accent_color
+		print_rich("%s Exited OS mode." % OS_LAB_CONSOLE_STR % _accent_color)
 
 
 func _set_console_text(text):
@@ -234,6 +259,8 @@ func parse_input(terminal_input:String) -> void:
 	
 	var c_1 = commands[0]
 	if c_1 == "clear":
+		if UtilsLocal.check_help(commands):
+			print_rich("%s %s" % [OS_LAB_CONSOLE_STR % _accent_color, display_text])
 		UtilsLocal.ConsoleCfg.clear_console(commands, arguments, self)
 		return
 	
@@ -247,7 +274,7 @@ func parse_input(terminal_input:String) -> void:
 	if c_1.to_lower() == "help":
 		c_1 = c_1.to_lower()
 	var formatted_console_input
-	print_rich("[color=%s]Console $[/color] %s" % [_accent_color, display_text])
+	print_rich("%s %s" % [OS_LAB_CONSOLE_STR % _accent_color, display_text])
 	if c_1 in scope_dict.keys():
 		var cmd_data = scope_dict.get(c_1)
 		var script = cmd_data.get("script")
@@ -256,12 +283,20 @@ func parse_input(terminal_input:String) -> void:
 			var result = callable.call(commands, arguments, self)
 		else:
 			var result = script.call("parse", commands, arguments, self)
-		
+	elif c_1 in hidden_scope_dict.keys():
+		var cmd_data = hidden_scope_dict.get(c_1)
+		var script = cmd_data.get("script")
+		var callable = cmd_data.get("callable")
+		if callable:
+			var result = callable.call(commands, arguments, self)
+		else:
+			var result = script.call("parse", commands, arguments, self)
 	else:
 		UtilsLocal.ConsoleGlobalClass.parse(commands, arguments, self)
 	
 	if scope_dict.is_empty():
 		printerr("Need to load command set.")
+
 
 
 func _console_gui_input(event: InputEvent) -> void:
@@ -373,6 +408,7 @@ func _add_console_line_edit():
 	console_line_container.custom_minimum_size.y = filter_line_edit.size.y
 	
 	os_label = console_line_container.os_label
+	os_label.text = OS_LAB_CONSOLE_STR % _accent_color
 	console_line_container.console_line_edit.gui_input.connect(_console_gui_input)
 	console_line_container.console_button.pressed.connect(_toggle_console)
 	console_line_container.console_button.gui_input.connect(_on_button_gui_input)
@@ -459,14 +495,17 @@ func _toggle_os_label_minimum_size() -> void:
 	else:
 		os_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 
+
 func toggle_term(commands, args, editor_console):
 	if gd_term_instance.visible:
 		gd_term_instance.hide()
 		gd_term_instance.set_active(false)
 	else:
 		gd_term_instance.show()
-		gd_term_instance.get_node("term_container/term/GDTerm").grab_focus()
+		_get_gd_term().grab_focus()
 		gd_term_instance.set_active(true)
-		
+
+func _get_gd_term():
+	return gd_term_instance.get_node("term_container/term/GDTerm")
 
 #endregion
