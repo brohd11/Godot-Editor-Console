@@ -1,0 +1,8 @@
+{
+	"res://addons/godot_console/src/terminal_gui.tscn": {
+		"current_dock": -2
+	},
+	"res://addons/godot_terminal/src/terminal_gui.tscn": {
+		"current_dock": 5.0
+	}
+}

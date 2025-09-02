@@ -1,0 +1,9 @@
+const UtilsLocal = preload("res://addons/godot_console/src/utils/console_utils_local.gd")
+const UtilsRemote = preload("res://addons/godot_console/src/utils/console_utils_remote.gd")
+
+
+static func register_commands():
+	return {}
+
+static func register_variables():
+	return {}

@@ -1,0 +1,24 @@
+@tool
+extends EditorPlugin
+
+const GUI_SCENE = preload("res://addons/godot_console/src/terminal_gui.tscn")
+
+const UtilsLocal = preload("res://addons/godot_console/src/utils/console_utils_local.gd")
+
+const UtilsRemote = preload("res://addons/godot_console/src/utils/console_utils_remote.gd")
+
+
+var editor_console: EditorConsole
+
+
+func _get_plugin_name() -> String:
+	return "Godot Console"
+
+func _enter_tree() -> void:
+	editor_console = EditorConsole.get_instance(self)
+
+
+
+func _exit_tree() -> void:
+	if is_instance_valid(editor_console):
+		editor_console.clear_reference(self)
