@@ -1,11 +1,11 @@
 @tool
 extends EditorPlugin
 
-const GUI_SCENE = preload("res://addons/godot_console/src/terminal_gui.tscn")
+const GUI_SCENE = preload("res://addons/editor_console/src/terminal_gui.tscn")
 
-const UtilsLocal = preload("res://addons/godot_console/src/utils/console_utils_local.gd")
+const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 
-const UtilsRemote = preload("res://addons/godot_console/src/utils/console_utils_remote.gd")
+const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 
 
 var editor_console: EditorConsole

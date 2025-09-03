@@ -1,7 +1,7 @@
 extends HBoxContainer
 
-const UtilsLocal = preload("res://addons/godot_console/src/utils/console_utils_local.gd")
-const UtilsRemote = preload("res://addons/godot_console/src/utils/console_utils_remote.gd")
+const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
+const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 const ParsePopupKeys = UtilsLocal.ParsePopupKeys
 const PopupKeys = UtilsRemote.PopupHelper.ParamKeys
 
@@ -109,7 +109,6 @@ class ConsoleLineEdit extends CodeEdit:
 						completions = comp_data
 			
 		elif first_word in global_class_names:
-			print("YES")
 			var script = UtilsLocal.ConsoleGlobalClass
 			if script != null:
 				var comp_data = _get_script_completion(script)
@@ -124,7 +123,7 @@ class ConsoleLineEdit extends CodeEdit:
 			_build_popup(completions)
 			return
 		
-		if text.find("--") > -1:
+		if text.find(" --") > -1:
 			var var_nms = variable_dict.keys()
 			if not completions.is_empty() and not var_nms.is_empty():
 				completions["sep"] = {}
@@ -148,20 +147,22 @@ class ConsoleLineEdit extends CodeEdit:
 	
 	func _popup_pressed(id, popup:PopupMenu):
 		var menu_path = UtilsRemote.PopupHelper.parse_menu_path(id, popup)
+		var id_text = UtilsRemote.PopupHelper.parse_id_text(id, popup) # maybe use this to allow submenus
 		var metadata = UtilsRemote.PopupHelper.get_metadata(id, popup)
+		var text_to_add = id_text
 		var add_args = metadata.get(ParsePopupKeys.ADD_ARGS, false)
 		if add_args:
-			menu_path = menu_path + " --"
+			text_to_add = text_to_add + " --"
 		var replace_word = metadata.get(ParsePopupKeys.REPLACE_WORD, false)
 		
 		if replace_word:
 			start_action(TextEdit.ACTION_TYPING)
 			select_word_under_caret()
-			var text_to_insert = menu_path + " "
+			var text_to_insert = text_to_add + " "
 			insert_text_at_caret(text_to_insert)
 			end_action()
 			return
-		_insert_text(menu_path)
+		_insert_text(text_to_add)
 	
 	func _insert_text(new_text):
 		new_text = _check_for_leading_space(new_text)

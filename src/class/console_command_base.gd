@@ -1,8 +1,10 @@
-const UtilsLocal = preload("res://addons/godot_console/src/utils/console_utils_local.gd")
-const UtilsRemote = preload("res://addons/godot_console/src/utils/console_utils_remote.gd")
+const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
+const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 
 const PopupKeys = UtilsRemote.PopupHelper.ParamKeys
 const ParsePopupKeys = UtilsLocal.ParsePopupKeys
+const ECKeys = UtilsLocal.ParsePopupKeys
+const ScopeDataKeys = UtilsLocal.ScopeDataKeys
 
 static func register_commands():
 	return {}

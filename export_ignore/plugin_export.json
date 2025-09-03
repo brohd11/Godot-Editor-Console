@@ -1,15 +1,15 @@
 {
-	"export_root": "res://addons/godot_console/export_ignore/exports",
+	"export_root": "res://addons/editor_console/export_ignore/exports",
 	"exports": [
 		{
 			"exclude": {
 				"directories": [
-					"res://addons/godot_console/export_ignore"
+					"res://addons/editor_console/export_ignore"
 				],
 				"file_extensions": [],
 				"files": []
 			},
-			"export_folder": "godot-console{{version=godot_console}}/godot_console",
+			"export_folder": "editor-console{{version=editor_console}}/editor_console",
 			"other_transfers": [
 				{
 					"from":"res://addons/gdterm/terminal/main.gd",
@@ -23,8 +23,8 @@
 					"to":"gdterm/.gdignore"
 				}
 			],
-			"remote_dir": "res://addons/godot_console/src/remote",
-			"source": "res://addons/godot_console"
+			"remote_dir": "res://addons/editor_console/src/remote",
+			"source": "res://addons/editor_console"
 		},
 	],
 	"options": {
@@ -44,7 +44,7 @@
 			}
 		}
 	},
-	"plugin_folder": "GodotConsole{{version=godot_console}}",
-	"post_script": "res://addons/godot_console/export_ignore/pre_post_export.gd",
-	"pre_script": "res://addons/godot_console/export_ignore/pre_post_export.gd"
+	"plugin_folder": "EditorConsole{{version=editor_console}}",
+	"post_script": "res://addons/editor_console/export_ignore/pre_post_export.gd",
+	"pre_script": "res://addons/editor_console/export_ignore/pre_post_export.gd"
 }

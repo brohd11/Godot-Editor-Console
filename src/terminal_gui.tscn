@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://dr0oh7xyp50k7"]
 
-[ext_resource type="Script" uid="uid://w7ykcb3u1fm7" path="res://addons/godot_console/src/terminal_gui.gd" id="1_u1bx3"]
+[ext_resource type="Script" uid="uid://w7ykcb3u1fm7" path="res://addons/editor_console/src/terminal_gui.gd" id="1_u1bx3"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_ahxr4"]
 

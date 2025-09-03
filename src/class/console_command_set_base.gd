@@ -1,5 +1,5 @@
-const UtilsLocal = preload("res://addons/godot_console/src/utils/console_utils_local.gd")
-const UtilsRemote = preload("res://addons/godot_console/src/utils/console_utils_remote.gd")
+const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
+const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 
 
 static func register_scopes():

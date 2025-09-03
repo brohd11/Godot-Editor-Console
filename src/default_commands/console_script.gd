@@ -1,4 +1,4 @@
-extends "res://addons/godot_console/src/class/console_command_base.gd"
+extends "res://addons/editor_console/src/class/console_command_base.gd"
 
 const _ARG_CLASS_COLOR_SETTING = "text_editor/theme/highlighting/base_type_color"
 
@@ -14,8 +14,7 @@ const SCRIPT_HELP=\
 call - call method -- <method_name, arg1, arg2, ... >
 args - list arguments for method -- <method_name>
 list - list members of script -- <list_flags> (--methods, --signals, --constants,\
---properties, --enums, --inherited, --lines)
-"
+--properties, --enums, --inherited, --lines)"
 
 static func _get_commands() -> Dictionary: 
 	return {
@@ -82,7 +81,6 @@ static func call_method(script:Script, args:Array):
 	if args.size() != script.get_method_argument_count(method_name):
 		print("Argument count=%s, called with %s." % [script.get_method_argument_count(method_name), args.size()])
 		return
-	#print(script.get_script_method_list())
 	script.callv(method_name, args)
 
 

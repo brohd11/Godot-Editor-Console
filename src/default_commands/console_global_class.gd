@@ -1,4 +1,4 @@
-extends "res://addons/godot_console/src/class/console_command_base.gd"
+extends "res://addons/editor_console/src/class/console_command_base.gd"
 
 const ConsoleScript = UtilsLocal.ConsoleScript
 
@@ -11,11 +11,15 @@ static func get_completion(raw_text, commands:Array, args:Array, editor_console:
 		commands.push_front("global")
 	
 	var completion_data = {}
+	var scope_data = UtilsLocal.get_scope_data()
+	var registered_classes = scope_data.get(ScopeDataKeys.global_classes, [])
 	var global_class_list = ProjectSettings.get_global_class_list()
 	
 	var global_class_dict = {}
 	for class_dict in global_class_list:
 		var _class_name = class_dict.get("class")
+		if _class_name not in registered_classes:
+			continue
 		var path = class_dict.get("path")
 		global_class_dict[_class_name] = path
 	
@@ -104,6 +108,5 @@ static func parse(commands:Array, arguments:Array, editor_console:EditorConsole)
 		ConsoleScript.list_args(global_class_script, args)
 	elif c_2 == ConsoleScript.LIST_COMMAND:
 		var script_name = c_1
-		#ConsoleScript.print_class_members(c_1, arguments, global_class_script)
 		ConsoleScript.print_members(c_1, arguments, global_class_script)
 		return

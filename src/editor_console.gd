@@ -1,8 +1,8 @@
 class_name EditorConsole
 extends Node
 
-const UtilsLocal = preload("res://addons/godot_console/src/utils/console_utils_local.gd")
-const UtilsRemote = preload("res://addons/godot_console/src/utils/console_utils_remote.gd")
+const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
+const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 const BottomPanel = UtilsRemote.BottomPanel
 
 var instance_refs = []
@@ -51,12 +51,10 @@ var os_cwd:String:
 		os_cwd = value
 		_update_os_string()
 
-var scope_names = []
+
 var scope_dict = {}
-
 var hidden_scope_dict = {}
-
-var _manual_reg_scope_data = {}
+var _temp_scope_dict = {}
 
 var variable_dict = {}
 var working_variable_dict = {}
@@ -73,6 +71,10 @@ var _accent_color:String
 var tokenizer:UtilsLocal.ConsoleTokenizer
 
 func _init() -> void:
+	if not FileAccess.file_exists(UtilsLocal.EDITOR_CONSOLE_SCOPE_PATH):
+		DirAccess.make_dir_recursive_absolute(UtilsLocal.EDITOR_CONSOLE_SCOPE_PATH.get_base_dir())
+		UtilsRemote.UFile.write_to_json({}, UtilsLocal.EDITOR_CONSOLE_SCOPE_PATH)
+	
 	os_user = UtilsLocal.ConsoleOS.get_os_string()
 	os_cwd = ProjectSettings.globalize_path("res://")
 	os_home_dir = UtilsLocal.ConsoleOS.get_os_home_dir()
@@ -83,6 +85,8 @@ func _init() -> void:
 	_accent_color = EditorInterface.get_editor_theme().get_color("accent_color", &"Editor").to_html()
 	
 	_load_default_commands()
+	
+	
 	
 	# add func to load user config
 
@@ -110,29 +114,48 @@ func clear_reference(plugin):
 		queue_free()
 
 
-func register_scope(scope_data:Dictionary) -> void:
+func register_temp_scope(scope_data:Dictionary) -> void: # for plugins
 	for key in scope_data.keys():
 		var data = scope_data.get(key)
 		var script = data.get("script")
 		var callable = data.get("callable")
-		_manual_reg_scope_data[key] = {
+		_temp_scope_dict[key] = {
 			"script":script,
 			"callable": callable
 		}
-	
-	set_var_highlighter()
+	#set_var_highlighter()
 	_load_default_commands()
 
-## need register scope to have a callback or something
+func remove_temp_scope(scope_name:String): # for plugins
+	if not scope_name in _temp_scope_dict.keys():
+		print("Scope not in temp scope data: %s" % scope_name)
+		return
+	_temp_scope_dict.erase(scope_name)
+	_load_default_commands()
+
 
 func _load_default_commands():
 	scope_dict.clear()
-	hidden_scope_dict = {}
 	hidden_scope_dict.clear()
 	variable_dict.clear()
 	
-	_get_command_data(UtilsLocal.DefaultCommands)
-	scope_dict.merge(_manual_reg_scope_data, true)
+	_get_scope_set_data(UtilsLocal.DefaultCommands)
+	scope_dict.merge(_temp_scope_dict, true)
+	
+	var scope_data = UtilsLocal.get_scope_data()
+	var scopes = scope_data.get("scopes", {})
+	for scope in scopes.keys():
+		var data = scopes.get(scope)
+		var script_path = data.get("script")
+		if not FileAccess.file_exists(script_path):
+			printerr("Could not find script: %s" % script_path)
+			continue
+		var script = load(script_path)
+		scope_dict[scope] = {"script": script}
+	
+	var sets = scope_data.get("sets", [])
+	for script_path in sets:
+		_get_scope_set_data(script_path)
 	
 	if console_line_edit:
 		set_var_highlighter()
@@ -152,24 +175,65 @@ func set_var_highlighter():
 	console_line_edit.editor_console = self
 
 
-func load_cmd_set(script_command:String, script_path:String):
+func register_persistent_scope(scope_name:String, script_path:String):
 	if not FileAccess.file_exists(script_path):
 		print("Could not load script: %s" % script_path)
 		return
-	if script_command in scope_dict.keys():
-		print("Command already registered: %s" % script_command)
+	var scope_data = UtilsLocal.get_scope_data()
+	var scopes = scope_data.get("scopes", {})
+	if scope_name in scopes.keys():
+		print("Scope already registered: %s" % scope_name)
+		return
+	scopes[scope_name] = {"script": script_path}
+	scope_data["scopes"] = scopes
+	UtilsLocal.save_scope_data(scope_data)
+	_load_default_commands()
+
+func remove_persistent_scope(scope_name):
+	var scope_data = UtilsLocal.get_scope_data()
+	var scopes = scope_data.get("scopes", {})
+	
+	if not scope_name in scopes.keys():
+		print("Scope not registered: %s" % scope_name)
 		return
 	
-	var script = load(script_path)
-	scope_dict[script_command] = {"script":script}
+	scopes.erase(scope_name)
+	scope_data["scopes"] = scopes
+	UtilsLocal.save_scope_data(scope_data)
+	_load_default_commands()
 
-func rm_cmd_set(script_command):
-	if script_command in scope_dict.keys():
-		scope_dict.erase(script_command)
-	else:
-		print("Command not found: %s" % script_command)
+func register_persistent_scope_set(script_path:String):
+	if not FileAccess.file_exists(script_path):
+		print("Could not load script: %s" % script_path)
+		return
+	var scope_data = UtilsLocal.get_scope_data()
+	var sets = scope_data.get("sets", [])
+	if script_path in sets:
+		print("Script already registered as set: %s" % script_path)
+		return
+	
+	sets.append(script_path)
+	scope_data["sets"] = sets
+	UtilsLocal.save_scope_data(scope_data)
+	_load_default_commands()
 
-func _get_command_data(path_or_script):
+func remove_persistent_scope_set(script_path:String) -> void:
+	var scope_data = UtilsLocal.get_scope_data()
+	var sets = scope_data.get("sets", [])
+	if not script_path in sets:
+		print("Script set not registered: %s" % script_path)
+		return
+	
+	var idx = sets.find(script_path)
+	sets.remove_at(idx)
+	
+	scope_data["sets"] = sets
+	UtilsLocal.save_scope_data(scope_data)
+	_load_default_commands()
+
+
+
+func _get_scope_set_data(path_or_script):
 	var script:Script
 	if path_or_script is Script:
 		script = path_or_script
@@ -189,8 +253,11 @@ func _get_command_data(path_or_script):
 		variable_dict.merge(register_variables)
 
 func _process_scope_data(script:Script, scope_data_dict:Dictionary) -> Dictionary:
+	var scope_dict_keys = scope_dict.keys()
 	var temp_dict = {}
 	for scope in scope_data_dict.keys():
+		if scope in scope_dict_keys:
+			print("Scope name conflict: %s" % scope)
 		var scope_data = scope_data_dict.get(scope)
 		var scope_script = scope_data.get("script")
 		var scope_callable = scope_data.get("callable")

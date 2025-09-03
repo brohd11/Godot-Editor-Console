@@ -1,4 +1,4 @@
-extends "res://addons/godot_console/src/class/console_command_base.gd"
+extends "res://addons/editor_console/src/class/console_command_base.gd"
 
 const UFile = UtilsRemote.UFile
 

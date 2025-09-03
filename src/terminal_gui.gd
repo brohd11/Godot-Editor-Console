@@ -1,7 +1,7 @@
 @tool
 extends Control
 
-const Utils = preload("res://addons/godot_console/src/utils/console_utils_local.gd")
+const Utils = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 const ScriptEd = preload("res://addons/addon_lib/brohd/alib_editor/utils/src/editor_nodes/script_editor.gd")
 
 @onready var output_text_edit: TextEdit = %Output
