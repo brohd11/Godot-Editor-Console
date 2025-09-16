@@ -1,4 +1,4 @@
-#! remote res://addons/godot_terminal/src/remote/
+#! remote
 
 const DockManager = preload("res://addons/addon_lib/brohd/dock_manager/dock_manager.gd")
 

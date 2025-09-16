@@ -227,4 +227,21 @@ static func clear_console(commands:Array, arguments:Array, editor_console:Editor
 	var line = editor_console.console_line_edit
 	var editor_log = line.get_parent().get_parent().get_parent().get_parent().get_parent().get_parent()
 	var clear_button = editor_log.get_child(2).get_child(1).get_child(0)
+	var editor_log_containers = editor_log.get_child(2).get_children()
+	for item in editor_log_containers:
+		if item is not HBoxContainer:
+			continue
+		var children = item.get_children()
+		for c in children:
+			var signals = c.get_signal_connection_list("pressed")
+			for s in signals:
+				var callable = str(s.get("callable", ""))
+				if callable == "EditorLog::_clear_request":
+					clear_button = c
+					break
+	
+	if not is_instance_valid(clear_button):
+		printerr("Could not locate clear button...")
+		return
+	
 	clear_button.pressed.emit()

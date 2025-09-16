@@ -30,12 +30,15 @@ For a full terminal experience, I have added support for the [GDTerm Plugin](htt
 The easiest way to interact with the console is to just call functions in global classes. The commands would look like:
 
 `global MyClass call -- my_function arg1 arg2`
+
 also valid:
+
 `MyClass call -- my_function arg1 arg2`
 
 The function could be anything as long as it is a static function.
 
 if you register the class with the console, it will be displayed in the auto-complete popup when 'global' is in the console line.
+
 `config global-class reg -- MyClass`
 
 

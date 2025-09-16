@@ -51,7 +51,7 @@ func _tokenize_string(text: String) -> Dictionary:
 		var token = _match.get_string()
 		# Check for and remove the surrounding quotes from the captured token
 		if (token.begins_with("\"") and token.ends_with("\"")) or \
-		   (token.begins_with("'") and token.ends_with("'")):
+			(token.begins_with("'") and token.ends_with("'")):
 			# This removes the first and last character (the quote)
 			token = token.substr(1, token.length() - 2)
 		var var_token_check = token

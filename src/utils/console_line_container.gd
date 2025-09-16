@@ -1,9 +1,13 @@
 extends HBoxContainer
 
+const BACKPORTED = 100
+
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 const ParsePopupKeys = UtilsLocal.ParsePopupKeys
 const PopupKeys = UtilsRemote.PopupHelper.ParamKeys
+
+const MiscBackport = preload("res://addons/plugin_exporter/src/class/export/backport/misc_backport_class.gd")
 
 var console_panel:PanelContainer
 var console_hsplit:HSplitContainer
@@ -24,7 +28,8 @@ func _ready() -> void:
 	os_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	os_label.fit_content = true
 	os_label.custom_minimum_size = Vector2(50,0)
-	os_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	if BACKPORTED >= 4:
+		os_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	os_label.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
 	
 	console_line_edit = ConsoleLineEdit.new()
@@ -103,7 +108,7 @@ class ConsoleLineEdit extends CodeEdit:
 			var scope_data = scope_dict.get(first_word)
 			var script = scope_data.get("script")
 			if script != null:
-				if "get_completion" in script:
+				if MiscBackport.has_static_method_compat("get_completion", script):
 					var comp_data = _get_script_completion(script)
 					if not comp_data.is_empty():
 						completions = comp_data
@@ -137,7 +142,12 @@ class ConsoleLineEdit extends CodeEdit:
 		await get_tree().process_frame
 		var popup = UtilsRemote.PopupHelper.new(item_dict)
 		EditorInterface.get_base_control().add_child(popup)
-		var wind_pos = DisplayServer.window_get_position(get_window().get_window_id())
+		var wind_pos
+		if BACKPORTED >= 3:
+			wind_pos = DisplayServer.window_get_position(get_window().get_window_id())
+		else:
+			wind_pos = DisplayServer.window_get_position()
+		
 		popup.position = wind_pos + Vector2i(global_position + get_caret_draw_pos())
 		popup.item_pressed.connect(_popup_pressed)
 		#popup.show()
@@ -179,6 +189,7 @@ class ConsoleLineEdit extends CodeEdit:
 	
 	func _get_script_completion(script):
 		var tokenizer = UtilsLocal.ConsoleTokenizer.new()
+		tokenizer.editor_console = editor_console
 		var result = tokenizer.parse_command_string(text)
 		var script_comp_data = script.get_completion(text, result.commands, result.args, editor_console)
 		if script_comp_data == null:

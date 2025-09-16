@@ -2,6 +2,7 @@ extends "res://addons/editor_console/src/class/console_command_base.gd"
 
 const _ARG_CLASS_COLOR_SETTING = "text_editor/theme/highlighting/base_type_color"
 
+
 const CALL_COMMAND = "call"
 const ARG_COMMAND = "args"
 const LIST_COMMAND = "list"
@@ -75,7 +76,7 @@ static func call_method(script:Script, args:Array):
 		return
 	var method_name = args[0]
 	args.remove_at(0)
-	if not method_name in script:
+	if not MiscBackport.has_static_method_compat(method_name, script):
 		print("Static method not in script.")
 		return
 	if args.size() != script.get_method_argument_count(method_name):
@@ -141,7 +142,7 @@ static func get_method_completions(script, current_args):
 	var method_list = script.get_script_method_list()
 	for method in method_list:
 		var name = method.get("name")
-		if name in script:
+		if MiscBackport.has_static_method_compat(name, script):
 			completion_data[name] = {}
 		if name in current_args:
 			return {}

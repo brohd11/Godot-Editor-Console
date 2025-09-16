@@ -8,7 +8,7 @@ const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 
 
-var editor_console: EditorConsole
+var editor_console
 
 
 func _get_plugin_name() -> String:

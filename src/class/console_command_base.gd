@@ -5,6 +5,7 @@ const PopupKeys = UtilsRemote.PopupHelper.ParamKeys
 const ParsePopupKeys = UtilsLocal.ParsePopupKeys
 const ECKeys = UtilsLocal.ParsePopupKeys
 const ScopeDataKeys = UtilsLocal.ScopeDataKeys
+const MiscBackport = preload("res://addons/plugin_exporter/src/class/export/backport/misc_backport_class.gd")
 
 static func register_commands():
 	return {}

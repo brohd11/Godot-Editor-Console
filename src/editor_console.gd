@@ -5,6 +5,8 @@ const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 const BottomPanel = UtilsRemote.BottomPanel
 
+const MiscBackport = preload("res://addons/plugin_exporter/src/class/export/backport/misc_backport_class.gd")
+
 var instance_refs = []
 
 #region Old plugin.gd vars
@@ -39,6 +41,7 @@ var current_command_index:int = -1
 
 const OS_LAB_CONSOLE_STR = "[color=%s]Console$[/color]"
 const OS_LAB_OS_STR = "[color=%s]%s[/color]:[color=%s]~%s[/color]$"
+
 var os_label:RichTextLabel
 var os_mode:= false
 var os_user:String
@@ -125,6 +128,7 @@ func register_temp_scope(scope_data:Dictionary) -> void: # for plugins
 		}
 	#set_var_highlighter()
 	_load_default_commands()
+
 
 func remove_temp_scope(scope_name:String): # for plugins
 	if not scope_name in _temp_scope_dict.keys():
@@ -240,15 +244,15 @@ func _get_scope_set_data(path_or_script):
 	else:
 		script = load(path_or_script)
 	
-	if "register_scopes" in script:
+	if MiscBackport.has_static_method_compat("register_scopes", script):
 		var register_scopes = script.register_scopes()
 		scope_dict.merge(_process_scope_data(script, register_scopes))
 	
-	if "register_hidden_scopes" in script:
+	if MiscBackport.has_static_method_compat("register_hidden_scopes", script):
 		var register_hidden_scopes = script.register_hidden_scopes()
 		hidden_scope_dict.merge(_process_scope_data(script, register_hidden_scopes))
 	
-	if "register_variables" in script:
+	if MiscBackport.has_static_method_compat("register_variables", script):
 		var register_variables = script.register_variables()
 		variable_dict.merge(register_variables)
 
@@ -272,6 +276,7 @@ func _process_scope_data(script:Script, scope_data_dict:Dictionary) -> Dictionar
 
 
 func _update_os_string():
+	var os_name = OS.get_name()
 	var display_cwd = os_cwd.trim_prefix(os_home_dir)
 	if display_cwd == "":
 		display_cwd = "/"
