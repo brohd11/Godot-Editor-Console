@@ -161,7 +161,7 @@ func _load_default_commands():
 	for script_path in sets:
 		_get_scope_set_data(script_path)
 	
-	if console_line_edit:
+	if is_instance_valid(console_line_edit):
 		set_var_highlighter()
 	
 	return true
