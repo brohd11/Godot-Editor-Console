@@ -5,6 +5,8 @@ const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 const BottomPanel = UtilsRemote.BottomPanel
 
+const ScriptEditorContext = preload("res://addons/editor_console/src/editor_plugins/script_editor.gd")
+
 const MiscBackport = preload("res://addons/plugin_exporter/src/class/export/backport/misc_backport_class.gd")
 
 var instance_refs = []
@@ -22,6 +24,8 @@ const button_right_click_menu_items = {
 	OS_MODE:{},
 	TOGGLE_OS_LABEL:{}
 }
+
+var script_editor_context:ScriptEditorContext
 
 var filter_line_edit:LineEdit
 var main_hsplit:HSplitContainer
@@ -73,7 +77,7 @@ var _accent_color:String
 
 var tokenizer:UtilsLocal.ConsoleTokenizer
 
-func _init() -> void:
+func _init(plugin:EditorPlugin) -> void:
 	if not FileAccess.file_exists(UtilsLocal.EDITOR_CONSOLE_SCOPE_PATH):
 		DirAccess.make_dir_recursive_absolute(UtilsLocal.EDITOR_CONSOLE_SCOPE_PATH.get_base_dir())
 		UtilsRemote.UFile.write_to_json({}, UtilsLocal.EDITOR_CONSOLE_SCOPE_PATH)
@@ -89,19 +93,24 @@ func _init() -> void:
 	
 	_load_default_commands()
 	
-	
+	script_editor_context = ScriptEditorContext.new()
+	plugin.add_context_menu_plugin(EditorContextMenuPlugin.CONTEXT_SLOT_SCRIPT_EDITOR_CODE, script_editor_context)
 	
 	# add func to load user config
 
-static func get_instance(plugin:EditorPlugin):
+static func get_instance():
 	var root = Engine.get_main_loop().root
-	var has_autoload = root.has_node("EditorConsole")
-	var instance
-	if has_autoload:
-		instance = root.get_node("EditorConsole")
-		
+	var node = root.get_node_or_null("EditorConsole")
+	if node:
+		return node
 	else:
-		instance = new()
+		print("Could not get EditorConsole instance.")
+
+static func register_plugin(plugin:EditorPlugin):
+	var root = Engine.get_main_loop().root
+	var instance = root.get_node_or_null("EditorConsole")
+	if not is_instance_valid(instance):
+		instance = new(plugin)
 		instance.name = "EditorConsole"
 		root.add_child(instance)
 		instance._add_console_line_edit()
@@ -109,12 +118,14 @@ static func get_instance(plugin:EditorPlugin):
 	instance.instance_refs.append(plugin)
 	return instance
 
-func clear_reference(plugin):
+func clear_reference(plugin:EditorPlugin):
 	instance_refs.erase(plugin)
 	
 	if instance_refs.is_empty():
 		_remove_console_line_edit()
 		queue_free()
+		if is_instance_valid(script_editor_context):
+			plugin.remove_context_menu_plugin(script_editor_context)
 
 
 func register_temp_scope(scope_data:Dictionary) -> void: # for plugins
@@ -300,6 +311,8 @@ func _toggle_os_mode():
 		os_label.text = OS_LAB_CONSOLE_STR % _accent_color
 		print_rich("%s Exited OS mode." % OS_LAB_CONSOLE_STR % _accent_color)
 
+func set_console_text(text):
+	_set_console_text(text)
 
 func _set_console_text(text):
 	console_line_edit.text = text

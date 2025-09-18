@@ -82,7 +82,9 @@ static func call_method(script:Script, args:Array):
 	if args.size() != script.get_method_argument_count(method_name):
 		print("Argument count=%s, called with %s." % [script.get_method_argument_count(method_name), args.size()])
 		return
-	script.callv(method_name, args)
+	var result = script.callv(method_name, args)
+	if result != null:
+		print(result)
 
 
 static func list_args(script:Script, args:Array):
