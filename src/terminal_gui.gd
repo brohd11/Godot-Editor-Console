@@ -1,8 +1,6 @@
 @tool
 extends Control
 
-const ScriptEd = preload("res://addons/addon_lib/brohd/alib_editor/utils/src/editor_nodes/script_editor.gd")
-
 @onready var output_text_edit: TextEdit = %Output
 @onready var input: LineEdit = %Input
 
@@ -26,7 +24,7 @@ func _on_text_submitted(new_text:String) -> void:
 	var third_word = words[2]
 	if first_word == "script":
 		if second_word == "run":
-			var output = ScriptEd.get_current_script().call(third_word)
+			var output = EditorInterface.get_script_editor().get_current_script().call(third_word)
 			output_text_edit.text += output
 			pass
 		pass

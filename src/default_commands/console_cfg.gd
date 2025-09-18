@@ -224,9 +224,8 @@ static func clear_console(commands:Array, arguments:Array, editor_console:Editor
 		if c_2 == "--history":
 			editor_console.previous_commands.clear()
 	
-	var line = editor_console.console_line_edit
-	var editor_log = line.get_parent().get_parent().get_parent().get_parent().get_parent().get_parent()
-	var clear_button = editor_log.get_child(2).get_child(1).get_child(0)
+	var editor_log = UtilsRemote.BottomPanel.get_editor_log()
+	var clear_button: Button
 	var editor_log_containers = editor_log.get_child(2).get_children()
 	for item in editor_log_containers:
 		if item is not HBoxContainer:

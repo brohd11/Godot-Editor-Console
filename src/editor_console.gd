@@ -98,6 +98,13 @@ func _init(plugin:EditorPlugin) -> void:
 	
 	# add func to load user config
 
+func _ready() -> void:
+	#var ed_node_ref = EditorNodeRef.get_instance()
+	#while not ed_node_ref.populated:
+		#await get_tree().process_frame
+	#_add_console_line_edit()
+	EditorNodeRef.call_on_ready(_add_console_line_edit)
+
 static func get_instance():
 	var root = Engine.get_main_loop().root
 	var node = root.get_node_or_null("EditorConsole")
@@ -113,7 +120,7 @@ static func register_plugin(plugin:EditorPlugin):
 		instance = new(plugin)
 		instance.name = "EditorConsole"
 		root.add_child(instance)
-		instance._add_console_line_edit()
+		#instance._add_console_line_edit()
 	
 	instance.instance_refs.append(plugin)
 	return instance
@@ -455,17 +462,9 @@ func next_valid_command():
 
 ##
 
-func get_editor_log():
-	var editor_log = console_line_edit.get_parent().get_parent().get_parent().get_parent().get_parent().get_parent()
-	return editor_log
-
-func get_clear_button():
-	var editor_log = get_editor_log()
-	var clear_button = editor_log.get_child(2).get_child(1).get_child(0)
-	return clear_button
 
 func get_console_text_box():
-	var editor_log = get_editor_log()
+	var editor_log = BottomPanel.get_editor_log()
 	var text_box = editor_log.get_child(1).get_child(0)
 	return text_box
 
@@ -475,6 +474,7 @@ func get_console_text_box():
 
 func _add_console_line_edit():
 	var filter_check = BottomPanel.get_filter_line_edit()
+	print(filter_check)
 	if filter_check is not LineEdit:
 		print("Filter is not found:")
 		print(filter_check)
