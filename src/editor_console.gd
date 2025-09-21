@@ -474,10 +474,8 @@ func get_console_text_box():
 
 func _add_console_line_edit():
 	var filter_check = BottomPanel.get_filter_line_edit()
-	print(filter_check)
 	if filter_check is not LineEdit:
-		print("Filter is not found:")
-		print(filter_check)
+		print("Filter is not found: %s" % filter_check)
 		return
 	filter_line_edit = BottomPanel.get_filter_line_edit()
 	var vbox = filter_line_edit.get_parent()
