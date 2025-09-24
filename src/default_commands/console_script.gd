@@ -2,6 +2,7 @@ extends "res://addons/editor_console/src/class/console_command_base.gd"
 
 const _ARG_CLASS_COLOR_SETTING = "text_editor/theme/highlighting/base_type_color"
 
+const CONSOLE_METHODS = ["parse", "get_completion"]
 
 const CALL_COMMAND = "call"
 const ARG_COMMAND = "args"
@@ -37,14 +38,17 @@ static func get_completion(raw_text:String, commands:Array, args:Array, editor_c
 	
 	if commands.size() > 1:
 		var c_2 = commands[1]
+		var show_private = false
+		if "--private" in commands or "-p" in commands:
+			show_private = true
 		if c_2 == CALL_COMMAND and raw_text.find(" --") > -1:
 			var script = EditorInterface.get_script_editor().get_current_script()
-			return get_method_completions(script, args)
+			return get_method_completions(script, args, show_private)
 			
 		elif c_2 == ARG_COMMAND and raw_text.find(" --") > -1:
 			var script = EditorInterface.get_script_editor().get_current_script()
 			if args.size() == 0:
-				return get_method_completions(script, args)
+				return get_method_completions(script, args, show_private)
 		elif c_2 == LIST_COMMAND and raw_text.find(" --") > -1:
 			return get_list_commands(args)
 	
@@ -139,17 +143,21 @@ static func get_list_commands(current_args:Array):
 	return completion_data
 
 
-static func get_method_completions(script, current_args):
+static func get_method_completions(script:Script, current_args:Array, show_private:bool):
 	var completion_data = {}
 	var method_list = script.get_script_method_list()
 	for method in method_list:
 		var name = method.get("name")
+		if not show_private:
+			if name in CONSOLE_METHODS or name.begins_with("_"):
+				continue
 		if MiscBackport.has_static_method_compat(name, script):
 			completion_data[name] = {}
 		if name in current_args:
 			return {}
 	
 	return completion_data
+
 
 
 static func print_members(script_name:String, args:Array, script:Script):

@@ -59,11 +59,14 @@ static func get_completion(raw_text, commands:Array, args:Array, editor_console:
 	
 	var c_3 = commands[2]
 	if args.size() == 0:
+		var show_private = false
+		if "--private" in commands or "-p" in commands:
+			show_private = true
 		if c_3 == ConsoleScript.CALL_COMMAND and raw_text.find(" --") > -1:
-			return ConsoleScript.get_method_completions(script, args)
+			return ConsoleScript.get_method_completions(script, args, show_private)
 		elif c_3 == ConsoleScript.ARG_COMMAND and raw_text.find(" --") > -1:
 			if args.size() == 0:
-				return ConsoleScript.get_method_completions(script, args)
+				return ConsoleScript.get_method_completions(script, args, show_private)
 	
 	if c_3 == ConsoleScript.LIST_COMMAND and raw_text.find(" --") > -1:
 		return ConsoleScript.get_list_commands(args)

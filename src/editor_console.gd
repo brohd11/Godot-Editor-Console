@@ -1,5 +1,7 @@
-class_name EditorConsole
-extends Node
+class_name EditorConsole #! singleton-module
+extends Singleton.RefCount
+
+const SCRIPT = preload("res://addons/editor_console/src/editor_console.gd")
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
@@ -9,7 +11,6 @@ const ScriptEditorContext = preload("res://addons/editor_console/src/editor_plug
 
 const MiscBackport = preload("res://addons/plugin_exporter/src/class/export/backport/misc_backport_class.gd")
 
-var instance_refs = []
 
 #region Old plugin.gd vars
 
@@ -99,40 +100,23 @@ func _init(plugin:EditorPlugin) -> void:
 	# add func to load user config
 
 func _ready() -> void:
-	#var ed_node_ref = EditorNodeRef.get_instance()
-	#while not ed_node_ref.populated:
-		#await get_tree().process_frame
-	#_add_console_line_edit()
 	EditorNodeRef.call_on_ready(_add_console_line_edit)
 
+static func get_singleton_name() -> String:
+	return "EditorConsole"
+
 static func get_instance():
-	var root = Engine.get_main_loop().root
-	var node = root.get_node_or_null("EditorConsole")
-	if node:
-		return node
-	else:
-		print("Could not get EditorConsole instance.")
+	return _get_instance(SCRIPT)
 
-static func register_plugin(plugin:EditorPlugin):
-	var root = Engine.get_main_loop().root
-	var instance = root.get_node_or_null("EditorConsole")
-	if not is_instance_valid(instance):
-		instance = new(plugin)
-		instance.name = "EditorConsole"
-		root.add_child(instance)
-		#instance._add_console_line_edit()
-	
-	instance.instance_refs.append(plugin)
-	return instance
+static func register_plugin(plugin:Node):
+	return _register_node(SCRIPT, plugin)
 
-func clear_reference(plugin:EditorPlugin):
-	instance_refs.erase(plugin)
-	
-	if instance_refs.is_empty():
-		_remove_console_line_edit()
-		queue_free()
-		if is_instance_valid(script_editor_context):
-			plugin.remove_context_menu_plugin(script_editor_context)
+func _all_unregistered_callback():
+	_remove_console_line_edit()
+	if is_instance_valid(script_editor_context):
+		var plugin = EditorPlugin.new()
+		plugin.remove_context_menu_plugin(script_editor_context)
+		plugin.queue_free()
 
 
 func register_temp_scope(scope_data:Dictionary) -> void: # for plugins
