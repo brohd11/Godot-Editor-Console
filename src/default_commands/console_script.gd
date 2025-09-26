@@ -80,7 +80,7 @@ static func call_method(script:Script, args:Array):
 		return
 	var method_name = args[0]
 	args.remove_at(0)
-	if not MiscBackport.has_static_method_compat(method_name, script):
+	if not UNode.has_static_method_compat(method_name, script):
 		print("Static method not in script.")
 		return
 	if args.size() != script.get_method_argument_count(method_name):
@@ -151,7 +151,7 @@ static func get_method_completions(script:Script, current_args:Array, show_priva
 		if not show_private:
 			if name in CONSOLE_METHODS or name.begins_with("_"):
 				continue
-		if MiscBackport.has_static_method_compat(name, script):
+		if UNode.has_static_method_compat(name, script):
 			completion_data[name] = {}
 		if name in current_args:
 			return {}

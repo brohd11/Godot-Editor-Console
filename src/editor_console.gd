@@ -6,10 +6,11 @@ const SCRIPT = preload("res://addons/editor_console/src/editor_console.gd")
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 const BottomPanel = UtilsRemote.BottomPanel
+const UNode = UtilsRemote.UNode
 
 const ScriptEditorContext = preload("res://addons/editor_console/src/editor_plugins/script_editor.gd")
 
-const MiscBackport = preload("res://addons/plugin_exporter/src/class/export/backport/misc_backport_class.gd")
+
 
 
 #region Old plugin.gd vars
@@ -246,15 +247,15 @@ func _get_scope_set_data(path_or_script):
 	else:
 		script = load(path_or_script)
 	
-	if MiscBackport.has_static_method_compat("register_scopes", script):
+	if UNode.has_static_method_compat("register_scopes", script):
 		var register_scopes = script.register_scopes()
 		scope_dict.merge(_process_scope_data(script, register_scopes))
 	
-	if MiscBackport.has_static_method_compat("register_hidden_scopes", script):
+	if UNode.has_static_method_compat("register_hidden_scopes", script):
 		var register_hidden_scopes = script.register_hidden_scopes()
 		hidden_scope_dict.merge(_process_scope_data(script, register_hidden_scopes))
 	
-	if MiscBackport.has_static_method_compat("register_variables", script):
+	if UNode.has_static_method_compat("register_variables", script):
 		var register_variables = script.register_variables()
 		variable_dict.merge(register_variables)
 

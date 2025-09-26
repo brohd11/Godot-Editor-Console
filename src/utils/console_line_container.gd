@@ -7,7 +7,7 @@ const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils
 const ParsePopupKeys = UtilsLocal.ParsePopupKeys
 const PopupKeys = UtilsRemote.PopupHelper.ParamKeys
 
-const MiscBackport = preload("res://addons/plugin_exporter/src/class/export/backport/misc_backport_class.gd")
+const UNode = UtilsRemote.UNode
 
 var console_panel:PanelContainer
 var console_hsplit:HSplitContainer
@@ -108,7 +108,7 @@ class ConsoleLineEdit extends CodeEdit:
 			var scope_data = scope_dict.get(first_word)
 			var script = scope_data.get("script")
 			if script != null:
-				if MiscBackport.has_static_method_compat("get_completion", script):
+				if UNode.has_static_method_compat("get_completion", script):
 					var comp_data = _get_script_completion(script)
 					if not comp_data.is_empty():
 						completions = comp_data
