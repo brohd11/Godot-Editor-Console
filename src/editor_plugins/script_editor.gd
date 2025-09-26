@@ -16,7 +16,9 @@ func _callback(script_editor:CodeEdit, path):
 		ed_console.set_console_text("script call -- %s" % script_editor.get_word_under_caret())
 		if not ed_console.console_line_container.console_line_edit.visible:
 			ed_console._toggle_console()
-	
+		
+		ed_console.console_line_container.console_line_edit.grab_focus()
+
 
 func _get_valid_items(script_editor:CodeEdit):
 	var valid_items = {}
