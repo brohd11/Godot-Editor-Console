@@ -6,6 +6,7 @@ const ParsePopupKeys = UtilsLocal.ParsePopupKeys
 const ECKeys = UtilsLocal.ParsePopupKeys
 const ScopeDataKeys = UtilsLocal.ScopeDataKeys
 const UNode = UtilsRemote.UNode
+const UClassDetail = UtilsRemote.UClassDetail
 
 static func register_commands():
 	return {}
