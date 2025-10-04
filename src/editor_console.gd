@@ -79,6 +79,9 @@ var _accent_color:String
 
 var tokenizer:UtilsLocal.ConsoleTokenizer
 
+var filter_button:Button
+var clear_button:Button
+
 func _init(plugin:EditorPlugin) -> void:
 	if not FileAccess.file_exists(UtilsLocal.EDITOR_CONSOLE_SCOPE_PATH):
 		DirAccess.make_dir_recursive_absolute(UtilsLocal.EDITOR_CONSOLE_SCOPE_PATH.get_base_dir())
@@ -458,10 +461,12 @@ func get_console_text_box():
 
 
 func _add_console_line_edit():
-	var filter_check = BottomPanel.get_filter_line_edit()
-	if filter_check is not LineEdit:
-		print("Filter is not found: %s" % filter_check)
-		return
+	_get_editor_log_button_refs()
+	
+	#var filter_check = BottomPanel.get_filter_line_edit()
+	#if filter_check is not LineEdit:
+		#print("Filter is not found: %s" % filter_check)
+		#return
 	filter_line_edit = BottomPanel.get_filter_line_edit()
 	var vbox = filter_line_edit.get_parent()
 	main_hsplit = HSplitContainer.new()
@@ -483,6 +488,8 @@ func _add_console_line_edit():
 	
 	console_line_edit = console_line_container.console_line_edit
 	
+	filter_button.toggled.connect(_on_filter_toggled)
+	
 	set_var_highlighter()
 
 
@@ -493,6 +500,41 @@ func _remove_console_line_edit():
 	
 	main_hsplit.queue_free()
 	filter_line_edit = null
+
+
+func _get_editor_log_button_refs():
+	var editor_log = BottomPanel.get_editor_log()
+	var editor_log_containers = editor_log.get_child(2).get_children()
+	for item in editor_log_containers:
+		if item is not HBoxContainer:
+			continue
+		var children = item.get_children()
+		for c in children:
+			var pressed_signals = c.get_signal_connection_list("pressed")
+			for s in pressed_signals:
+				var callable = str(s.get("callable", ""))
+				if callable == "EditorLog::_clear_request":
+					clear_button = c
+					break
+				
+			var toggled_signals = c.get_signal_connection_list("toggled")
+			for s in toggled_signals:
+				var callable = str(s.get("callable", ""))
+				if callable == "EditorLog::_set_search_visible":
+					filter_button = c
+					break
+
+
+
+func _on_filter_toggled(toggled:bool) -> void:
+	console_line_container.visible = toggled
+	
+	if toggled:
+		if console_line_edit.visible: # if console is not visible, show filter regardless of last setting
+			filter_line_edit.visible = show_filter
+		
+		if not show_filter:
+			console_line_edit.grab_focus()
 
 
 func _toggle_console():
@@ -550,8 +592,8 @@ func _on_popup_pressed(popup_path:String):
 
 
 func _toggle_filter():
-	show_filter = not show_filter
-	filter_line_edit.visible = show_filter
+	filter_line_edit.visible = not filter_line_edit.visible
+	show_filter = filter_line_edit.visible
 
 func toggle_os_mode() -> void:
 	_toggle_os_mode()

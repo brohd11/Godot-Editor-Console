@@ -224,23 +224,4 @@ static func clear_console(commands:Array, arguments:Array, editor_console:Editor
 		if c_2 == "--history":
 			editor_console.previous_commands.clear()
 	
-	var editor_log = UtilsRemote.BottomPanel.get_editor_log()
-	var clear_button: Button
-	var editor_log_containers = editor_log.get_child(2).get_children()
-	for item in editor_log_containers:
-		if item is not HBoxContainer:
-			continue
-		var children = item.get_children()
-		for c in children:
-			var signals = c.get_signal_connection_list("pressed")
-			for s in signals:
-				var callable = str(s.get("callable", ""))
-				if callable == "EditorLog::_clear_request":
-					clear_button = c
-					break
-	
-	if not is_instance_valid(clear_button):
-		printerr("Could not locate clear button...")
-		return
-	
-	clear_button.pressed.emit()
+	editor_console.clear_button.pressed.emit()
