@@ -9,7 +9,7 @@ const ARG_COMMAND = "args"
 const LIST_COMMAND = "list"
 
 const LIST_COMMANDS_OPTIONS = ["--methods", "--signals", "--constants", "--properties",
-"--enums", "--inherited", "--lines"]
+"--enums", "--inherited", "--lines", "--data"]
 
 const SCRIPT_HELP=\
 "Call static methods on current script, or create an instance.
@@ -162,8 +162,13 @@ static func get_method_completions(script:Script, current_args:Array, show_priva
 
 static func print_members(script_name:String, args:Array, script:Script):
 	var list_opt_size = LIST_COMMANDS_OPTIONS.size()
-	var lines_cmd = LIST_COMMANDS_OPTIONS[list_opt_size - 1]
-	var inherited_cmd = LIST_COMMANDS_OPTIONS[list_opt_size - 2]
+	var data_cmd = LIST_COMMANDS_OPTIONS[list_opt_size - 1]
+	var lines_cmd = LIST_COMMANDS_OPTIONS[list_opt_size - 2]
+	var inherited_cmd = LIST_COMMANDS_OPTIONS[list_opt_size - 3]
+	var print_data = data_cmd in args
+	if print_data:
+		var idx = args.find(data_cmd)
+		args.remove_at(idx)
 	var print_lines = lines_cmd in args
 	if print_lines:
 		var idx = args.find(lines_cmd)
@@ -182,10 +187,10 @@ static func print_members(script_name:String, args:Array, script:Script):
 	
 	for i in range(args_size):
 		var command = args[i]
-		if command == lines_cmd or command == inherited_cmd:
+		if command == lines_cmd or command == inherited_cmd or command == data_cmd:
 			continue
 		if command in LIST_COMMANDS_OPTIONS:
-			var members = []
+			var members = {}
 			if command == LIST_COMMANDS_OPTIONS[0]: # methods
 				if inherited:
 					print("Printing class methods: %s" % script_name)
@@ -226,11 +231,13 @@ static func print_members(script_name:String, args:Array, script:Script):
 			if members.is_empty():
 				print_rich("\t[color=%s]None in script.[/color]" % EditorConsole.COLOR_VAR_RED)
 			else:
-				if print_lines:
-					for m in members:
+				if print_lines or print_data:
+					for m in members.keys():
 						print_rich("\t[color=%s]%s[/color]" % [EditorConsole.COLOR_ACCENT_MUTE, m])
+						if print_data:
+							print_rich("\t\t[color=%s]%s[/color]" % [Color.GRAY, members.get(m, "No data.")])
 				else:
-					print_rich("\t[color=%s]" % EditorConsole.COLOR_ACCENT_MUTE + "  ".join(members) + "[/color]")
+					print_rich("\t[color=%s]" % EditorConsole.COLOR_ACCENT_MUTE + "  ".join(members.keys()) + "[/color]")
 			if i < args_size - 1:
 				print("")
 			continue

@@ -1,6 +1,9 @@
 extends EditorContextMenuPlugin
 
+const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
+
 const CALL = "EditorConsole/Call"
+const INFO = "EditorConsole/Info"
 
 func _popup_menu(paths: PackedStringArray) -> void:
 	var script_editor = Engine.get_main_loop().root.get_node(paths[0])
@@ -18,6 +21,13 @@ func _callback(script_editor:CodeEdit, path):
 			ed_console._toggle_console()
 		
 		ed_console.console_line_container.console_line_edit.grab_focus()
+		
+	elif path == INFO:
+		var current_script = EditorInterface.get_script_editor().get_current_script()
+		var word = script_editor.get_word_under_caret()
+		var member_info = UtilsRemote.UClassDetail.get_member_info(current_script, word)
+		print_rich("Printing member info: [color=%s]%s[/color]" % [EditorConsole.COLOR_ACCENT_MUTE, word])
+		print(member_info)
 
 
 func _get_valid_items(script_editor:CodeEdit):
@@ -32,5 +42,11 @@ func _get_valid_items(script_editor:CodeEdit):
 			if flags & METHOD_FLAG_STATIC:
 				valid_items[CALL] = {}
 				break
+	
+	var script_members = UtilsRemote.UClassDetail.script_get_all_members(current_script)
+	for member in script_members.keys():
+		if word == member:
+			valid_items[INFO] = {}
+			break
 	
 	return valid_items
