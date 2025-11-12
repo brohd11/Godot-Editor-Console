@@ -37,8 +37,7 @@
 				}
 			},
 			"parse_gd": {
-				"class_rename_ignore": {
-				}
+				"class_rename_ignore": []
 			},
 			"parse_tscn": {
 			}
