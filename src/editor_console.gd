@@ -115,6 +115,9 @@ static func get_instance():
 static func register_plugin(plugin:Node):
 	return _register_node(SCRIPT, plugin)
 
+static func call_on_ready(callable:Callable):
+	_call_on_ready(SCRIPT, callable)
+
 func _all_unregistered_callback():
 	_remove_console_line_edit()
 	if is_instance_valid(script_editor_context):
