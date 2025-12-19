@@ -131,7 +131,7 @@ class ConsoleLineEdit extends CodeEdit:
 		if text.find(" --") > -1:
 			var var_nms = variable_dict.keys()
 			if not completions.is_empty() and not var_nms.is_empty():
-				completions["sep"] = {}
+				completions["%sep"] = {}
 			for nm in var_nms:
 				completions[nm] = {}
 		_build_popup(completions)
