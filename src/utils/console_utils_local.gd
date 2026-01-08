@@ -17,6 +17,7 @@ const ConsoleTokenizer = preload("res://addons/editor_console/src/utils/console_
 
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 
+
 const EDITOR_CONSOLE_SCOPE_PATH = "res://.addons/editor_console/scope_data.json" #! ignore-remote
 
 static func get_scope_data():

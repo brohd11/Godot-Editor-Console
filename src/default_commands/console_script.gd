@@ -20,9 +20,9 @@ list - list members of script -- <list_flags> (--methods, --signals, --constants
 
 static func _get_commands() -> Dictionary: 
 	return {
-		CALL_COMMAND: {PopupKeys.METADATA_KEY: {ParsePopupKeys.ADD_ARGS:true}},
-		ARG_COMMAND: {PopupKeys.METADATA_KEY: {ParsePopupKeys.ADD_ARGS:true}},
-		LIST_COMMAND: {PopupKeys.METADATA_KEY: {ParsePopupKeys.ADD_ARGS:true}},
+		CALL_COMMAND: {PopupKeys.METADATA: {ParsePopupKeys.ADD_ARGS:true}},
+		ARG_COMMAND: {PopupKeys.METADATA: {ParsePopupKeys.ADD_ARGS:true}},
+		LIST_COMMAND: {PopupKeys.METADATA: {ParsePopupKeys.ADD_ARGS:true}},
 		}
 
 

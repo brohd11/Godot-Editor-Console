@@ -124,7 +124,7 @@ class ConsoleLineEdit extends CodeEdit:
 				return
 			for scope in scope_names:
 				if scope.to_lower().begins_with(first_word.to_lower()):
-					completions[scope] = {PopupKeys.METADATA_KEY:{ParsePopupKeys.REPLACE_WORD:true}}
+					completions[scope] = {PopupKeys.METADATA:{ParsePopupKeys.REPLACE_WORD:true}}
 			_build_popup(completions)
 			return
 		

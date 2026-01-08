@@ -37,7 +37,7 @@ static func get_completion(raw_text, commands:Array, args:Array, editor_console:
 		if c_2:
 			for name in global_class_names:
 				if name.to_lower().begins_with(c_2.to_lower()):
-					completion_data[name] = {PopupKeys.METADATA_KEY:{ParsePopupKeys.REPLACE_WORD:true}}
+					completion_data[name] = {PopupKeys.METADATA:{ParsePopupKeys.REPLACE_WORD:true}}
 		else:
 			for name in global_class_names:
 				completion_data[name] = {}
