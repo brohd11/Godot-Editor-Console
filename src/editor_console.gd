@@ -11,7 +11,9 @@ const UNode = UtilsRemote.UNode
 const ScriptEditorContext = preload("res://addons/editor_console/src/editor_plugins/script_editor.gd")
 
 
-
+## GDTERM
+var gd_term_instance
+##
 
 #region Old plugin.gd vars
 
@@ -32,13 +34,15 @@ var script_editor_context:ScriptEditorContext
 var filter_line_edit:LineEdit
 var main_hsplit:HSplitContainer
 var console_line_container:UtilsLocal.ConsoleLineContainer
+
 var show_filter:bool = true
 
 #endregion
 
-## GDTERM
-var gd_term_instance
-##
+
+
+var settings_helper:ALibEditor.SettingHelper
+var _console_replace_filter:bool=false
 
 var console_line_edit:UtilsLocal.ConsoleLineContainer.ConsoleLineEdit
 var last_command:String
@@ -86,6 +90,10 @@ func _init(plugin:EditorPlugin) -> void:
 	if not FileAccess.file_exists(UtilsLocal.EDITOR_CONSOLE_SCOPE_PATH):
 		DirAccess.make_dir_recursive_absolute(UtilsLocal.EDITOR_CONSOLE_SCOPE_PATH.get_base_dir())
 		UtilsRemote.UFile.write_to_json({}, UtilsLocal.EDITOR_CONSOLE_SCOPE_PATH)
+	
+	settings_helper = ALibEditor.SettingHelper.new(self)
+	settings_helper.subscribe(&"_console_replace_filter", EditorSet.CONSOLE_REPLACE_FILTER, false)
+	settings_helper.initialize()
 	
 	os_user = UtilsLocal.ConsoleOS.get_os_string()
 	os_cwd = ProjectSettings.globalize_path("res://")
@@ -529,15 +537,16 @@ func _get_editor_log_button_refs():
 
 
 
-func _on_filter_toggled(toggled:bool) -> void:
+func _on_filter_toggled(toggled:bool) -> void: # this is the filter toggle in editor log panel
 	console_line_container.visible = toggled
-	
 	if toggled:
-		if console_line_edit.visible: # if console is not visible, show filter regardless of last setting
-			filter_line_edit.visible = show_filter
-		
-		if not show_filter:
+		if not console_line_edit.visible: # if console is not visible, show filter regardless of last setting
+			filter_line_edit.show()
+		elif not _can_show_filter():
+			filter_line_edit.hide()
 			console_line_edit.grab_focus()
+		else:
+			filter_line_edit.visible = show_filter
 
 
 func _toggle_console():
@@ -548,7 +557,7 @@ func _toggle_console():
 		console_line_container.console_panel.show()
 		console_line_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		console_line_edit.grab_focus()
-		if not show_filter:
+		if not _can_show_filter():
 			filter_line_edit.hide()
 	else:
 		console_line_container.console_panel.hide()
@@ -594,9 +603,12 @@ func _on_popup_pressed(popup_path:String):
 		_toggle_os_label_minimum_size()
 
 
-func _toggle_filter():
+func _toggle_filter(): #^ right click toggle
 	filter_line_edit.visible = not filter_line_edit.visible
 	show_filter = filter_line_edit.visible
+
+func _can_show_filter():
+	return not _console_replace_filter and show_filter
 
 func toggle_os_mode() -> void:
 	_toggle_os_mode()
@@ -622,3 +634,6 @@ func _get_gd_term():
 	return gd_term_instance.get_node("term_container/term/GDTerm")
 
 #endregion
+
+class EditorSet:
+	const CONSOLE_REPLACE_FILTER = &"plugin/editor_console/active_console_replace_filter"
