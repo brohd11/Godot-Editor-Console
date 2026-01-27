@@ -1,5 +1,6 @@
 class_name EditorConsole #! singleton-module
-extends Singleton.RefCount
+extends SingletonRefCount
+const SingletonRefCount = Singleton.RefCount
 
 const SCRIPT = preload("res://addons/editor_console/src/editor_console.gd")
 
@@ -463,9 +464,7 @@ func next_valid_command():
 
 
 func get_console_text_box():
-	var editor_log = BottomPanel.get_editor_log()
-	var text_box = editor_log.get_child(1).get_child(0)
-	return text_box
+	return EditorNodeRef.get_node_ref(EditorNodeRef.Nodes.EDITOR_LOG_RICH_TEXT_LABEL)
 
 
 #region Old plugin.gd Logic
@@ -514,8 +513,8 @@ func _remove_console_line_edit():
 
 
 func _get_editor_log_button_refs():
-	var editor_log = BottomPanel.get_editor_log()
-	var editor_log_containers = editor_log.get_child(2).get_children()
+	var editor_log_button_container = EditorNodeRef.get_node_ref(EditorNodeRef.Nodes.EDITOR_LOG_BUTTON_CONTAINER)
+	var editor_log_containers = editor_log_button_container.get_children()
 	for item in editor_log_containers:
 		if item is not HBoxContainer:
 			continue
