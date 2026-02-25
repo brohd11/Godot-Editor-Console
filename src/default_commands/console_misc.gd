@@ -5,11 +5,10 @@ const MISC_HELP = \
 color-picker - Open a color picker in a window, selecting a color copies the html string to clipboard."
 
 static func register_commands():
-	return {
-	"color-picker": {
-		"callable": _color_picker
-		}
-	}
+	var cmds = {}
+	cmds["color-picker"] = {"callable": _color_picker}
+	
+	return cmds
 
 static func get_completion(raw_text:String, commands:Array, arguments:Array, editor_console):
 	var completion_data = {}

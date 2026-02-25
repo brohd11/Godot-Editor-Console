@@ -42,7 +42,7 @@ var show_filter:bool = true
 
 
 
-var settings_helper:ALibEditor.SettingHelper
+var settings_helper:ALibEditor.Settings.SettingHelperEditor
 var _console_replace_filter:bool=false
 
 var console_line_edit:UtilsLocal.ConsoleLineContainer.ConsoleLineEdit
@@ -92,8 +92,8 @@ func _init(plugin:EditorPlugin) -> void:
 		DirAccess.make_dir_recursive_absolute(UtilsLocal.EDITOR_CONSOLE_SCOPE_PATH.get_base_dir())
 		UtilsRemote.UFile.write_to_json({}, UtilsLocal.EDITOR_CONSOLE_SCOPE_PATH)
 	
-	settings_helper = ALibEditor.SettingHelper.new(self)
-	settings_helper.subscribe(&"_console_replace_filter", EditorSet.CONSOLE_REPLACE_FILTER, false)
+	settings_helper = ALibEditor.Settings.SettingHelperEditor.new()
+	settings_helper.subscribe_property(self, &"_console_replace_filter", EditorSet.CONSOLE_REPLACE_FILTER, false)
 	settings_helper.initialize()
 	
 	os_user = UtilsLocal.ConsoleOS.get_os_string()
@@ -485,6 +485,7 @@ func _add_console_line_edit():
 	
 	console_line_container = UtilsLocal.ConsoleLineContainer.new()
 	filter_line_edit.reparent(main_hsplit)
+	filter_line_edit.show()
 	main_hsplit.add_child(console_line_container)
 	
 	console_line_container.apply_styleboxes(filter_line_edit)

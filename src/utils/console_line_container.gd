@@ -88,7 +88,7 @@ class ConsoleLineEdit extends CodeEdit:
 			return
 		var completions = {}
 		var scope_names = scope_dict.keys()
-		if text.is_empty():
+		if text.strip_edges().is_empty():
 			for scope in scope_names:
 				completions[scope] = {}
 			_build_popup(completions)
