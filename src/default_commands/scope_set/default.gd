@@ -1,18 +1,18 @@
-extends "res://addons/editor_console/src/class/console_command_set_base.gd"
+extends EditorConsoleSingleton.ConsoleCommandSetBase
 
 static func register_scopes():
 	return {
 		"script": {
-			"script": UtilsLocal.ConsoleScript
+			"script": UtilsLocal.ConsoleScript.new()
 		},
 		"global":{
-			"script": UtilsLocal.ConsoleGlobalClass
+			"script": UtilsLocal.ConsoleGlobalClass.new()
 		},
 		"config":{
-			"script": UtilsLocal.ConsoleCfg
+			"script": UtilsLocal.ConsoleCfg.new()
 		},
 		"misc":{
-			"script":UtilsLocal.ConsoleMisc
+			"script" :UtilsLocal.ConsoleMisc.new()
 		},
 	}
 
@@ -20,13 +20,13 @@ static func register_scopes():
 static func register_hidden_scopes():
 	return {
 		"clear":{
-			"script": UtilsLocal.ConsoleCfg,
+			"script": UtilsLocal.ConsoleCfg.new(),
 		},
 		"help": {
-			"script": UtilsLocal.ConsoleHelp,
+			"script": UtilsLocal.ConsoleHelp.new(),
 		},
 		"os":{
-			"script": UtilsLocal.ConsoleOS
+			"script": UtilsLocal.ConsoleOS.new()
 		},
 	}
 

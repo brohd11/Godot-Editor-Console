@@ -1,15 +1,23 @@
-class_name EditorConsole #! singleton-module
+class_name EditorConsoleSingleton #! singleton-module
 extends SingletonRefCount
 const SingletonRefCount = Singleton.RefCount
 
 const SCRIPT = preload("res://addons/editor_console/src/editor_console.gd")
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
+
+const Colors = UtilsLocal.Colors
+const ConsoleCommandBase = UtilsLocal.ConsoleCommandBase
+const ConsoleCommandSetBase = UtilsLocal.ConsoleCommandSetBase
+
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 const BottomPanel = UtilsRemote.BottomPanel
 const UNode = UtilsRemote.UNode
+const UString = UtilsRemote.UString
+const Pr = UString.PrintRich
 
 const ScriptEditorContext = preload("res://addons/editor_console/src/editor_plugins/script_editor.gd")
+
 
 
 ## GDTERM
@@ -50,9 +58,6 @@ var last_command:String
 var previous_commands = []
 var current_command_index:int = -1
 
-const OS_LAB_CONSOLE_STR = "[color=%s]Console$[/color]"
-const OS_LAB_OS_STR = "[color=%s]%s[/color]:[color=%s]~%s[/color]$"
-
 var os_label:RichTextLabel
 var os_mode:= false
 var os_user:String
@@ -73,8 +78,7 @@ var _temp_scope_dict = {}
 var variable_dict = {}
 var working_variable_dict = {}
 
-const COLOR_OS_USER = "88e134"
-const COLOR_OS_PATH = "659cce"
+
 
 const COLOR_VAR_GREEN = "96f442"
 const COLOR_VAR_RED = "cc000c"
@@ -116,16 +120,27 @@ func _ready() -> void:
 	EditorNodeRef.call_on_ready(_add_console_line_edit)
 
 static func get_singleton_name() -> String:
-	return "EditorConsole"
+	return "EditorConsoleSingleton"
 
-static func get_instance():
+static func get_instance() -> EditorConsoleSingleton:
 	return _get_instance(SCRIPT)
 
-static func register_plugin(plugin:Node):
-	return _register_node(SCRIPT, plugin)
+static func register_node(node:Node):
+	return _register_node(SCRIPT, node)
+
+static func unregister_node(node):
+	_unregister_node(SCRIPT, node)
 
 static func call_on_ready(callable:Callable):
 	_call_on_ready(SCRIPT, callable)
+
+static func instance_valid():
+	return _instance_valid(SCRIPT)
+
+static func _instance_valid_err():
+	if instance_valid(): return true
+	printerr("EditorConsole has not been instance by a plugin yet")
+	return false
 
 func _all_unregistered_callback():
 	_remove_console_line_edit()
@@ -135,25 +150,31 @@ func _all_unregistered_callback():
 		plugin.queue_free()
 
 
-func register_temp_scope(scope_data:Dictionary) -> void: # for plugins
-	for key in scope_data.keys():
-		var data = scope_data.get(key)
-		var script = data.get("script")
-		var callable = data.get("callable")
-		_temp_scope_dict[key] = {
-			"script":script,
-			"callable": callable
-		}
+static func register_temp_scope(scope_name:String, object_or_callable:Variant) -> void: # for plugins
+	if not _instance_valid_err(): return
+	var ins = get_instance()
+	var data = {}
+	if object_or_callable is Callable:
+		data["callable"] = object_or_callable
+	elif object_or_callable is GDScript or object_or_callable.get_class() == "RefCounted":
+		data["script"] = object_or_callable
+	else:
+		printerr("Scope: %s - Unrecognized script or callable: %s" % [scope_name, object_or_callable])
+		return
+	
+	ins._temp_scope_dict[scope_name] = data
 	#set_var_highlighter()
-	_load_default_commands()
+	ins._load_default_commands()
 
 
-func remove_temp_scope(scope_name:String): # for plugins
-	if not scope_name in _temp_scope_dict.keys():
+static func remove_temp_scope(scope_name:String): # for plugins
+	if not _instance_valid_err(): return
+	var ins = get_instance()
+	if not scope_name in ins._temp_scope_dict.keys():
 		print("Scope not in temp scope data: %s" % scope_name)
 		return
-	_temp_scope_dict.erase(scope_name)
-	_load_default_commands()
+	ins._temp_scope_dict.erase(scope_name)
+	ins._load_default_commands()
 
 
 func _load_default_commands():
@@ -173,7 +194,7 @@ func _load_default_commands():
 			printerr("Could not find script: %s" % script_path)
 			continue
 		var script = load(script_path)
-		scope_dict[scope] = {"script": script}
+		scope_dict[scope] = {"script": script.new()}
 	
 	var sets = scope_data.get("sets", [])
 	for script_path in sets:
@@ -186,18 +207,22 @@ func _load_default_commands():
 
 
 func set_var_highlighter():
+	var current_scope_data = get_current_scope_data()
+	
 	var syn:UtilsLocal.SyntaxHl = console_line_edit.syntax_highlighter
-	syn.scope_names = scope_dict.keys()
+	syn.scope_names = current_scope_data.keys()
+	#syn.scope_names = scope_dict.keys()
 	syn.hidden_scope_names = hidden_scope_dict.keys()
 	syn.var_names = variable_dict.keys()
 	syn.clear_highlighting_cache()
 	
 	console_line_edit.scope_dict = scope_dict
+	console_line_edit.combined_scope_dict = current_scope_data
 	console_line_edit.variable_dict = variable_dict
 	console_line_edit.editor_console = self
 
-
-func register_persistent_scope(scope_name:String, script_path:String):
+static func register_persistent_scope(scope_name:String, script_path:String):
+	if not _instance_valid_err(): return
 	if not FileAccess.file_exists(script_path):
 		print("Could not load script: %s" % script_path)
 		return
@@ -209,9 +234,10 @@ func register_persistent_scope(scope_name:String, script_path:String):
 	scopes[scope_name] = {"script": script_path}
 	scope_data["scopes"] = scopes
 	UtilsLocal.save_scope_data(scope_data)
-	_load_default_commands()
+	get_instance()._load_default_commands()
 
-func remove_persistent_scope(scope_name):
+static func remove_persistent_scope(scope_name):
+	if not _instance_valid_err(): return
 	var scope_data = UtilsLocal.get_scope_data()
 	var scopes = scope_data.get("scopes", {})
 	
@@ -222,9 +248,10 @@ func remove_persistent_scope(scope_name):
 	scopes.erase(scope_name)
 	scope_data["scopes"] = scopes
 	UtilsLocal.save_scope_data(scope_data)
-	_load_default_commands()
+	get_instance()._load_default_commands()
 
-func register_persistent_scope_set(script_path:String):
+static func register_persistent_scope_set(script_path:String):
+	if not _instance_valid_err(): return
 	if not FileAccess.file_exists(script_path):
 		print("Could not load script: %s" % script_path)
 		return
@@ -237,9 +264,10 @@ func register_persistent_scope_set(script_path:String):
 	sets.append(script_path)
 	scope_data["sets"] = sets
 	UtilsLocal.save_scope_data(scope_data)
-	_load_default_commands()
+	get_instance()._load_default_commands()
 
-func remove_persistent_scope_set(script_path:String) -> void:
+static func remove_persistent_scope_set(script_path:String) -> void:
+	if not _instance_valid_err(): return
 	var scope_data = UtilsLocal.get_scope_data()
 	var sets = scope_data.get("sets", [])
 	if not script_path in sets:
@@ -251,7 +279,7 @@ func remove_persistent_scope_set(script_path:String) -> void:
 	
 	scope_data["sets"] = sets
 	UtilsLocal.save_scope_data(scope_data)
-	_load_default_commands()
+	get_instance()._load_default_commands()
 
 
 
@@ -264,44 +292,53 @@ func _get_scope_set_data(path_or_script):
 	
 	if UNode.has_static_method_compat("register_scopes", script):
 		var register_scopes = script.register_scopes()
-		scope_dict.merge(_process_scope_data(script, register_scopes))
+		scope_dict.merge(_process_scope_data(register_scopes))
 	
 	if UNode.has_static_method_compat("register_hidden_scopes", script):
 		var register_hidden_scopes = script.register_hidden_scopes()
-		hidden_scope_dict.merge(_process_scope_data(script, register_hidden_scopes))
+		hidden_scope_dict.merge(_process_scope_data(register_hidden_scopes))
 	
 	if UNode.has_static_method_compat("register_variables", script):
 		var register_variables = script.register_variables()
 		variable_dict.merge(register_variables)
 
-func _process_scope_data(script:Script, scope_data_dict:Dictionary) -> Dictionary:
+func _process_scope_data(scope_data_dict:Dictionary) -> Dictionary:
 	var scope_dict_keys = scope_dict.keys()
 	var temp_dict = {}
 	for scope in scope_data_dict.keys():
 		if scope in scope_dict_keys:
 			print("Scope name conflict: %s" % scope)
 		var scope_data = scope_data_dict.get(scope)
-		var scope_script = scope_data.get("script")
-		var scope_callable = scope_data.get("callable")
+		var scope_script
+		var scope_callable
+		if scope_data is Dictionary:
+			scope_script = scope_data.get("script")
+			scope_callable = scope_data.get("callable")
+		elif scope_data is Callable:
+			scope_callable = scope_data
+		elif scope_data is GDScript or scope_data.get_class()== "RefCounted":
+			scope_script = scope_data
+		else:
+			printerr("Scope: %s - Unrecognized script or callable: %s" % [scope, scope_data])
+			continue
+		
 		temp_dict[scope] = {}
 		if scope_callable != null:
 			temp_dict[scope]["callable"] = scope_callable
 		elif scope_script != null:
 			temp_dict[scope]["script"] = scope_script
-		else:
-			temp_dict[scope]["script"] = script
+		
 	return temp_dict
+
+func get_current_scope_data():
+	var dict = {}
+	dict.merge(scope_dict.duplicate())
+	dict.merge(hidden_scope_dict.duplicate())
+	return dict
 
 
 func _update_os_string():
-	var os_name = OS.get_name()
-	var display_cwd = os_cwd.trim_prefix(os_home_dir)
-	if display_cwd == "":
-		display_cwd = "/"
-	os_string_raw = "%s:~%s$ " % [os_user, display_cwd]
-	var user_col = COLOR_OS_USER
-	var path_col = COLOR_OS_PATH
-	os_string = OS_LAB_OS_STR % [user_col, os_user, path_col, display_cwd]
+	os_string = _get_console_label_string(true)
 	if os_label:
 		os_label.text = os_string
 
@@ -311,12 +348,21 @@ func _toggle_os_mode():
 	console_line_edit.os_mode = os_mode
 	if os_mode:
 		_update_os_string()
-		print_rich("%s Entered OS mode." % OS_LAB_CONSOLE_STR % _accent_color)
+		print_rich(_get_console_label_string(), " Entered OS mode.")
 		if console_line_edit.visible:
 			os_label.show()
 	else:
-		os_label.text = OS_LAB_CONSOLE_STR % _accent_color
-		print_rich("%s Exited OS mode." % OS_LAB_CONSOLE_STR % _accent_color)
+		os_label.text = _get_console_label_string()
+		print_rich(_get_console_label_string(), " Exited OS mode")
+
+func _get_console_label_string(os:=false):
+	if os:
+		var display_cwd = os_cwd.trim_prefix(os_home_dir)
+		if display_cwd == "":
+			display_cwd = "/"
+		#os_string_raw = "%s:~%s$ " % [os_user, display_cwd] # not sure what this is for?
+		return Pr.new().append(os_user, Colors.OS_USER).append(display_cwd, Colors.OS_PATH).get_string()
+	return Pr.new().append("Console$", _accent_color).get_string()
 
 func set_console_text(text):
 	_set_console_text(text)
@@ -352,43 +398,67 @@ func parse_input(terminal_input:String) -> void:
 	var c_1 = commands[0]
 	if c_1 == "clear":
 		if UtilsLocal.check_help(commands):
-			print_rich("%s %s" % [OS_LAB_CONSOLE_STR % _accent_color, display_text])
-		UtilsLocal.ConsoleCfg.clear_console(commands, arguments, self)
+			print_rich("%s %s" % [_get_console_label_string(), display_text])
+		UtilsLocal.ConsoleCfg.clear_console(commands, arguments)
 		return
 	
 	if terminal_input == "os":
 		toggle_os_mode()
 		return
 	if os_mode:
-		UtilsLocal.ConsoleOS.parse(commands, arguments, self)
+		_scope_parse("os", commands, arguments)
 		return
 	
 	if c_1.to_lower() == "help":
 		c_1 = c_1.to_lower()
 	var formatted_console_input
-	print_rich("%s %s" % [OS_LAB_CONSOLE_STR % _accent_color, display_text])
-	if c_1 in scope_dict.keys():
-		var cmd_data = scope_dict.get(c_1)
-		var script = cmd_data.get("script")
-		var callable = cmd_data.get("callable")
-		if callable:
-			var result = callable.call(commands, arguments, self)
-		else:
-			var result = script.call("parse", commands, arguments, self)
-	elif c_1 in hidden_scope_dict.keys():
-		var cmd_data = hidden_scope_dict.get(c_1)
-		var script = cmd_data.get("script")
-		var callable = cmd_data.get("callable")
-		if callable:
-			var result = callable.call(commands, arguments, self)
-		else:
-			var result = script.call("parse", commands, arguments, self)
-	else:
-		UtilsLocal.ConsoleGlobalClass.parse(commands, arguments, self)
+	print_rich("%s %s" % [_get_console_label_string(), display_text])
+	
+	var parse_scopes = _scope_parse(c_1, commands, arguments)
+	if parse_scopes == Keys.NO_MATCHING_COMMAND:
+		_scope_parse("global", commands, arguments)
+	
+	
+	
+	
+	#var cmd_data = scope_dict.get(c_1)
+	#if cmd_data == null:
+		#cmd_data = hidden_scope_dict.get(c_1)
+	#if cmd_data != null:
+		#var script = cmd_data.get("script")
+		#var callable = cmd_data.get("callable")
+		#
+		#if callable:
+			#result = callable.call(commands, arguments)
+			#
+		#else:
+			#result = script.call("parse", commands, arguments)
+		#
+	#else:
+		#_scope_parse("global", commands, arguments)
 	
 	if scope_dict.is_empty():
 		printerr("Need to load command set.")
 
+
+func _scope_parse(_name, commands:Array, arguments:Array):
+	var scope = scope_dict.get(_name)
+	if scope == null:
+		scope = hidden_scope_dict.get(_name)
+	if scope == null:
+		return Keys.NO_MATCHING_COMMAND
+	var script = scope.get("script")
+	var callable = scope.get("callable")
+	var result
+	if callable:
+		result = callable.call(commands, arguments)
+	else:
+		if script.has_method("parse"):
+			result = script.parse(commands, arguments)
+		else:
+			print("Could not parse in object: %s" % scope)
+	if result != null:
+		print(result)
 
 
 func _console_gui_input(event: InputEvent) -> void:
@@ -492,7 +562,7 @@ func _add_console_line_edit():
 	console_line_container.custom_minimum_size.y = filter_line_edit.size.y
 	
 	os_label = console_line_container.os_label
-	os_label.text = OS_LAB_CONSOLE_STR % _accent_color
+	os_label.text = _get_console_label_string()
 	console_line_container.console_line_edit.gui_input.connect(_console_gui_input)
 	console_line_container.console_button.pressed.connect(_toggle_console)
 	console_line_container.console_button.gui_input.connect(_on_button_gui_input)
@@ -637,3 +707,6 @@ func _get_gd_term():
 
 class EditorSet:
 	const CONSOLE_REPLACE_FILTER = &"plugin/editor_console/active_console_replace_filter"
+
+class Keys:
+	const NO_MATCHING_COMMAND = &"NO_MATCHING_COMMAND"

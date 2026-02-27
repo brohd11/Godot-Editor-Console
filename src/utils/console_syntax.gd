@@ -2,6 +2,15 @@ extends SyntaxHighlighter
 
 var default_text_color = EditorInterface.get_editor_settings().get("text_editor/theme/highlighting/text_color")
 
+const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
+const Colors = UtilsLocal.Colors
+
+const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
+const Pr = UtilsRemote.UString.PrintRich
+const UClassDetail = UtilsRemote.UClassDetail
+
+var global_names = []
+
 var var_names = []
 var var_color = Color.html("96f442")
 
@@ -17,14 +26,18 @@ func _get_line_syntax_highlighting(line: int) -> Dictionary:
 	if os_mode:
 		return check_keyword(line_text, ["os"], scope_color)
 	
+	global_names = UClassDetail.get_all_global_class_paths().keys()
+	
 	var hl_info = {}
 	var scope_hl = check_keyword(line_text, scope_names, scope_color)
 	hl_info.merge(scope_hl)
-	var hidden_scope_hl = check_keyword(line_text, hidden_scope_names, scope_color)
-	hl_info.merge(hidden_scope_hl)
+	#var hidden_scope_hl = check_keyword(line_text, hidden_scope_names, scope_color)
+	#hl_info.merge(hidden_scope_hl)
 	var var_name_hl = check_keyword(line_text, var_names, var_color)
 	hl_info.merge(var_name_hl)
 	
+	var global_name_hl = check_keyword(line_text, global_names, Colors.Editor.get_color(Colors.Editor.EditorColors.ENGINE_TYPE))
+	hl_info.merge(global_name_hl)
 	
 	var hl_info_keys = hl_info.keys()
 	hl_info_keys.sort()

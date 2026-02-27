@@ -4,8 +4,8 @@ const BACKPORTED = 100
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
-const ParsePopupKeys = UtilsLocal.ParsePopupKeys
-const PopupKeys = UtilsRemote.PopupHelper.ParamKeys
+const PopupHelper = UtilsRemote.PopupHelper
+const CommandKeys = UtilsLocal.ParsePopupKeys
 
 const UNode = UtilsRemote.UNode
 
@@ -71,10 +71,13 @@ func _on_scroll_bar_vis_changed(scrollbar):
 
 
 class ConsoleLineEdit extends CodeEdit:
-	var editor_console:EditorConsole
+	var editor_console:EditorConsoleSingleton
 	var variable_dict = {}
 	var scope_dict = {}
+	var combined_scope_dict = {}
 	var os_mode:= false
+	
+	var popup:AutoCompletePopup
 	
 	func _ready() -> void:
 		size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -82,13 +85,22 @@ class ConsoleLineEdit extends CodeEdit:
 		caret_blink = true
 		auto_brace_completion_enabled = true
 		code_completion_enabled = true
+		text_changed.connect(_on_text_changed)
+	
+	func _on_text_changed():
+		#if text == "":
+			#return
+		_request_code_completion(false)
 	
 	func _request_code_completion(force: bool) -> void:
-		if os_mode:
+		if text == "" and not force:
+			_clear_popup()
 			return
+		var input_text = _get_input_text()
+		
 		var completions = {}
 		var scope_names = scope_dict.keys()
-		if text.strip_edges().is_empty():
+		if input_text.strip_edges().is_empty():
 			for scope in scope_names:
 				completions[scope] = {}
 			_build_popup(completions)
@@ -102,10 +114,10 @@ class ConsoleLineEdit extends CodeEdit:
 			global_class_dict[_class_name] = path
 		var global_class_names = global_class_dict.keys()
 		
-		var words = text.split(" ", false)
+		var words = input_text.split(" ", false)
 		var first_word = words[0]
 		if first_word in scope_names:
-			var scope_data = scope_dict.get(first_word)
+			var scope_data = combined_scope_dict.get(first_word)
 			var script = scope_data.get("script")
 			if script != null:
 				if UNode.has_static_method_compat("get_completion", script):
@@ -124,47 +136,91 @@ class ConsoleLineEdit extends CodeEdit:
 				return
 			for scope in scope_names:
 				if scope.to_lower().begins_with(first_word.to_lower()):
-					completions[scope] = {PopupKeys.METADATA:{ParsePopupKeys.REPLACE_WORD:true}}
+					completions[scope] = {CommandKeys.METADATA:{CommandKeys.REPLACE_WORD:true}}
 			_build_popup(completions)
 			return
 		
-		if text.find(" --") > -1:
-			var var_nms = variable_dict.keys()
-			if not completions.is_empty() and not var_nms.is_empty():
-				completions["%sep"] = {}
-			for nm in var_nms:
-				completions[nm] = {}
+		var command_meta = completions.get(CommandKeys.COMMAND_META, {})
+		var show_variables = command_meta.get(CommandKeys.SHOW_VARIABLES, false)
+		if show_variables:
+			if input_text.find(" --") > -1:
+				var var_nms = variable_dict.keys()
+				if not completions.is_empty() and not var_nms.is_empty():
+					completions["%sep"] = {}
+				for nm in var_nms:
+					completions[nm] = {}
+		
 		_build_popup(completions)
 	
-	func _build_popup(item_dict):
+	func _build_popup(item_dict:Dictionary):
+		#_clear_popup()
+		item_dict.erase(CommandKeys.COMMAND_META)
 		if item_dict.is_empty():
+			_clear_popup()
 			return
-		await get_tree().process_frame
-		var popup = UtilsRemote.PopupHelper.new(item_dict)
-		EditorInterface.get_base_control().add_child(popup)
+		#await get_tree().process_frame
+		if is_instance_valid(popup):
+			popup.clear()
+		else:
+			popup = AutoCompletePopup.new()
+			popup.line_edit = self
+			#popup.window_input.connect(_on_popup_window_input)
+			#EditorInterface.get_base_control().add_child(popup)
+			add_child(popup)
+		
+		popup.create_items(item_dict)
+		#PopupHelper.parse_dict_static(item_dict, popup, _popup_pressed)
+		
 		var wind_pos
 		if BACKPORTED >= 3:
 			wind_pos = DisplayServer.window_get_position(get_window().get_window_id())
 		else:
 			wind_pos = DisplayServer.window_get_position()
 		
-		popup.position = wind_pos + Vector2i(global_position + get_caret_draw_pos())
-		popup.item_pressed.connect(_popup_pressed)
-		#popup.show()
-		popup.popup()
-		popup.grab_focus()
-		popup.set_focused_item(0)
+		#await get_tree().process_frame
+		var popup_pos = wind_pos + Vector2i(global_position + get_caret_draw_pos())
+		popup_pos = get_caret_draw_pos()
+		popup_pos += Vector2(25, -size.y)
+		popup.position = popup_pos
+		
+		
+		
+		popup.show()
+		
+		#popup.popup()
+		#popup.grab_focus()
+		#popup.set_focused_item(0)
 	
-	func _popup_pressed(id, popup:PopupMenu):
-		var menu_path = UtilsRemote.PopupHelper.parse_menu_path(id, popup)
-		var id_text = UtilsRemote.PopupHelper.parse_id_text(id, popup) # maybe use this to allow submenus
-		var metadata = UtilsRemote.PopupHelper.get_metadata(id, popup)
+	func _clear_popup():
+		if is_instance_valid(popup):
+			popup.hide()
+			popup.queue_free()
+	
+	func _on_popup_window_input(event:InputEvent):
+		return
+		if not has_focus():
+			return
+		var to_skip = [KEY_UP, KEY_DOWN, KEY_ENTER, KEY_KP_ENTER]
+		if event is InputEventKey:
+			var keycode = event.keycode
+			if keycode in to_skip:
+				return
+			elif keycode == KEY_SPACE:
+				popup.get_viewport().set_input_as_handled()
+		
+		get_viewport().push_input(event)
+	
+	func _popup_pressed(id, _popup:PopupMenu):
+		#var menu_path = UtilsRemote.PopupHelper.parse_menu_path(id, popup) # maybe use this to allow submenus
+		var id_text = UtilsRemote.PopupHelper.parse_id_text(id, _popup)
+		var metadata = UtilsRemote.PopupHelper.get_metadata(id, _popup)
+		
 		var text_to_add = id_text
-		var add_args = metadata.get(ParsePopupKeys.ADD_ARGS, false)
+		var add_args = metadata.get(CommandKeys.ADD_ARGS, false)
 		if add_args:
 			text_to_add = text_to_add + " --"
-		var replace_word = metadata.get(ParsePopupKeys.REPLACE_WORD, false)
 		
+		var replace_word = metadata.get(CommandKeys.REPLACE_WORD, false)
 		if replace_word:
 			start_action(TextEdit.ACTION_TYPING)
 			select_word_under_caret()
@@ -190,8 +246,68 @@ class ConsoleLineEdit extends CodeEdit:
 	func _get_script_completion(script):
 		var tokenizer = UtilsLocal.ConsoleTokenizer.new()
 		tokenizer.editor_console = editor_console
-		var result = tokenizer.parse_command_string(text)
-		var script_comp_data = script.get_completion(text, result.commands, result.args, editor_console)
+		var input_text = _get_input_text()
+		var result = tokenizer.parse_command_string(input_text)
+		var script_comp_data = script.get_completion(input_text, result.commands, result.args)
+		
 		if script_comp_data == null:
 			script_comp_data = {}
+		if script_comp_data is Dictionary:
+			pass
+		elif script_comp_data.has_method("get_commands"):
+			script_comp_data = script_comp_data.get_commands()
+		else:
+			print("Error getting completion in object: %s" % script)
+			script_comp_data = {}
 		return script_comp_data
+	
+	func _get_input_text():
+		if os_mode:
+			return "os " + text
+		return text
+	
+	func _unhandled_key_input(event: InputEvent) -> void:
+		if not has_focus():
+			return
+		
+		
+		
+		accept_event()
+		
+
+
+class AutoCompletePopup extends Panel:
+	
+	var line_edit
+	
+	var margin = MarginContainer.new()
+	var item_list = ItemList.new()
+	
+	func _init() -> void:
+		var sb = item_list.get_theme_stylebox("panel").duplicate()
+		sb.bg_color = ALibEditor.Utils.UEditorTheme.ThemeColor.get_theme_color(ALibEditor.Utils.UEditorTheme.ThemeColor.Type.BASE)
+		
+		#top_level = true
+		item_list.focus_mode = Control.FOCUS_NONE
+		custom_minimum_size = Vector2(200, 200)
+	
+	func _ready() -> void:
+		add_child(margin)
+		#ALibRuntime.NodeUtils.NUMarginContainer.set_margins(margin, 4)
+		margin.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+		margin.add_child(item_list)
+		item_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		item_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	
+	func create_items(item_dict):
+		for item in item_dict.keys():
+			item_list.add_item(item)
+			print(item_dict[item])
+	
+	
+	func clear():
+		item_list.clear()
+	
+	
+	
+	

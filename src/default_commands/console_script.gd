@@ -1,4 +1,10 @@
-extends "res://addons/editor_console/src/class/console_command_base.gd"
+extends EditorConsoleSingleton.ConsoleCommandBase
+
+
+const Colors = UtilsLocal.Colors
+
+const UClassDetail = UtilsRemote.UClassDetail
+const UNode = UtilsRemote.UNode
 
 const _ARG_CLASS_COLOR_SETTING = "text_editor/theme/highlighting/base_type_color"
 
@@ -13,27 +19,34 @@ const LIST_COMMANDS_OPTIONS = ["--methods", "--signals", "--constants", "--prope
 
 const SCRIPT_HELP=\
 "Call static methods on current script, or create an instance.
-call - call method -- <method_name, arg1, arg2, ... >
-args - list arguments for method -- <method_name>
-list - list members of script -- <list_flags> (--methods, --signals, --constants,\
+	call - call method -- <method_name, arg1, arg2, ... >
+	args - list arguments for method -- <method_name>
+	list - list members of script -- <list_flags> (--methods, --signals, --constants,\
 --properties, --enums, --inherited, --lines)"
 
-static func _get_commands() -> Dictionary: 
-	return {
-		CALL_COMMAND: {PopupKeys.METADATA: {ParsePopupKeys.ADD_ARGS:true}},
-		ARG_COMMAND: {PopupKeys.METADATA: {ParsePopupKeys.ADD_ARGS:true}},
-		LIST_COMMAND: {PopupKeys.METADATA: {ParsePopupKeys.ADD_ARGS:true}},
-		}
+static func get_commands_static():
+	var commands = Commands.new()
+	for cmd in [CALL_COMMAND, ARG_COMMAND, LIST_COMMAND]:
+		var params = Commands.Params.new(true)
+		params.replace_current_word = true
+		match cmd:
+			CALL_COMMAND: params.callable = call_method
+			ARG_COMMAND: params.callable = list_args
+			LIST_COMMAND: params.callable = print_members
+		
+		commands.add_command_with_params(cmd, params)
+	return commands.get_commands()
+
+func get_commands() -> Dictionary: 
+	return get_commands_static()
 
 
-static func get_completion(raw_text:String, commands:Array, args:Array, editor_console:EditorConsole) -> Dictionary:
-	var completion_data = {}
-	var registered = _get_commands()
-	
+func get_completion(raw_text:String, commands:Array, args:Array) -> Dictionary:
+	var registered = get_commands()
 	if raw_text.find(" -- ") == -1:
 		for cmd in registered:
 			if cmd in commands:
-				return {" -- ":{}}
+				return Commands.get_arg_delimiter()
 		return get_valid_commands(commands, registered)
 	
 	if commands.size() > 1:
@@ -52,26 +65,8 @@ static func get_completion(raw_text:String, commands:Array, args:Array, editor_c
 		elif c_2 == LIST_COMMAND and raw_text.find(" --") > -1:
 			return get_list_commands(args)
 	
-	return completion_data
-
-static func parse(commands:Array, arguments:Array, editor_console):
-	if commands.size() == 1 or UtilsLocal.check_help(commands):
-		print(SCRIPT_HELP)
-		return
-	var script = EditorInterface.get_script_editor().get_current_script()
-	var args = editor_console.tokenizer.get_arg_variables(arguments)
-	
-	var c_1 = commands[0]
-	var c_2 = commands[1]
-	
-	if c_2 == CALL_COMMAND:
-		call_method(script, args)
-	elif c_2 == ARG_COMMAND:
-		list_args(script, args)
-	elif c_2 == LIST_COMMAND:
-		var script_name = script.resource_path.get_file()
-		print_members(script_name, args, script)
-		return
+	var commands_obj = Commands.new()
+	return commands_obj.get_commands()
 
 
 static func call_method(script:Script, args:Array):
@@ -83,12 +78,15 @@ static func call_method(script:Script, args:Array):
 	if not UNode.has_static_method_compat(method_name, script):
 		print("Static method not in script.")
 		return
-	if args.size() != script.get_method_argument_count(method_name):
-		print("Argument count=%s, called with %s." % [script.get_method_argument_count(method_name), args.size()])
-		return
-	var result = script.callv(method_name, args)
-	if result != null:
-		print(result)
+	var callable = script.get(method_name)
+	_call_method(callable, args) # will this work in < 4.4? compat ^^
+	
+	#if args.size() != script.get_method_argument_count(method_name):
+		#print("Argument count=%s, called with %s." % [script.get_method_argument_count(method_name), args.size()])
+		#return
+	#var result = script.callv(method_name, args)
+	#if result != null:
+		#print(result)
 
 
 static func list_args(script:Script, args:Array):
@@ -111,40 +109,38 @@ static func list_args(script:Script, args:Array):
 	if args_array.is_empty():
 		print("No args to list.")
 		return
-	var class_name_color = EditorInterface.get_editor_settings().get_setting(_ARG_CLASS_COLOR_SETTING).to_html()
-	var args_strings = []
+	
+	var class_name_color = EditorInterface.get_editor_settings().get_setting(_ARG_CLASS_COLOR_SETTING)
+	var pr = Pr.new()
 	for dict in args_array:
 		var name = dict.get("name")
-		var type = dict.get("type")
-		var arg_str = "%s:[color=%s]%s[/color]" % [name, class_name_color, type_string(type)]
-		args_strings.append(arg_str)
-	
-	print_rich("  ".join(args_strings))
+		var type = type_string(dict.get("type"))
+		var color = class_name_color
+		if type == "Nil":
+			color = Colors.VAR_RED
+		pr.append(name + ":").append(type, color).append("  ")
+	pr.display()
 
 
-static func get_valid_commands(current_commands, command_list):
-	var completion_data = {}
-	var has_list_command = false
-	for cmd in command_list.keys():
+static func get_valid_commands(current_commands:Array, command_obj_dict:Dictionary):
+	for cmd in command_obj_dict.keys():
 		if cmd in current_commands:
+			command_obj_dict.erase(cmd)
 			continue
-		var metadata = command_list.get(cmd, {})
-		completion_data[cmd] = command_list.get(cmd)
-	
-	return completion_data
+	return command_obj_dict
 
 
 static func get_list_commands(current_args:Array):
-	var completion_data = {}
+	var commands_obj = Commands.new()
 	for cmd in LIST_COMMANDS_OPTIONS:
 		if cmd not in current_args:
-			completion_data[cmd] = {}
+			commands_obj.add_command(cmd)
 	
-	return completion_data
+	return commands_obj.get_commands()
 
 
 static func get_method_completions(script:Script, current_args:Array, show_private:bool):
-	var completion_data = {}
+	var commands_obj = Commands.new()
 	var method_list = script.get_script_method_list()
 	for method in method_list:
 		var name = method.get("name")
@@ -152,11 +148,11 @@ static func get_method_completions(script:Script, current_args:Array, show_priva
 			if name in CONSOLE_METHODS or name.begins_with("_"):
 				continue
 		if UNode.has_static_method_compat(name, script):
-			completion_data[name] = {}
+			commands_obj.add_command(name)
 		if name in current_args:
 			return {}
-	
-	return completion_data
+	commands_obj.show_variables()
+	return commands_obj.get_commands()
 
 
 
@@ -185,6 +181,7 @@ static func print_members(script_name:String, args:Array, script:Script):
 			print("Pass arguments for the list command.")
 		return
 	
+	var pr = Pr.new()
 	for i in range(args_size):
 		var command = args[i]
 		if command == lines_cmd or command == inherited_cmd or command == data_cmd:
@@ -229,15 +226,40 @@ static func print_members(script_name:String, args:Array, script:Script):
 					pass
 			
 			if members.is_empty():
-				print_rich("\t[color=%s]None in script.[/color]" % EditorConsole.COLOR_VAR_RED)
+				pr.append("\tNone in script.", Colors.VAR_RED).display()
 			else:
 				if print_lines or print_data:
 					for m in members.keys():
-						print_rich("\t[color=%s]%s[/color]" % [EditorConsole.COLOR_ACCENT_MUTE, m])
+						pr.append("%s" % m, Colors.ACCENT_MUTE).display()
 						if print_data:
-							print_rich("\t\t[color=%s]%s[/color]" % [Color.GRAY, members.get(m, "No data.")])
+							var data = members.get(m)
+							if data == null:
+								pr.append("\tNo data.").display()
+							else:
+								for key in data.keys():
+									pr.append("\t%s - %s" % [key, data[key]], Colors.GRAY).display()
 				else:
-					print_rich("\t[color=%s]" % EditorConsole.COLOR_ACCENT_MUTE + "  ".join(members.keys()) + "[/color]")
+					pr.append("\t" + "  ".join(members.keys()), Colors.ACCENT_MUTE).display()
 			if i < args_size - 1:
 				print("")
 			continue
+
+
+func _get_standard_call_arguments(selected_command:String, commands:Array, arguments:Array) -> Array:
+	var script = EditorInterface.get_script_editor().get_current_script()
+	var script_name = script.resource_path.get_file()
+	return get_standard_call_arguments_static(script_name, script, selected_command, commands, arguments)
+
+static func get_standard_call_arguments_static(script_name:String, script:GDScript, selected_command:String, _commands:Array, arguments:Array) -> Array:
+	var converted_args = _convert_args_to_variables(arguments)
+	match selected_command:
+		CALL_COMMAND:
+			return [script, converted_args]
+		ARG_COMMAND:
+			return [script, converted_args]
+		LIST_COMMAND:
+			return [script_name, arguments, script]
+	return converted_args
+
+func get_help_message(_commands:Array, _arguments:Array):
+	return SCRIPT_HELP

@@ -1,42 +1,25 @@
-extends "res://addons/editor_console/src/class/console_command_base.gd"
+extends EditorConsoleSingleton.ConsoleCommandBase
 
 const MISC_HELP = \
 "Misc commands - Available:
 color-picker - Open a color picker in a window, selecting a color copies the html string to clipboard."
 
-static func register_commands():
-	var cmds = {}
-	cmds["color-picker"] = {"callable": _color_picker}
-	
-	return cmds
+func get_help_message(_commands:Array, _arguments:Array):
+	return MISC_HELP
 
-static func get_completion(raw_text:String, commands:Array, arguments:Array, editor_console):
-	var completion_data = {}
-	var registered = register_commands()
-	if commands.size() == 1:
-		return register_commands()
+func get_commands():
+	var commands = Commands.new()
+	commands.add_command("color-picker", false, _color_picker)
+	return commands.get_commands()
 
-
-static func parse(commands:Array, arguments:Array, editor_console):
-	if commands.size() == 1 or UtilsLocal.check_help(commands):
-		print(MISC_HELP)
-		return
-	
-	var c_2 = commands[1]
-	var script_commands = register_commands()
-	var command_data = script_commands.get(c_2)
-	if not command_data:
-		print("Unrecognized command: %s" % c_2)
-		return
-	var callable = command_data.get("callable")
-	if callable:
-		callable.call(commands, arguments, editor_console)
+#func get_completion(_raw_text:String, commands:Array, _arguments:Array):
+	#if commands.size() == 1:
+		#return get_commands()
 
 
+#region Color Picker - This could be it's own script
 
-#region Color Picker
-
-static func _color_picker(commands, arg, editor_console):
+static func _color_picker(_commands, _arg):
 	var win = Window.new()
 	var color = ColorPicker.new()
 	win.size = Vector2i(400,600)

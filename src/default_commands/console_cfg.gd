@@ -1,4 +1,6 @@
-extends "res://addons/editor_console/src/class/console_command_base.gd"
+extends EditorConsoleSingleton.ConsoleCommandBase
+
+const ScopeDataKeys = UtilsLocal.ScopeDataKeys
 
 const SCOPE_COMMAND = "scope"
 
@@ -13,15 +15,11 @@ const GLOBAL_COMMAND = "global-class"
 const GLOBAL_REG = "reg"
 const GLOBAL_DEREG = "dereg"
 
-static func register_commands() -> Dictionary:
-	return {
-	SCOPE_COMMAND:{
-		"callable": _scope
-	},
-	GLOBAL_COMMAND:{
-		"callable": _global
-	}
-}
+func get_commands() -> Dictionary:
+	var commands = Commands.new()
+	commands.add_command(SCOPE_COMMAND, false, _scope)
+	commands.add_command(GLOBAL_COMMAND, false, _global)
+	return commands.get_commands()
 
 const CFG_HELP = \
 "Available commands:
@@ -51,37 +49,33 @@ const CLEAR_HELP = \
 "Clear ouput text box.
 	--history - Clear command history."
 
-static func get_completion(raw_text:String, commands:Array, arguments:Array, editor_console:EditorConsole):
-	var completion_data = {}
-	var registered_commands = register_commands()
+func get_help_message(_commands:Array, _arguments:Array):
+	return CFG_HELP % _CFG_CMDS
+
+func get_completion(raw_text:String, commands:Array, arguments:Array):
+	var registered_commands = get_commands()
 	if commands.size() == 1:
 		return registered_commands
+	
 	var c_2 = commands[1]
 	if c_2 == SCOPE_COMMAND:
-		return _get_scope_completion(raw_text, commands, arguments, editor_console)
+		return _get_scope_completion(raw_text, commands, arguments)
 	elif c_2 == GLOBAL_COMMAND:
-		return _get_global_completion(raw_text, commands, arguments, editor_console)
+		return _get_global_completion(raw_text, commands, arguments)
 	
-	return completion_data
+	var commands_obj = Commands.new()
+	return commands_obj.get_commands()
 
-
-static func parse(commands:Array, arguments:Array, editor_console:EditorConsole):
-	if commands.size() == 1:
-		print(CFG_HELP % _CFG_CMDS)
+func parse(commands:Array, arguments:Array):
+	if _display_help(commands, arguments):
 		return
-	
 	var c_2 = commands[1]
-	var script_commands = register_commands()
-	var command_data = script_commands.get(c_2)
-	if not command_data:
-		print("Unrecognized command: %s" % c_2)
-		return
-	var callable = command_data.get("callable")
-	if callable:
-		callable.call(commands, arguments, editor_console)
+	if c_2 == SCOPE_COMMAND:
+		return _scope(commands, arguments)
+	elif c_2 == GLOBAL_COMMAND:
+		return _global(commands, arguments)
 
-
-static func _scope(commands:Array, arguments:Array, editor_console:EditorConsole):
+static func _scope(commands:Array, arguments:Array):
 	if commands.size() == 2 or UtilsLocal.check_help(commands):
 		print(SCOPE_HELP.strip_edges() % _SCOPE_CMDS)
 		return
@@ -94,14 +88,14 @@ static func _scope(commands:Array, arguments:Array, editor_console:EditorConsole
 			return
 		var scope_name = arguments[0]
 		var script_path = arguments[1]
-		editor_console.register_persistent_scope(scope_name, script_path)
+		EditorConsoleSingleton.register_persistent_scope(scope_name, script_path)
 	elif c_3 == REG_SET:
 		if arg_size != 1:
 			UtilsLocal.pr_arg_size_err(1, arg_size)
 			#printerr("Expected 1 arguments, received %s" % arg_size)
 			return
 		var script_path = arguments[0]
-		editor_console.register_persistent_scope_set(script_path)
+		EditorConsoleSingleton.register_persistent_scope_set(script_path)
 	elif c_3 == DEREG_SCOPE:
 		if arg_size != 1:
 			UtilsLocal.pr_arg_size_err(1, arg_size)
@@ -113,47 +107,47 @@ static func _scope(commands:Array, arguments:Array, editor_console:EditorConsole
 		if scope_name not in scopes.keys():
 			print("Can't remove this command: %s" % scope_name)
 		else:
-			editor_console.remove_persistent_scope(scope_name)
+			EditorConsoleSingleton.remove_persistent_scope(scope_name)
 	elif c_3 == DEREG_SET:
 		if arg_size != 1:
 			UtilsLocal.pr_arg_size_err(1, arg_size)
 			#printerr("Expected 1 arguments, received %s" % arg_size)
 			return
 		var script_path = arguments[0]
-		editor_console.remove_persistent_scope_set(script_path)
+		EditorConsoleSingleton.remove_persistent_scope_set(script_path)
 	elif c_3 == RELOAD:
-		var success = editor_console._load_default_commands()
+		var success = EditorConsoleSingleton.get_instance()._load_default_commands()
 		if success:
 			print("Reloaded command sets.")
 
-static func _get_scope_completion(raw_text:String, commands:Array, arguments:Array, editor_console:EditorConsole):
-	var completion_data = {}
+static func _get_scope_completion(raw_text:String, commands:Array, _arguments:Array):
+	var commands_obj = Commands.new()
 	if commands.size() < 3:
-		return {
-			REG_SCOPE:{ECKeys.METADATA: {ECKeys.ADD_ARGS:true}},
-			REG_SET:{ECKeys.METADATA: {ECKeys.ADD_ARGS:true}},
-			DEREG_SCOPE:{ECKeys.METADATA: {ECKeys.ADD_ARGS:true}},
-			DEREG_SET:{ECKeys.METADATA: {ECKeys.ADD_ARGS:true}},
-			RELOAD:{},
-		}
+		commands_obj.add_command(REG_SCOPE, true)
+		commands_obj.add_command(REG_SET, true)
+		commands_obj.add_command(DEREG_SCOPE, true)
+		commands_obj.add_command(DEREG_SET, true)
+		commands_obj.add_command(RELOAD)
+		return commands_obj.get_commands()
+	
 	var c_3 = commands[2]
 	if raw_text.find(" --") > -1:
 		if c_3 == DEREG_SCOPE:
 			var scope_data = UtilsLocal.get_scope_data()
 			var scopes = scope_data.get(ScopeDataKeys.scopes, {})
 			for scope_name in scopes.keys():
-				completion_data[scope_name] = {}
-			return completion_data
+				commands_obj.add_command(scope_name)
+			return commands_obj.get_commands()
 		elif c_3 == DEREG_SET:
 			var scope_data = UtilsLocal.get_scope_data()
 			var sets = scope_data.get(ScopeDataKeys.sets, [])
 			for path in sets:
-				completion_data[path] = {}
-			return completion_data
-	return completion_data
+				commands_obj.add_command(path)
+			return commands_obj.get_commands()
+	return commands_obj.get_commands()
 
 
-static func _global(commands:Array, arguments:Array, editor_console:EditorConsole):
+static func _global(commands:Array, arguments:Array):
 	if commands.size() == 2 or UtilsLocal.check_help(commands):
 		print(GLOBAL_HELP % _GLOBAL_CMDS)
 		return
@@ -192,15 +186,15 @@ static func _global(commands:Array, arguments:Array, editor_console:EditorConsol
 		UtilsLocal.save_scope_data(scope_data)
 	
 
-static func _get_global_completion(raw_text:String, commands:Array, arguments:Array, editor_console:EditorConsole):
+static func _get_global_completion(raw_text:String, commands:Array, _arguments:Array):
+	var commands_obj = Commands.new()
 	if commands.size() < 3:
-		return {
-			GLOBAL_REG: {ECKeys.METADATA:{ECKeys.ADD_ARGS:true}},
-			GLOBAL_DEREG: {ECKeys.METADATA:{ECKeys.ADD_ARGS:true}}
-		}
-	var completions_data = {}
+		commands_obj.add_command(GLOBAL_REG, true)
+		commands_obj.add_command(GLOBAL_DEREG, true)
+		return commands_obj.get_commands()
+	
 	if not raw_text.find(" --") > -1:
-		return completions_data
+		return commands_obj.get_commands()
 	
 	var c_3 = commands[2]
 	var scope_data = UtilsLocal.get_scope_data()
@@ -209,19 +203,19 @@ static func _get_global_completion(raw_text:String, commands:Array, arguments:Ar
 	for _class in global_class_list:
 		if c_3 == GLOBAL_REG:
 			if not _class in global_classes:
-				completions_data[_class] = {}
+				commands_obj.add_command(_class)
 		elif c_3 == GLOBAL_DEREG:
 			if _class in global_classes:
-				completions_data[_class] = {}
-	return completions_data
+				commands_obj.add_command(_class)
+	return commands_obj.get_commands()
 
-static func clear_console(commands:Array, arguments:Array, editor_console:EditorConsole):
+static func clear_console(commands:Array, _arguments:Array):
 	if UtilsLocal.check_help(commands):
 		print(CLEAR_HELP)
 		return
 	if commands.size() > 1:
 		var c_2 = commands[1]
 		if c_2 == "--history":
-			editor_console.previous_commands.clear()
+			EditorConsoleSingleton.get_instance().previous_commands.clear()
 	
-	editor_console.clear_button.pressed.emit()
+	EditorConsoleSingleton.get_instance().clear_button.pressed.emit()

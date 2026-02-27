@@ -1,14 +1,11 @@
 @tool
 extends EditorPlugin
 
-var editor_console
-
 func _get_plugin_name() -> String:
-	return "Godot Console"
+	return "Editor Console"
 
 func _enter_tree() -> void:
-	editor_console = EditorConsole.register_plugin(self)
+	EditorConsoleSingleton.register_node(self)
 
 func _exit_tree() -> void:
-	if is_instance_valid(editor_console):
-		editor_console.unregister_node(self)
+	EditorConsoleSingleton.unregister_node(self)

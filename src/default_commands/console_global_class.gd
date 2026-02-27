@@ -1,29 +1,31 @@
-extends "res://addons/editor_console/src/class/console_command_base.gd"
+extends EditorConsoleSingleton.ConsoleCommandBase
 
+const UClassDetail = UtilsRemote.UClassDetail
+const UNode = UtilsRemote.UNode
+const PrintRich = UtilsRemote.UString.PrintRich
+
+const ScopeDataKeys = UtilsLocal.ScopeDataKeys
 const ConsoleScript = UtilsLocal.ConsoleScript
 
 const _CLASS_VALID_MSG = \
-"Class valid: %s
-" + ConsoleScript.SCRIPT_HELP
+"Class valid: %s\n" + ConsoleScript.SCRIPT_HELP
 
-static func get_completion(raw_text, commands:Array, args:Array, editor_console:EditorConsole) -> Dictionary:
+func get_completion(raw_text, commands:Array, args:Array) -> Dictionary:
 	if commands[0] != "global":
 		commands.push_front("global")
 	
-	var completion_data = {}
+	var commands_obj = Commands.new()
 	var scope_data = UtilsLocal.get_scope_data()
 	var registered_classes = scope_data.get(ScopeDataKeys.global_classes, [])
-	var global_class_list = ProjectSettings.get_global_class_list()
 	
-	var global_class_dict = {}
-	for class_dict in global_class_list:
-		var _class_name = class_dict.get("class")
-		if _class_name not in registered_classes:
+	var global_classes = UClassDetail.get_all_global_class_paths()
+	var valid_global_class_dict = {}
+	for _name in global_classes:
+		if _name not in registered_classes:
 			continue
-		var path = class_dict.get("path")
-		global_class_dict[_class_name] = path
+		valid_global_class_dict[_name] = global_classes.get(_name)
 	
-	var global_class_names = global_class_dict.keys()
+	var global_class_names = valid_global_class_dict.keys()
 	var c_2
 	var has_class = false
 	var current_class_name = ""
@@ -37,24 +39,23 @@ static func get_completion(raw_text, commands:Array, args:Array, editor_console:
 		if c_2:
 			for name in global_class_names:
 				if name.to_lower().begins_with(c_2.to_lower()):
-					completion_data[name] = {PopupKeys.METADATA:{ParsePopupKeys.REPLACE_WORD:true}}
+					var param = Commands.Params.new()
+					param.replace_current_word = true
+					commands_obj.add_command_with_params(name, param)
 		else:
 			for name in global_class_names:
-				completion_data[name] = {}
-			
-		return completion_data
+				commands_obj.add_command(name)
+		return commands_obj.get_commands()
 	
 	if not has_class:
 		return {}
 	
-	var script = load(global_class_dict.get(current_class_name))
-	
+	var script = UClassDetail.get_global_class_script(current_class_name)
 	if raw_text.find(" -- ") == -1:
-		var script_commands = ConsoleScript._get_commands()
+		var script_commands = ConsoleScript.get_commands_static()
 		for cmd in script_commands:
 			if cmd in commands:
-				return {" -- ":{}}
-		
+				return Commands.get_arg_delimiter()
 		return ConsoleScript.get_valid_commands(commands, script_commands)
 	
 	var c_3 = commands[2]
@@ -72,44 +73,50 @@ static func get_completion(raw_text, commands:Array, args:Array, editor_console:
 		return ConsoleScript.get_list_commands(args)
 	
 	if raw_text.find(" --") > -1:
-		return script.get_completion(raw_text, commands, args, editor_console)
+		if UNode.has_static_method_compat("get_completion", script):
+			return script.get_completion(raw_text, commands, args)
+		else:
+			return {}
 	
-	return completion_data
+	return commands_obj.get_commands()
 
 
-static func parse(commands:Array, arguments:Array, editor_console:EditorConsole):
+func parse(commands:Array, arguments:Array):
+	if _display_help(commands, arguments):
+		return
+	
+	var c_1 = commands[0]
+	if c_1 == "global":
+		commands.remove_at(0)
+	
+	_call_standard_command(commands, arguments)
+
+func get_commands() -> Dictionary:
+	return ConsoleScript.get_commands_static()
+
+func _get_standard_call_arguments(_selected_command:String, commands:Array, arguments:Array) -> Array:
+	var global_class_name = commands[0]
+	var global_class_script = UClassDetail.get_global_class_script(global_class_name)
+	return ConsoleScript.get_standard_call_arguments_static(global_class_name, global_class_script, _selected_command, commands, arguments)
+
+
+func _is_input_valid(commands:Array, arguments:Array) -> bool:
+	var c_2 = commands[1]
+	var global_classes = UClassDetail.get_all_global_class_paths()
+	if not c_2 in global_classes:
+		print("Could not find class: '%s'" % c_2)
+		return false
+	if commands.size() < 3:
+		var pr = PrintRich.new()
+		pr.append("Class valid: ").append(c_2, Color.WEB_GREEN).display().append(ConsoleScript.SCRIPT_HELP).display()
+		
+		return false
+	
+	return _is_command_valid(commands[2], commands, arguments)
+
+func get_help_message(commands:Array, _arguments:Array):
 	var c_1 = commands[0]
 	if c_1 == "global":
 		if commands.size() == 1:
-			print("Hit ctrl + space to get global class list with 'global' command.")
-			return
-		commands.remove_at(0)
-		c_1 = commands[0]
-	var global_class_script:Script
-	var class_list = ProjectSettings.get_global_class_list()
-	for class_dict in class_list:
-		var _class_name = class_dict.get("class")
-		if _class_name == c_1:
-			var path = class_dict.get("path")
-			global_class_script = load(path)
+			return "Hit ctrl + space to get global class list with 'global' command."
 	
-	
-	if not global_class_script:
-		print("Could not find class: '%s'" % c_1)
-		return
-	
-	if commands.size() == 1:
-		print(_CLASS_VALID_MSG % c_1)
-		return
-	
-	var c_2 = commands[1]
-	var args = editor_console.tokenizer.get_arg_variables(arguments)
-	
-	if c_2 == ConsoleScript.CALL_COMMAND:
-		ConsoleScript.call_method(global_class_script, args)
-	elif c_2 == ConsoleScript.ARG_COMMAND:
-		ConsoleScript.list_args(global_class_script, args)
-	elif c_2 == ConsoleScript.LIST_COMMAND:
-		var script_name = c_1
-		ConsoleScript.print_members(c_1, arguments, global_class_script)
-		return
