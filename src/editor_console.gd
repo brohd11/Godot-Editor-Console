@@ -281,7 +281,14 @@ static func remove_persistent_scope_set(script_path:String) -> void:
 	UtilsLocal.save_scope_data(scope_data)
 	get_instance()._load_default_commands()
 
-
+func get_scope_script(scope_name):
+	var scope = null
+	if hidden_scope_dict.has(scope_name):
+		scope = hidden_scope_dict[scope_name]
+	elif scope_dict.has(scope_name):
+		scope = scope_dict[scope_name]
+	if scope == null: return
+	return scope.get("script")
 
 func _get_scope_set_data(path_or_script):
 	var script:Script
@@ -464,21 +471,23 @@ func _scope_parse(_name, commands:Array, arguments:Array):
 func _console_gui_input(event: InputEvent) -> void:
 	if not console_line_edit.has_focus():
 		return
-	if event is InputEventKey:
-		if event.is_pressed() and event.as_text_keycode() == "Enter":
-			_on_console_text_submitted(console_line_edit.text)
 	
 	if event is InputEventKey:
+		var keycode = event.keycode
+		var keycode_text = event.as_text_keycode()
+		if event.is_pressed() and keycode == KEY_ENTER:
+			_on_console_text_submitted(console_line_edit.text)
+		
 		if not event.is_pressed():
 			return
-		var keycode = event.as_text_keycode()
-		if keycode == "Up":
+		
+		if keycode == KEY_UP:
 			prev_command()
-		elif keycode == "Down":
+		elif keycode == KEY_DOWN:
 			next_command()
-		elif keycode == "Ctrl+Shift+Up":
+		elif keycode_text == "Ctrl+Shift+Up":
 			prev_valid_command()
-		elif keycode == "Ctrl+Shift+Down":
+		elif keycode_text == "Ctrl+Shift+Down":
 			next_valid_command()
 
 
@@ -563,9 +572,12 @@ func _add_console_line_edit():
 	
 	os_label = console_line_container.os_label
 	os_label.text = _get_console_label_string()
-	console_line_container.console_line_edit.gui_input.connect(_console_gui_input)
+	console_line_container.console_line_edit.gui_event_passthrough.connect(_console_gui_input)
+	#console_line_container.console_line_edit.gui_input.connect(_console_gui_input)
 	console_line_container.console_button.pressed.connect(_toggle_console)
 	console_line_container.console_button.gui_input.connect(_on_button_gui_input)
+	
+	
 	
 	console_line_edit = console_line_container.console_line_edit
 	

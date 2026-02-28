@@ -11,11 +11,13 @@ const _ARG_CLASS_COLOR_SETTING = "text_editor/theme/highlighting/base_type_color
 const CONSOLE_METHODS = ["parse", "get_completion"]
 
 const CALL_COMMAND = "call"
+const PRIVATE_COMMAND = "private"
 const ARG_COMMAND = "args"
 const LIST_COMMAND = "list"
 
 const LIST_COMMANDS_OPTIONS = ["--methods", "--signals", "--constants", "--properties",
-"--enums", "--inherited", "--lines", "--data"]
+"--enums"]
+const LIST_MODIFIER_OPTIONS = ["--lines", "--data", "--inherited"]
 
 const SCRIPT_HELP=\
 "Call static methods on current script, or create an instance.
@@ -26,46 +28,68 @@ const SCRIPT_HELP=\
 
 static func get_commands_static():
 	var commands = Commands.new()
-	for cmd in [CALL_COMMAND, ARG_COMMAND, LIST_COMMAND]:
-		var params = Commands.Params.new(true)
-		params.replace_current_word = true
-		match cmd:
-			CALL_COMMAND: params.callable = call_method
-			ARG_COMMAND: params.callable = list_args
-			LIST_COMMAND: params.callable = print_members
-		
-		commands.add_command_with_params(cmd, params)
+	commands.add_command(CALL_COMMAND, false, call_method)
+	commands.add_command(ARG_COMMAND, false, list_args)
+	commands.add_command(LIST_COMMAND, true, print_members)
 	return commands.get_commands()
 
 func get_commands() -> Dictionary: 
 	return get_commands_static()
 
 
-func get_completion(raw_text:String, commands:Array, args:Array) -> Dictionary:
+func get_completion(completion_context:CompletionContext) -> Dictionary:
 	var registered = get_commands()
-	if raw_text.find(" -- ") == -1:
-		for cmd in registered:
-			if cmd in commands:
-				return Commands.get_arg_delimiter()
-		return get_valid_commands(commands, registered)
+	var script = EditorInterface.get_script_editor().get_current_script()
+	return get_completion_static(completion_context, registered, script)
 	
-	if commands.size() > 1:
-		var c_2 = commands[1]
-		var show_private = false
-		if "--private" in commands or "-p" in commands:
-			show_private = true
-		if c_2 == CALL_COMMAND and raw_text.find(" --") > -1:
-			var script = EditorInterface.get_script_editor().get_current_script()
-			return get_method_completions(script, args, show_private)
-			
-		elif c_2 == ARG_COMMAND and raw_text.find(" --") > -1:
-			var script = EditorInterface.get_script_editor().get_current_script()
-			if args.size() == 0:
-				return get_method_completions(script, args, show_private)
-		elif c_2 == LIST_COMMAND and raw_text.find(" --") > -1:
-			return get_list_commands(args)
+static func get_completion_static(completion_context:CompletionContext, registered_commands:Dictionary, script:GDScript) -> Dictionary:
+	var commands = completion_context.commands
+	var args = completion_context.arguments
+	var word_before_cursor = completion_context.word_before_cursor
+	
+	if word_before_cursor == completion_context.ARG_DELIMITER:
+		return {}
+	
+	
+	var has_registered = false
+	for cmd in registered_commands:
+		if cmd in commands:
+			has_registered = true
+			break
 	
 	var commands_obj = Commands.new()
+	var has_arg_delim = completion_context.has_arg_delimiter
+	if not has_arg_delim:
+		
+		if commands.size() <= 2 and not has_registered:
+			return registered_commands
+		
+		var main_command = commands[1]
+		if main_command == CALL_COMMAND or main_command == ARG_COMMAND:
+			if word_before_cursor != main_command:
+				if not "private" in commands:
+					commands_obj.add_command("private")
+		
+		if word_before_cursor == "":
+			commands_obj.add_arg_delimiter()
+		return commands_obj.get_commands()
+	
+	elif has_arg_delim:
+		if not has_registered:
+			return {}
+		if commands.size() > 1:
+			var main_command = commands[1]
+			var show_private = false
+			if "private" in commands:
+				show_private = true
+			if main_command == CALL_COMMAND:
+				return get_method_completions(script, args, show_private)
+			elif main_command == ARG_COMMAND:
+				if args.size() == 0:
+					return get_method_completions(script, args, show_private)
+			elif main_command == LIST_COMMAND:
+				return get_list_commands(args)
+	
 	return commands_obj.get_commands()
 
 
@@ -136,6 +160,12 @@ static func get_list_commands(current_args:Array):
 		if cmd not in current_args:
 			commands_obj.add_command(cmd)
 	
+	if commands_obj.size() < LIST_COMMANDS_OPTIONS.size():
+		commands_obj.add_separator("Modifiers")
+		for cmd in LIST_MODIFIER_OPTIONS:
+			if cmd not in current_args:
+				commands_obj.add_command(cmd)
+	
 	return commands_obj.get_commands()
 
 
@@ -157,26 +187,17 @@ static func get_method_completions(script:Script, current_args:Array, show_priva
 
 
 static func print_members(script_name:String, args:Array, script:Script):
-	var list_opt_size = LIST_COMMANDS_OPTIONS.size()
-	var data_cmd = LIST_COMMANDS_OPTIONS[list_opt_size - 1]
-	var lines_cmd = LIST_COMMANDS_OPTIONS[list_opt_size - 2]
-	var inherited_cmd = LIST_COMMANDS_OPTIONS[list_opt_size - 3]
-	var print_data = data_cmd in args
-	if print_data:
-		var idx = args.find(data_cmd)
-		args.remove_at(idx)
-	var print_lines = lines_cmd in args
-	if print_lines:
-		var idx = args.find(lines_cmd)
-		args.remove_at(idx)
-	var inherited = inherited_cmd in args
-	if inherited:
-		var idx = args.find(inherited_cmd)
-		args.remove_at(idx)
+	var print_data = LIST_MODIFIER_OPTIONS[1] in args
+	var print_lines = LIST_MODIFIER_OPTIONS[0] in args
+	var inherited = LIST_MODIFIER_OPTIONS[2] in args
+	var valid = false
+	for a in args:
+		if a in LIST_COMMANDS_OPTIONS:
+			valid = true
 	var args_size = args.size()
-	if args_size == 0:
-		if print_lines or inherited:
-			print("'--lines' and '--inherited' should be passed with another argument.")
+	if not valid:
+		if args_size > 0:
+			print("'--data', '--lines', and '--inherited' should be passed with another argument.")
 		else:
 			print("Pass arguments for the list command.")
 		return
@@ -184,8 +205,6 @@ static func print_members(script_name:String, args:Array, script:Script):
 	var pr = Pr.new()
 	for i in range(args_size):
 		var command = args[i]
-		if command == lines_cmd or command == inherited_cmd or command == data_cmd:
-			continue
 		if command in LIST_COMMANDS_OPTIONS:
 			var members = {}
 			if command == LIST_COMMANDS_OPTIONS[0]: # methods

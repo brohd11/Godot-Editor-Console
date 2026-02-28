@@ -10,7 +10,9 @@ const ConsoleScript = UtilsLocal.ConsoleScript
 const _CLASS_VALID_MSG = \
 "Class valid: %s\n" + ConsoleScript.SCRIPT_HELP
 
-func get_completion(raw_text, commands:Array, args:Array) -> Dictionary:
+func get_completion(completion_context:CompletionContext) -> Dictionary:
+	var commands = completion_context.commands
+	
 	if commands[0] != "global":
 		commands.push_front("global")
 	
@@ -21,9 +23,8 @@ func get_completion(raw_text, commands:Array, args:Array) -> Dictionary:
 	var global_classes = UClassDetail.get_all_global_class_paths()
 	var valid_global_class_dict = {}
 	for _name in global_classes:
-		if _name not in registered_classes:
-			continue
-		valid_global_class_dict[_name] = global_classes.get(_name)
+		if _name in registered_classes:
+			valid_global_class_dict[_name] = global_classes.get(_name)
 	
 	var global_class_names = valid_global_class_dict.keys()
 	var c_2
@@ -38,10 +39,8 @@ func get_completion(raw_text, commands:Array, args:Array) -> Dictionary:
 	if commands.size() <= 2 and not has_class:
 		if c_2:
 			for name in global_class_names:
-				if name.to_lower().begins_with(c_2.to_lower()):
-					var param = Commands.Params.new()
-					param.replace_current_word = true
-					commands_obj.add_command_with_params(name, param)
+				if c_2.is_subsequence_ofn(name):
+					commands_obj.add_command(name)
 		else:
 			for name in global_class_names:
 				commands_obj.add_command(name)
@@ -51,34 +50,9 @@ func get_completion(raw_text, commands:Array, args:Array) -> Dictionary:
 		return {}
 	
 	var script = UClassDetail.get_global_class_script(current_class_name)
-	if raw_text.find(" -- ") == -1:
-		var script_commands = ConsoleScript.get_commands_static()
-		for cmd in script_commands:
-			if cmd in commands:
-				return Commands.get_arg_delimiter()
-		return ConsoleScript.get_valid_commands(commands, script_commands)
+	completion_context.commands.remove_at(0)
 	
-	var c_3 = commands[2]
-	if args.size() == 0:
-		var show_private = false
-		if "--private" in commands or "-p" in commands:
-			show_private = true
-		if c_3 == ConsoleScript.CALL_COMMAND and raw_text.find(" --") > -1:
-			return ConsoleScript.get_method_completions(script, args, show_private)
-		elif c_3 == ConsoleScript.ARG_COMMAND and raw_text.find(" --") > -1:
-			if args.size() == 0:
-				return ConsoleScript.get_method_completions(script, args, show_private)
-	
-	if c_3 == ConsoleScript.LIST_COMMAND and raw_text.find(" --") > -1:
-		return ConsoleScript.get_list_commands(args)
-	
-	if raw_text.find(" --") > -1:
-		if UNode.has_static_method_compat("get_completion", script):
-			return script.get_completion(raw_text, commands, args)
-		else:
-			return {}
-	
-	return commands_obj.get_commands()
+	return ConsoleScript.get_completion_static(completion_context, get_commands(), script)
 
 
 func parse(commands:Array, arguments:Array):
@@ -101,18 +75,21 @@ func _get_standard_call_arguments(_selected_command:String, commands:Array, argu
 
 
 func _is_input_valid(commands:Array, arguments:Array) -> bool:
-	var c_2 = commands[1]
+	var c_1 = commands[0]
+	if c_1 == "global":
+		commands.remove_at(0)
+		c_1 = commands[0]
 	var global_classes = UClassDetail.get_all_global_class_paths()
-	if not c_2 in global_classes:
-		print("Could not find class: '%s'" % c_2)
+	if not c_1 in global_classes:
+		print("Could not find class: '%s'" % c_1)
 		return false
-	if commands.size() < 3:
+	if commands.size() < 2:
 		var pr = PrintRich.new()
-		pr.append("Class valid: ").append(c_2, Color.WEB_GREEN).display().append(ConsoleScript.SCRIPT_HELP).display()
+		pr.append("Class valid: ").append(c_1, Color.WEB_GREEN).display().append(ConsoleScript.SCRIPT_HELP).display()
 		
 		return false
 	
-	return _is_command_valid(commands[2], commands, arguments)
+	return _is_command_valid(commands[1], commands, arguments)
 
 func get_help_message(commands:Array, _arguments:Array):
 	var c_1 = commands[0]

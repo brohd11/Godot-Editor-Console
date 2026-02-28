@@ -59,8 +59,8 @@ func get_commands() -> Dictionary:
 		commands_obj.add_command(cmd)
 	return commands_obj.get_commands()
 
-func get_completion(_raw_text, commands:Array, _args:Array) -> Dictionary:
-	
+func get_completion(completion_context:CompletionContext) -> Dictionary:
+	var commands = completion_context.commands
 	if commands.size() == 1:
 		return get_commands()
 	

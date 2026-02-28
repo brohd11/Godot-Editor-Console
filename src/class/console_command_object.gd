@@ -1,6 +1,11 @@
 
+const SELF = preload("res://addons/editor_console/src/class/console_command_object.gd")
+
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 const Keys = UtilsLocal.ParsePopupKeys
+
+const ARG_DELIMITER = "--"
+
 
 var _command_dict:= {
 	Keys.COMMAND_META: {}
@@ -8,16 +13,39 @@ var _command_dict:= {
 
 static func get_arg_delimiter(dict:=true):
 	if dict:
-		return {" -- ": {}}
+		return {ARG_DELIMITER: {}}
 	else:
-		return " -- "
+		return ARG_DELIMITER
 
 func get_commands():
 	return _command_dict
 
+func set_commands(command_dict:Dictionary):
+	_command_dict = command_dict
+
+func merge(commands:SELF, overwrite:=false):
+	_command_dict.merge(commands.get_commands(), overwrite)
+
+func size():
+	return _command_dict.size() - 1 # -1 to account for meta section
+
+func add_separator(text:="", add_decorators:=true):
+	if text != "" and add_decorators:
+		text = "── " + text + " ──"
+	Keys.add_separator(_command_dict, text)
+
+func remove_command(cmd_name:String):
+	_command_dict.erase(cmd_name)
+
+func add_arg_delimiter(replace_current_word:=true):
+	var params = Params.new()
+	params.replace_current_word = replace_current_word
+	add_command_with_params(ARG_DELIMITER, params)
+
 func add_command(cmd_name:String, add_arg_delim:=false, callable = null, icon=null):
 	var param = Params.new(add_arg_delim, callable)
 	param.icon = icon
+	param.replace_current_word = true
 	add_command_with_params(cmd_name, param)
 
 func add_command_with_params(cmd_name:String, command_params:Params=null):
@@ -48,6 +76,8 @@ func add_command_with_params(cmd_name:String, command_params:Params=null):
 
 func show_variables():
 	_command_dict[Keys.COMMAND_META][Keys.SHOW_VARIABLES] = true
+
+
 
 class Params:
 	var callable = null

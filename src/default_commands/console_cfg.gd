@@ -52,7 +52,10 @@ const CLEAR_HELP = \
 func get_help_message(_commands:Array, _arguments:Array):
 	return CFG_HELP % _CFG_CMDS
 
-func get_completion(raw_text:String, commands:Array, arguments:Array):
+func get_completion(completion_context:CompletionContext) -> Dictionary:
+	var raw_text = completion_context.input_text
+	var commands = completion_context.commands
+	var arguments = completion_context.arguments
 	var registered_commands = get_commands()
 	if commands.size() == 1:
 		return registered_commands

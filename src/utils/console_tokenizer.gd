@@ -5,6 +5,7 @@ const Colors = UtilsLocal.Colors
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 const Pr = UtilsRemote.UString.PrintRich
 const UClassDetail = UtilsRemote.UClassDetail
+const EditorColors = UtilsRemote.EditorColors
 
 var editor_console:EditorConsoleSingleton
 
@@ -20,6 +21,7 @@ func _init() -> void:
 	var pattern = "\"[^\"]*\"|'[^']*'|(\\[(?:[^\\[\\]]|(?1))*\\])|(\\{(?:[^{}]|(?2))*\\})|(\\((?:[^()]|(?3))*\\))|\\S+"
 	_token_regex.compile(pattern)
 	
+	editor_console = EditorConsoleSingleton.get_instance()
 
 func parse_command_string(input_string: String) -> Dictionary:
 	var result := {
@@ -65,34 +67,31 @@ func _tokenize_string(text: String) -> Dictionary:
 			(token.begins_with("'") and token.ends_with("'")):
 			# This removes the first and last character (the quote)
 			token = token.substr(1, token.length() - 2)
+		
 		var var_token_check = token
 		if token.begins_with("$"):
 			var_token_check = _check_variable(token)
 			if var_token_check != token:
-				pr.append(token, color_var_ok).append(var_token_check, color_var_value)
-				#display_text += " [color=%s]%s[/color] [color=%s]%s[/color]" % \
-				#[color_var_ok, token, color_var_value, var_token_check]
+				pr.append(token, color_var_ok).append(" ").append(var_token_check, color_var_value).append(" ")
 			else:
-				pr.append(token, color_var_fail).append("Could not get var", color_var_value)
-				#display_text += " [color=%s]%s[/color] [color=%s]Could not get var[/color]"% \
-				#[color_var_fail, token, color_var_value]
+				pr.append(token, color_var_fail).append(" ").append("Could not get var", color_var_value).append(" ")
+		elif token in editor_console.scope_dict or token in editor_console.hidden_scope_dict:
+			var token_str = "%s" % token
+			if _match != matches[0]:
+				token_str = " %s" % token
+			pr.append(token_str, editor_console.Colors.SCOPE)
 		elif UClassDetail.get_global_class_path(token) != "":
-			pr.append(token, Colors.Editor.get_color(Colors.Editor.EditorColors.ENGINE_TYPE))
+			pr.append(" %s" % token, EditorColors.get_syntax_color(EditorColors.SyntaxColor.ENGINE_TYPE))
 		elif token.find("<") > -1:
 			if editor_console:
 				var_token_check = _check_variable(token)
-			#display_text += " %s" % token
 			pr.append(" %s" % token)
 		elif token.find("#") > -1:
 			if editor_console:
 				var_token_check = _check_variable(token)
 			pr.append(" %s" % token)
-			#display_text += " %s" % token
 		else:
 			pr.append(" %s" % token)
-			#display_text += " %s" % token
-		
-		
 		
 		tokens.push_back(var_token_check)
 	

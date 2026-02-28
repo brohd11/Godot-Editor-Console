@@ -1,8 +1,10 @@
-const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
-const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 
-const Commands = UtilsLocal.ConsoleCommandObject
+const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 const Pr = UtilsRemote.UString.PrintRich
+
+const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
+const Commands = UtilsLocal.ConsoleCommandObject
+const CompletionContext = UtilsLocal.CompletionContext
 
 
 
@@ -17,9 +19,9 @@ func get_commands() -> Dictionary:
 	var commands = Commands.new()
 	return commands.get_commands()
 
-func get_completion(_raw_text, commands:Array, _args:Array) -> Dictionary:
+func get_completion(completion_context:CompletionContext) -> Dictionary:
 	var completion_data = {}
-	if commands.size() == 1: ## Basic completion, if script is called, return commands
+	if completion_context.commands.size() == 1: ## Basic completion, if script is called, return commands
 		return get_commands()
 	return completion_data
 

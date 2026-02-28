@@ -8,14 +8,11 @@ const Colors = UtilsLocal.Colors
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 const Pr = UtilsRemote.UString.PrintRich
 const UClassDetail = UtilsRemote.UClassDetail
+const EditorColors = UtilsRemote.EditorColors
 
 var global_names = []
-
 var var_names = []
-var var_color = Color.html("96f442")
-
 var scope_names = []
-var scope_color = Color.SKY_BLUE
 var hidden_scope_names = []
 
 var os_mode:bool
@@ -24,19 +21,19 @@ func _get_line_syntax_highlighting(line: int) -> Dictionary:
 	var text_edit = get_text_edit()
 	var line_text = text_edit.get_line(line)
 	if os_mode:
-		return check_keyword(line_text, ["os"], scope_color)
+		return check_keyword(line_text, ["os"], Colors.SCOPE)
 	
 	global_names = UClassDetail.get_all_global_class_paths().keys()
 	
 	var hl_info = {}
-	var scope_hl = check_keyword(line_text, scope_names, scope_color)
+	var scope_hl = check_keyword(line_text, scope_names, Colors.SCOPE)
 	hl_info.merge(scope_hl)
 	#var hidden_scope_hl = check_keyword(line_text, hidden_scope_names, scope_color)
 	#hl_info.merge(hidden_scope_hl)
-	var var_name_hl = check_keyword(line_text, var_names, var_color)
+	var var_name_hl = check_keyword(line_text, var_names, Colors.VAR_GREEN)
 	hl_info.merge(var_name_hl)
 	
-	var global_name_hl = check_keyword(line_text, global_names, Colors.Editor.get_color(Colors.Editor.EditorColors.ENGINE_TYPE))
+	var global_name_hl = check_keyword(line_text, global_names, EditorColors.get_syntax_color(EditorColors.SyntaxColor.ENGINE_TYPE))
 	hl_info.merge(global_name_hl)
 	
 	var hl_info_keys = hl_info.keys()

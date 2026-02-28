@@ -18,6 +18,7 @@ const SyntaxHl = preload("res://addons/editor_console/src/utils/console_syntax.g
 const ConsoleCommandObject = preload("res://addons/editor_console/src/class/console_command_object.gd")
 
 const ConsoleLineContainer = preload("res://addons/editor_console/src/utils/console_line_container.gd")
+const CompletionContext = preload("res://addons/editor_console/src/class/completion_context.gd")
 const ConsoleTokenizer = preload("res://addons/editor_console/src/utils/console_tokenizer.gd")
 
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
@@ -65,6 +66,7 @@ static func check_help(commands):
 
 
 class Colors:
+	
 	class Strings:
 		const OS_USER = "88e134"
 		const OS_PATH = "659cce"
@@ -83,24 +85,15 @@ class Colors:
 	const VAR_RED = Color(0.8, 0.0, 0.0471, 1.0)
 	const VAR_GREY = Color(0.4275, 0.4275, 0.4275, 1.0)
 	
+	const SCOPE = Color.SKY_BLUE
+	
 	const ACCENT_MUTE = Color(0.302, 0.5059, 0.6039, 1.0)
 	
 	const ERROR_RED = Color(0.651, 0.071, 0.004, 1.0)
 	
 	const GRAY = Color.GRAY
 	
-	class Editor:
-		enum EditorColors {
-			ENGINE_TYPE
-		}
-		static func get_color(color:EditorColors):
-			var ed_settings = EditorInterface.get_editor_settings()
-			var setting = ""
-			if color == EditorColors.ENGINE_TYPE:
-				setting = "text_editor/theme/highlighting/engine_type_color"
-			if setting == "":
-				return null
-			return ed_settings.get_setting(setting)
+	
 
 
 class Print:
