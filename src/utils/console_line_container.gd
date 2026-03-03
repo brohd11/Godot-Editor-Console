@@ -16,7 +16,7 @@ const CompletionContext = UtilsLocal.CompletionContext
 
 
 var console_panel:PanelContainer
-var console_hsplit:HSplitContainer
+var console_hsplit:HBoxContainer#:HSplitContainer # this was an hsplit to allow the label to clip I think
 var console_line_edit:CodeEdit
 var console_button:Button
 var os_label:RichTextLabel
@@ -26,7 +26,8 @@ func _ready() -> void:
 	console_panel = PanelContainer.new()
 	console_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	console_panel.hide()
-	console_hsplit = HSplitContainer.new()
+	#console_hsplit = HSplitContainer.new()
+	console_hsplit = HBoxContainer.new()
 	console_hsplit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	
 	os_label = RichTextLabel.new()
@@ -126,17 +127,20 @@ class ConsoleLineEdit extends CodeEdit:
 		var completion_context = CompletionContext.new(self)
 		
 		var scope_names = completion_context.scope_names
+		var all_scope_names = combined_scope_dict.keys()
 		var global_class_names = completion_context.global_class_names
 		var first_word:String = completion_context.first_word
+		if first_word.find(".") > -1:
+			var front = UtilsRemote.UString.get_member_access_front(first_word)
+			if not (front in all_scope_names or front in global_class_names):
+				_clear_popup()
+				return
+			first_word = front
 		
 		var commands = Commands.new()
-		if not (first_word in scope_names or first_word in global_class_names):
-			var list_all = first_word == "" or first_word.length() == 1
+		if not (first_word in all_scope_names or first_word in global_class_names):
 			for scope:String in scope_names:
-				if list_all:
-					commands.add_command(scope)
-				elif first_word.is_subsequence_ofn(scope):
-					commands.add_command(scope)
+				commands.add_command(scope)
 			_build_popup(commands.get_commands())
 			return
 		
@@ -145,9 +149,9 @@ class ConsoleLineEdit extends CodeEdit:
 			return
 		
 		var command_script = null
-		if first_word in scope_names:
+		if first_word in all_scope_names:
 			var scope_data = combined_scope_dict.get(first_word)
-			command_script = scope_data.get("script")
+			command_script = scope_data.get(UtilsLocal.ScopeDataKeys.SCRIPT)
 		elif first_word in global_class_names:
 			command_script = editor_console.get_scope_script("global")
 		if command_script != null:
@@ -176,6 +180,8 @@ class ConsoleLineEdit extends CodeEdit:
 	
 	func _build_popup(item_dict:Dictionary):
 		item_dict.erase(CommandKeys.COMMAND_META)
+		
+		item_dict = _filter_commands(item_dict, get_word_at_pos(get_caret_draw_pos()))
 		if item_dict.is_empty():
 			_clear_popup()
 			return
@@ -187,7 +193,7 @@ class ConsoleLineEdit extends CodeEdit:
 			var char_width = get_rect_at_line_column(get_caret_line(), 0).size.x
 			while word_idx > 0:
 				var _char = text[word_idx]
-				if _char == " ":
+				if _char == " " or _char == ".":
 					break
 				word_idx -= 1
 			word_idx = min(word_idx, text.length())
@@ -203,19 +209,38 @@ class ConsoleLineEdit extends CodeEdit:
 			popup.item_selected.connect(_on_item_selected)
 			add_child(popup)
 		
-		
 		popup.set_popup_position(pos)
 		popup.create_items(item_dict)
 		popup.select_closest_item(word_before_cursor)
 	
 	
+	func _filter_commands(commands_dict:Dictionary, filter_text:=""):
+		if filter_text.length() < 2:
+			return commands_dict
+		var has_non_sep := false
+		var commands = commands_dict.keys()
+		commands.reverse()
+		for cmd in commands:
+			if cmd.begins_with(CommandKeys.SEPARATOR_STRING):
+				if not has_non_sep:
+					commands_dict.erase(cmd)
+				has_non_sep = false
+				continue
+			if filter_text.is_subsequence_ofn(cmd):
+				has_non_sep = true
+				continue
+			commands_dict.erase(cmd)
+		return commands_dict
+	
 	#^ Look at this stuff TODO
 	 
 	func _on_item_selected(id_text:String, metadata:Dictionary):
 		var text_to_add = id_text
-		var add_args = metadata.get(CommandKeys.ADD_ARGS, false)
-		if add_args:
+		
+		if metadata.get(CommandKeys.ADD_ARGS, false):
 			text_to_add = text_to_add + " --"
+		if metadata.get(CommandKeys.ADD_TRAILING_SPACE, true):
+			text_to_add += " "
 		
 		var replace_word = metadata.get(CommandKeys.REPLACE_WORD, false)
 		if replace_word and get_word_at_pos(get_caret_draw_pos()) != "":
@@ -223,49 +248,39 @@ class ConsoleLineEdit extends CodeEdit:
 			var idxes = _get_indexes_before_caret()
 			var start = idxes.start
 			text = text.erase(start, idxes.caret - start)
-			text_to_add += " "
 			text = text.insert(start, text_to_add)
 			set_caret_column(start + text_to_add.length())
 			end_action()
 			_on_text_changed()
 			return
 		_insert_text(text_to_add)
-		
 	
 	func _insert_text(new_text):
 		#new_text = _check_for_leading_space(new_text)
-		insert_text_at_caret(new_text + " ")
+		insert_text_at_caret(new_text)
 	
 	func _check_for_leading_space(new_text):
 		var word_under_caret = get_word_at_pos(get_caret_draw_pos())
 		if word_under_caret == "" and get_caret_column() > 0:
 			#if text[get_caret_column() - 1] != " ":
-			print("ADDOING")
 			new_text = " " + new_text
 		
 		return new_text
 	
-	#func _check_for_leading_space(new_text):
-		#var word_under_caret = get_word_under_caret()
-		#if word_under_caret == "":
-			#if get_caret_column() > 0:
-				#if text[get_caret_column() - 1] != " ":
-					#new_text = " " + new_text
-		#
-		#return new_text
-	
 	
 	func _get_indexes_before_caret():
 		var caret_col = get_caret_column()
-		var substring = text.substr(0, caret_col).strip_edges()
+		var substring = text.substr(0, caret_col).strip_edges().trim_suffix(".")
 		var space_idx = UtilsRemote.UString.rfind_index_safe(substring, " ", caret_col)
-		if space_idx == -1:
-			space_idx = 0
-		elif text.substr(0, space_idx).strip_edges() == "":
-			space_idx = 0
+		var dot_idx = UtilsRemote.UString.rfind_index_safe(substring, ".", caret_col)
+		var del_idx = max(space_idx, dot_idx)
+		if del_idx == -1:
+			del_idx = 0
+		elif text.substr(0, del_idx).strip_edges() == "":
+			del_idx = 0
 		else:
-			space_idx += 1
-		return {"start":space_idx, "caret": caret_col}
+			del_idx += 1
+		return {"start":del_idx, "caret": caret_col}
 	
 	
 	#^r INPUT ------------
@@ -325,12 +340,7 @@ class AutoCompletePopup extends Panel:
 	signal item_selected(id_text:String, metadata:Dictionary)
 	
 	func _init() -> void:
-		#var panel_sb = EditorInterface.get_editor_theme().get_stylebox("panel", "Panel").duplicate()
-		#panel_sb.bg_color = UtilsRemote.EditorColors.get_theme_color(UtilsRemote.EditorColors.ThemeColor.BACKGROUND)
-		#add_theme_stylebox_override("panel", panel_sb)
-		
 		var sb = item_list.get_theme_stylebox("panel").duplicate()
-		#sb.set_content_margin_all(8)
 		sb.bg_color = UtilsRemote.EditorColors.get_theme_color(UtilsRemote.EditorColors.ThemeColor.BACKGROUND)
 		item_list.add_theme_stylebox_override("panel", sb)
 		item_list.gui_input.connect(_item_list_gui_input)

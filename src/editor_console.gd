@@ -6,11 +6,13 @@ const SCRIPT = preload("res://addons/editor_console/src/editor_console.gd")
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 
+const ScopeDataKeys = UtilsLocal.ScopeDataKeys
 const Colors = UtilsLocal.Colors
 const ConsoleCommandBase = UtilsLocal.ConsoleCommandBase
 const ConsoleCommandSetBase = UtilsLocal.ConsoleCommandSetBase
 
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
+const RightClickHandler = UtilsRemote.RightClickHandler
 const BottomPanel = UtilsRemote.BottomPanel
 const UNode = UtilsRemote.UNode
 const UString = UtilsRemote.UString
@@ -26,17 +28,8 @@ var gd_term_instance
 
 #region Old plugin.gd vars
 
-const TOGGLE_CONSOLE = "Toggle Console"
-const TOGGLE_FILTER = "Toggle Filter"
-const OS_MODE = "OS/Toggle Mode"
-const TOGGLE_OS_LABEL = "OS/Toggle Label Squish"
 
-const button_right_click_menu_items = {
-	TOGGLE_CONSOLE:{},
-	TOGGLE_FILTER:{},
-	OS_MODE:{},
-	TOGGLE_OS_LABEL:{}
-}
+var right_click_handler:RightClickHandler
 
 var script_editor_context:ScriptEditorContext
 
@@ -78,14 +71,6 @@ var _temp_scope_dict = {}
 var variable_dict = {}
 var working_variable_dict = {}
 
-
-
-const COLOR_VAR_GREEN = "96f442"
-const COLOR_VAR_RED = "cc000c"
-const COLOR_VAR_GREY = "6d6d6d"
-const COLOR_ACCENT_MUTE = "4d819a"
-var _accent_color:String
-
 var tokenizer:UtilsLocal.ConsoleTokenizer
 
 var filter_button:Button
@@ -104,12 +89,6 @@ func _init(plugin:EditorPlugin) -> void:
 	os_cwd = ProjectSettings.globalize_path("res://")
 	os_home_dir = UtilsLocal.ConsoleOS.get_os_home_dir()
 	_update_os_string()
-	tokenizer = UtilsLocal.ConsoleTokenizer.new()
-	tokenizer.editor_console = self
-	
-	_accent_color = EditorInterface.get_editor_theme().get_color("accent_color", &"Editor").to_html()
-	
-	_load_default_commands()
 	
 	script_editor_context = ScriptEditorContext.new()
 	plugin.add_context_menu_plugin(EditorContextMenuPlugin.CONTEXT_SLOT_SCRIPT_EDITOR_CODE, script_editor_context)
@@ -117,7 +96,14 @@ func _init(plugin:EditorPlugin) -> void:
 	# add func to load user config
 
 func _ready() -> void:
+	right_click_handler = RightClickHandler.new()
+	add_child(right_click_handler)
 	EditorNodeRef.call_on_ready(_add_console_line_edit)
+	_ready_deferred.call_deferred()
+
+func _ready_deferred():
+	tokenizer = UtilsLocal.ConsoleTokenizer.new()
+	_load_default_commands()
 
 static func get_singleton_name() -> String:
 	return "EditorConsoleSingleton"
@@ -155,9 +141,9 @@ static func register_temp_scope(scope_name:String, object_or_callable:Variant) -
 	var ins = get_instance()
 	var data = {}
 	if object_or_callable is Callable:
-		data["callable"] = object_or_callable
+		data[ScopeDataKeys.CALLABLE] = object_or_callable
 	elif object_or_callable is GDScript or object_or_callable.get_class() == "RefCounted":
-		data["script"] = object_or_callable
+		data[ScopeDataKeys.SCRIPT] = object_or_callable
 	else:
 		printerr("Scope: %s - Unrecognized script or callable: %s" % [scope_name, object_or_callable])
 		return
@@ -186,17 +172,17 @@ func _load_default_commands():
 	scope_dict.merge(_temp_scope_dict, true)
 	
 	var scope_data = UtilsLocal.get_scope_data()
-	var scopes = scope_data.get("scopes", {})
+	var scopes = scope_data.get(ScopeDataKeys.SCOPES, {})
 	for scope in scopes.keys():
 		var data = scopes.get(scope)
-		var script_path = data.get("script")
+		var script_path = data.get(ScopeDataKeys.SCRIPT)
 		if not FileAccess.file_exists(script_path):
 			printerr("Could not find script: %s" % script_path)
 			continue
 		var script = load(script_path)
-		scope_dict[scope] = {"script": script.new()}
+		scope_dict[scope] = {ScopeDataKeys.SCRIPT: script.new()}
 	
-	var sets = scope_data.get("sets", [])
+	var sets = scope_data.get(ScopeDataKeys.SETS, [])
 	for script_path in sets:
 		_get_scope_set_data(script_path)
 	
@@ -212,7 +198,7 @@ func set_var_highlighter():
 	var syn:UtilsLocal.SyntaxHl = console_line_edit.syntax_highlighter
 	syn.scope_names = current_scope_data.keys()
 	#syn.scope_names = scope_dict.keys()
-	syn.hidden_scope_names = hidden_scope_dict.keys()
+	#syn.hidden_scope_names = hidden_scope_dict.keys()
 	syn.var_names = variable_dict.keys()
 	syn.clear_highlighting_cache()
 	
@@ -227,26 +213,26 @@ static func register_persistent_scope(scope_name:String, script_path:String):
 		print("Could not load script: %s" % script_path)
 		return
 	var scope_data = UtilsLocal.get_scope_data()
-	var scopes = scope_data.get("scopes", {})
+	var scopes = scope_data.get(ScopeDataKeys.SCOPES, {})
 	if scope_name in scopes.keys():
 		print("Scope already registered: %s" % scope_name)
 		return
-	scopes[scope_name] = {"script": script_path}
-	scope_data["scopes"] = scopes
+	scopes[scope_name] = {ScopeDataKeys.SCRIPT: script_path}
+	scope_data[ScopeDataKeys.SCOPES] = scopes
 	UtilsLocal.save_scope_data(scope_data)
 	get_instance()._load_default_commands()
 
 static func remove_persistent_scope(scope_name):
 	if not _instance_valid_err(): return
 	var scope_data = UtilsLocal.get_scope_data()
-	var scopes = scope_data.get("scopes", {})
+	var scopes = scope_data.get(ScopeDataKeys.SCOPES, {})
 	
 	if not scope_name in scopes.keys():
 		print("Scope not registered: %s" % scope_name)
 		return
 	
 	scopes.erase(scope_name)
-	scope_data["scopes"] = scopes
+	scope_data[ScopeDataKeys.SCOPES] = scopes
 	UtilsLocal.save_scope_data(scope_data)
 	get_instance()._load_default_commands()
 
@@ -256,20 +242,20 @@ static func register_persistent_scope_set(script_path:String):
 		print("Could not load script: %s" % script_path)
 		return
 	var scope_data = UtilsLocal.get_scope_data()
-	var sets = scope_data.get("sets", [])
+	var sets = scope_data.get(ScopeDataKeys.SETS, [])
 	if script_path in sets:
 		print("Script already registered as set: %s" % script_path)
 		return
 	
 	sets.append(script_path)
-	scope_data["sets"] = sets
+	scope_data[ScopeDataKeys.SETS] = sets
 	UtilsLocal.save_scope_data(scope_data)
 	get_instance()._load_default_commands()
 
 static func remove_persistent_scope_set(script_path:String) -> void:
 	if not _instance_valid_err(): return
 	var scope_data = UtilsLocal.get_scope_data()
-	var sets = scope_data.get("sets", [])
+	var sets = scope_data.get(ScopeDataKeys.SETS, [])
 	if not script_path in sets:
 		print("Script set not registered: %s" % script_path)
 		return
@@ -277,7 +263,7 @@ static func remove_persistent_scope_set(script_path:String) -> void:
 	var idx = sets.find(script_path)
 	sets.remove_at(idx)
 	
-	scope_data["sets"] = sets
+	scope_data[ScopeDataKeys.SETS] = sets
 	UtilsLocal.save_scope_data(scope_data)
 	get_instance()._load_default_commands()
 
@@ -288,7 +274,7 @@ func get_scope_script(scope_name):
 	elif scope_dict.has(scope_name):
 		scope = scope_dict[scope_name]
 	if scope == null: return
-	return scope.get("script")
+	return scope.get(ScopeDataKeys.SCRIPT)
 
 func _get_scope_set_data(path_or_script):
 	var script:Script
@@ -319,11 +305,11 @@ func _process_scope_data(scope_data_dict:Dictionary) -> Dictionary:
 		var scope_script
 		var scope_callable
 		if scope_data is Dictionary:
-			scope_script = scope_data.get("script")
-			scope_callable = scope_data.get("callable")
+			scope_script = scope_data.get(ScopeDataKeys.SCRIPT)
+			scope_callable = scope_data.get(ScopeDataKeys.CALLABLE)
 		elif scope_data is Callable:
 			scope_callable = scope_data
-		elif scope_data is GDScript or scope_data.get_class()== "RefCounted":
+		elif scope_data is GDScript or scope_data.get_class() == "RefCounted":
 			scope_script = scope_data
 		else:
 			printerr("Scope: %s - Unrecognized script or callable: %s" % [scope, scope_data])
@@ -331,9 +317,9 @@ func _process_scope_data(scope_data_dict:Dictionary) -> Dictionary:
 		
 		temp_dict[scope] = {}
 		if scope_callable != null:
-			temp_dict[scope]["callable"] = scope_callable
+			temp_dict[scope][ScopeDataKeys.CALLABLE] = scope_callable
 		elif scope_script != null:
-			temp_dict[scope]["script"] = scope_script
+			temp_dict[scope][ScopeDataKeys.SCRIPT] = scope_script
 		
 	return temp_dict
 
@@ -369,7 +355,8 @@ func _get_console_label_string(os:=false):
 			display_cwd = "/"
 		#os_string_raw = "%s:~%s$ " % [os_user, display_cwd] # not sure what this is for?
 		return Pr.new().append(os_user, Colors.OS_USER).append(display_cwd, Colors.OS_PATH).get_string()
-	return Pr.new().append("Console$", _accent_color).get_string()
+	var accent_color = UtilsRemote.EditorColors.get_theme_color(UtilsRemote.EditorColors.ThemeColor.ACCENT)
+	return Pr.new().append("Console$", accent_color).get_string()
 
 func set_console_text(text):
 	_set_console_text(text)
@@ -421,28 +408,10 @@ func parse_input(terminal_input:String) -> void:
 	var formatted_console_input
 	print_rich("%s %s" % [_get_console_label_string(), display_text])
 	
+	c_1 = UString.get_member_access_front(c_1)
 	var parse_scopes = _scope_parse(c_1, commands, arguments)
 	if parse_scopes == Keys.NO_MATCHING_COMMAND:
 		_scope_parse("global", commands, arguments)
-	
-	
-	
-	
-	#var cmd_data = scope_dict.get(c_1)
-	#if cmd_data == null:
-		#cmd_data = hidden_scope_dict.get(c_1)
-	#if cmd_data != null:
-		#var script = cmd_data.get("script")
-		#var callable = cmd_data.get("callable")
-		#
-		#if callable:
-			#result = callable.call(commands, arguments)
-			#
-		#else:
-			#result = script.call("parse", commands, arguments)
-		#
-	#else:
-		#_scope_parse("global", commands, arguments)
 	
 	if scope_dict.is_empty():
 		printerr("Need to load command set.")
@@ -454,8 +423,8 @@ func _scope_parse(_name, commands:Array, arguments:Array):
 		scope = hidden_scope_dict.get(_name)
 	if scope == null:
 		return Keys.NO_MATCHING_COMMAND
-	var script = scope.get("script")
-	var callable = scope.get("callable")
+	var script = scope.get(ScopeDataKeys.SCRIPT)
+	var callable = scope.get(ScopeDataKeys.CALLABLE)
 	var result
 	if callable:
 		result = callable.call(commands, arguments)
@@ -549,6 +518,8 @@ func get_console_text_box():
 #region Old plugin.gd Logic
 
 
+#^ should move this into the console line container? or make a new object to house it at least, would clean it up a bit in here
+
 func _add_console_line_edit():
 	_get_editor_log_button_refs()
 	
@@ -603,20 +574,10 @@ func _get_editor_log_button_refs():
 			continue
 		var children = item.get_children()
 		for c in children:
-			var pressed_signals = c.get_signal_connection_list("pressed")
-			for s in pressed_signals:
-				var callable = str(s.get("callable", ""))
-				if callable == "EditorLog::_clear_request":
-					clear_button = c
-					break
-				
-			var toggled_signals = c.get_signal_connection_list("toggled")
-			for s in toggled_signals:
-				var callable = str(s.get("callable", ""))
-				if callable == "EditorLog::_set_search_visible":
-					filter_button = c
-					break
-
+			if UNode.get_signal_callable(c, "pressed", "EditorLog::_clear_request") != null:
+				clear_button = c
+			if UNode.get_signal_callable(c, "toggled", "EditorLog::_set_search_visible") != null:
+				filter_button = c
 
 
 func _on_filter_toggled(toggled:bool) -> void: # this is the filter toggle in editor log panel
@@ -653,36 +614,15 @@ func _on_button_gui_input(event):
 		if not event.pressed:
 			return
 		if event.button_index == 2:
-			var menu_items = _check_menu_items()
-			var popup = UtilsRemote.PopupHelper.new(menu_items)
-			console_line_container.console_button.add_child(popup)
-			popup.item_pressed_parsed_menu_path.connect(_on_popup_pressed)
-			popup.position = DisplayServer.mouse_get_position() - Vector2i(15, 15)
-			popup.popup()
+			var options = RightClickHandler.Options.new()
+			options.add_option("Toggle Console", _toggle_console)
+			if console_line_container.console_line_edit.visible:
+				options.add_option("Toggle Filter", _toggle_filter)
+				options.add_option("OS/Toggle Mode", _toggle_os_mode)
+				if os_mode:
+					options.add_option("OS/Toggle Label", _toggle_os_label_minimum_size)
+			right_click_handler.display_on_control(options, console_line_container.console_button)
 
-
-func _check_menu_items():
-	var menu_items = button_right_click_menu_items.duplicate()
-	if not console_line_container.console_line_edit.visible:
-		menu_items.erase(TOGGLE_FILTER)
-		menu_items.erase(OS_MODE)
-		menu_items.erase(TOGGLE_OS_LABEL)
-	else:
-		if not os_mode:
-			menu_items.erase(TOGGLE_OS_LABEL)
-	
-	return menu_items
-
-
-func _on_popup_pressed(popup_path:String):
-	if popup_path == TOGGLE_CONSOLE:
-		_toggle_console()
-	if popup_path == TOGGLE_FILTER:
-		_toggle_filter()
-	elif popup_path == OS_MODE:
-		toggle_os_mode()
-	elif popup_path == TOGGLE_OS_LABEL:
-		_toggle_os_label_minimum_size()
 
 
 func _toggle_filter(): #^ right click toggle
@@ -703,7 +643,7 @@ func _toggle_os_label_minimum_size() -> void:
 		os_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 
 
-func toggle_term(commands, args, editor_console):
+func toggle_term(commands, args):
 	if gd_term_instance.visible:
 		gd_term_instance.hide()
 		gd_term_instance.set_active(false)
@@ -714,6 +654,7 @@ func toggle_term(commands, args, editor_console):
 
 func _get_gd_term():
 	return gd_term_instance.get_node("term_container/term/GDTerm")
+
 
 #endregion
 

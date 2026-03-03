@@ -61,5 +61,6 @@ func _init(_line_edit:ConsoleLineEdit):
 	arguments = result.args
 	
 	scope_names = line_edit.scope_dict.keys()
+	#scope_names = line_edit.combined_scope_dict.keys()
 	global_classes = UClassDetail.get_all_global_class_paths()
 	global_class_names = global_classes.keys()

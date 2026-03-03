@@ -13,7 +13,7 @@ const EditorColors = UtilsRemote.EditorColors
 var global_names = []
 var var_names = []
 var scope_names = []
-var hidden_scope_names = []
+#var hidden_scope_names = []
 
 var os_mode:bool
 
@@ -21,12 +21,12 @@ func _get_line_syntax_highlighting(line: int) -> Dictionary:
 	var text_edit = get_text_edit()
 	var line_text = text_edit.get_line(line)
 	if os_mode:
-		return check_keyword(line_text, ["os"], Colors.SCOPE)
+		return check_keyword(line_text, ["os"], Colors.SCOPE, 0)
 	
 	global_names = UClassDetail.get_all_global_class_paths().keys()
 	
 	var hl_info = {}
-	var scope_hl = check_keyword(line_text, scope_names, Colors.SCOPE)
+	var scope_hl = check_keyword(line_text, scope_names, Colors.SCOPE, 0)
 	hl_info.merge(scope_hl)
 	#var hidden_scope_hl = check_keyword(line_text, hidden_scope_names, scope_color)
 	#hl_info.merge(hidden_scope_hl)
@@ -43,18 +43,19 @@ func _get_line_syntax_highlighting(line: int) -> Dictionary:
 		sorted[idx] = hl_info[idx]
 	return sorted
 
-func check_keyword(line_text, keywords, color):
+func check_keyword(line_text:String, keywords:Array, color:Color, max_idx:=-1) -> Dictionary:
+	if max_idx == -1:
+		max_idx = line_text.length()
 	var hl_info = {}
 	for keyword in keywords:
 		var key_idx = line_text.find(keyword)
-		while key_idx > -1:
-			
+		while key_idx > -1 and key_idx <= max_idx:
 			var end_idx = key_idx + keyword.length()
 			var valid_hl = false
 			if line_text.length() == end_idx:
 				valid_hl = true
 			if line_text.length() > end_idx:
-				if line_text[end_idx] == " ":
+				if line_text[end_idx] == " " or line_text[end_idx] == ".":
 					valid_hl = true
 			if key_idx - 1 > -1:
 				if line_text[key_idx - 1] != " ":

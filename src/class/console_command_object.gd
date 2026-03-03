@@ -1,6 +1,8 @@
 
 const SELF = preload("res://addons/editor_console/src/class/console_command_object.gd")
 
+const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
+
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 const Keys = UtilsLocal.ParsePopupKeys
 
@@ -48,6 +50,13 @@ func add_command(cmd_name:String, add_arg_delim:=false, callable = null, icon=nu
 	param.replace_current_word = true
 	add_command_with_params(cmd_name, param)
 
+func add_command_no_space(cmd_name:String, add_arg_delim:=false, callable = null, icon=null):
+	var param = Params.new(add_arg_delim, callable)
+	param.icon = icon
+	param.replace_current_word = true
+	param.add_trailing_space = false
+	add_command_with_params(cmd_name, param)
+
 func add_command_with_params(cmd_name:String, command_params:Params=null):
 	var data = {}
 	if command_params.callable != null:
@@ -56,7 +65,7 @@ func add_command_with_params(cmd_name:String, command_params:Params=null):
 	if command_params.icon != null:
 		var icon
 		if command_params.icon is String:
-			icon = EditorInterface.get_editor_theme().get_icon(command_params.icon, "EditorIcons")
+			icon = UtilsRemote.EditorIcons.get_icon_white(command_params.icon)
 		elif command_params.icon is Texture2D:
 			icon = command_params.icon
 		else:
@@ -66,6 +75,7 @@ func add_command_with_params(cmd_name:String, command_params:Params=null):
 	
 	command_params.metadata[Keys.ADD_ARGS] = command_params.add_argument_delimiter
 	command_params.metadata[Keys.REPLACE_WORD] = command_params.replace_current_word
+	command_params.metadata[Keys.ADD_TRAILING_SPACE] = command_params.add_trailing_space
 	
 	if command_params.argument_count > -1:
 		command_params.metadata[Keys.ARG_COUNT] = command_params.argument_count
@@ -84,6 +94,7 @@ class Params:
 	var icon = null
 	var add_argument_delimiter:= false
 	var replace_current_word:= false
+	var add_trailing_space:= true
 	var argument_count:= -1
 	var metadata = {}
 	

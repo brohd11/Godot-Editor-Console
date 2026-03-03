@@ -3,16 +3,16 @@ extends EditorConsoleSingleton.ConsoleCommandSetBase
 static func register_scopes():
 	return {
 		"script": {
-			"script": UtilsLocal.ConsoleScript.new()
+			ScopeDataKeys.SCRIPT: UtilsLocal.ConsoleScript.new()
 		},
 		"global":{
-			"script": UtilsLocal.ConsoleGlobalClass.new()
+			ScopeDataKeys.SCRIPT: UtilsLocal.ConsoleGlobalClass.new()
 		},
 		"config":{
-			"script": UtilsLocal.ConsoleCfg.new()
+			ScopeDataKeys.SCRIPT: UtilsLocal.ConsoleCfg.new()
 		},
 		"misc":{
-			"script" :UtilsLocal.ConsoleMisc.new()
+			ScopeDataKeys.SCRIPT :UtilsLocal.ConsoleMisc.new()
 		},
 	}
 
@@ -20,13 +20,13 @@ static func register_scopes():
 static func register_hidden_scopes():
 	return {
 		"clear":{
-			"script": UtilsLocal.ConsoleCfg.new(),
+			ScopeDataKeys.SCRIPT: UtilsLocal.ConsoleCfg.new(),
 		},
 		"help": {
-			"script": UtilsLocal.ConsoleHelp.new(),
+			ScopeDataKeys.SCRIPT: UtilsLocal.ConsoleHelp.new(),
 		},
 		"os":{
-			"script": UtilsLocal.ConsoleOS.new()
+			ScopeDataKeys.SCRIPT: UtilsLocal.ConsoleOS.new()
 		},
 	}
 

@@ -41,23 +41,24 @@ class ScopeDataKeys:
 	const global_classes = "global_classes"
 	const sets = "sets"
 	const scopes = "scopes"
+	
+	const GLOBAL_CLASSES = &"scope_data_keys.global_classes"
+	const SETS = &"scope_data_keys.sets"
+	const SCOPES = &"scope_data_keys.scopes"
+	
+	const SCRIPT = &"script"
+	const CALLABLE = &"callable"
 
 class ParsePopupKeys extends UtilsRemote.PopupHelper.ParamKeys:
 	const ADD_ARGS = &"ADD_ARGS"
 	const REPLACE_WORD = &"REPLACE_WORD"
+	const ADD_TRAILING_SPACE = &"ADD_TRAILING_SPACE"
 	const ARG_COUNT = &"ARG_COUNT"
 	
 	const COMMAND_META = &"COMMAND_META"
 	const SHOW_VARIABLES = &"SHOW_VARIABLES"
 
 
-static func get_global_class_list() -> Array:
-	var class_names_array = []
-	var classes = ProjectSettings.get_global_class_list()
-	for data in classes:
-		var _class = data.get("class")
-		class_names_array.append(_class)
-	return class_names_array
 
 static func check_help(commands):
 	if "-h" in commands or "--help" in commands:
@@ -98,6 +99,15 @@ class Colors:
 
 class Print:
 	static func error_arg_count(callable:Callable, args:Array):
-		Pr.new().append("EditorConsole - Callable: ", Colors.ERROR_RED).append(callable.get_method())\
-		.append("\n\tExpected %s arguments, received %s" % [callable.get_argument_count(), args.size()], Colors.ERROR_RED)\
+		var message = "Callable - '%s'" % callable.get_method()
+		error_arg_count_int(callable.get_argument_count(), args, message)
+	
+	static func error_arg_count_int(desired_count:int, args:Array, message:=""):
+		error(message)
+		Pr.new().append("\tExpected %s arguments, received %s" % [desired_count, args.size()], Colors.ERROR_RED)\
 		.append("\n\tArguments: ").append("  ".join(args), Colors.ACCENT_MUTE).display()
+	
+	
+	static func error(message):
+		Pr.new().append("EditorConsole: ", Colors.ERROR_RED).append(message).display()
+		

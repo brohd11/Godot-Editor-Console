@@ -9,7 +9,7 @@ func get_help_message(_commands:Array, _arguments:Array):
 
 func get_commands():
 	var commands = Commands.new()
-	commands.add_command("color-picker", false, _color_picker)
+	commands.add_command("color-picker", false, _color_picker, "ColorPicker")
 	return commands.get_commands()
 
 #func get_completion(_raw_text:String, commands:Array, _arguments:Array):

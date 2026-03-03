@@ -53,7 +53,6 @@ func parse_command_string(input_string: String) -> Dictionary:
 
 func _tokenize_string(text: String) -> Dictionary:
 	var tokens = PackedStringArray()
-	var display_text = ""
 	if text.is_empty():
 		return {"tokens":tokens, "display":""}
 	
@@ -72,9 +71,9 @@ func _tokenize_string(text: String) -> Dictionary:
 		if token.begins_with("$"):
 			var_token_check = _check_variable(token)
 			if var_token_check != token:
-				pr.append(token, color_var_ok).append(" ").append(var_token_check, color_var_value).append(" ")
+				pr.append(" ").append(token, color_var_ok).append(" ").append(var_token_check, color_var_value)
 			else:
-				pr.append(token, color_var_fail).append(" ").append("Could not get var", color_var_value).append(" ")
+				pr.append(" ").append(token, color_var_fail).append(" ").append("Could not get var", color_var_value)
 		elif token in editor_console.scope_dict or token in editor_console.hidden_scope_dict:
 			var token_str = "%s" % token
 			if _match != matches[0]:

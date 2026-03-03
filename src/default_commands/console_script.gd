@@ -1,8 +1,6 @@
 extends EditorConsoleSingleton.ConsoleCommandBase
 
-
-const Colors = UtilsLocal.Colors
-
+const UString = UtilsRemote.UString
 const UClassDetail = UtilsRemote.UClassDetail
 const UNode = UtilsRemote.UNode
 
@@ -24,7 +22,7 @@ const SCRIPT_HELP=\
 	call - call method -- <method_name, arg1, arg2, ... >
 	args - list arguments for method -- <method_name>
 	list - list members of script -- <list_flags> (--methods, --signals, --constants,\
---properties, --enums, --inherited, --lines)"
+--properties, --enums, --inherited, --lines, --data)"
 
 static func get_commands_static():
 	var commands = Commands.new()
@@ -46,49 +44,61 @@ static func get_completion_static(completion_context:CompletionContext, register
 	var commands = completion_context.commands
 	var args = completion_context.arguments
 	var word_before_cursor = completion_context.word_before_cursor
+	var commands_obj = Commands.new()
+	if commands.size() > 0 and commands[0].find(".") > -1:
+		var script_name = commands[0]
+		var front = UString.get_member_access_front(script_name)
+		if not (front == "script" or UClassDetail.get_global_class_path(front) != ""):
+			return {}
+		var access_path = UString.trim_member_access_front(script_name)
+		var parts = access_path.split(".", false)
+		for i in range(parts.size()):
+			var part = parts[i]
+			var script_check = UClassDetail.get_member_info_by_path(script, part)
+			if script_check != null:
+				script = script_check
+			else:
+				break
+		if commands.size() == 1 and completion_context.char_before_cursor != " ":
+			var preloads = UClassDetail.script_get_preloads(script, false, true)
+			for _name in preloads:
+				commands_obj.add_command_no_space(_name)
+			return commands_obj.get_commands()
 	
 	if word_before_cursor == completion_context.ARG_DELIMITER:
 		return {}
 	
-	
-	var has_registered = false
-	for cmd in registered_commands:
-		if cmd in commands:
-			has_registered = true
-			break
-	
-	var commands_obj = Commands.new()
 	var has_arg_delim = completion_context.has_arg_delimiter
 	if not has_arg_delim:
-		
-		if commands.size() <= 2 and not has_registered:
+		if not _check_command_index_valid(commands, 1, registered_commands.keys()):
 			return registered_commands
 		
 		var main_command = commands[1]
 		if main_command == CALL_COMMAND or main_command == ARG_COMMAND:
 			if word_before_cursor != main_command:
-				if not "private" in commands:
-					commands_obj.add_command("private")
+				if not PRIVATE_COMMAND in commands:
+					commands_obj.add_command(PRIVATE_COMMAND, true)
 		
 		if word_before_cursor == "":
 			commands_obj.add_arg_delimiter()
 		return commands_obj.get_commands()
 	
 	elif has_arg_delim:
-		if not has_registered:
+		if not _check_command_index_valid(commands, 1, registered_commands.keys()):
 			return {}
+		
 		if commands.size() > 1:
 			var main_command = commands[1]
 			var show_private = false
-			if "private" in commands:
+			if PRIVATE_COMMAND in commands:
 				show_private = true
 			if main_command == CALL_COMMAND:
-				return get_method_completions(script, args, show_private)
+				return get_method_completions(script, args, show_private, true)
 			elif main_command == ARG_COMMAND:
 				if args.size() == 0:
 					return get_method_completions(script, args, show_private)
 			elif main_command == LIST_COMMAND:
-				return get_list_commands(args)
+				return get_list_completions(args)
 	
 	return commands_obj.get_commands()
 
@@ -99,18 +109,12 @@ static func call_method(script:Script, args:Array):
 		return
 	var method_name = args[0]
 	args.remove_at(0)
+	
 	if not UNode.has_static_method_compat(method_name, script):
-		print("Static method not in script.")
+		print("Static method '%s' not in script." % method_name)
 		return
 	var callable = script.get(method_name)
-	_call_method(callable, args) # will this work in < 4.4? compat ^^
-	
-	#if args.size() != script.get_method_argument_count(method_name):
-		#print("Argument count=%s, called with %s." % [script.get_method_argument_count(method_name), args.size()])
-		#return
-	#var result = script.callv(method_name, args)
-	#if result != null:
-		#print(result)
+	_call_method(callable, args, true) # will this work in < 4.4? compat ^^
 
 
 static func list_args(script:Script, args:Array):
@@ -118,18 +122,11 @@ static func list_args(script:Script, args:Array):
 		print("Need method name to list args.")
 		return
 	var method_name = args[0]
-	if not method_name in script:
-		print("Static method not in script.")
+	var property_info = UClassDetail.get_member_info_by_path(script, method_name)
+	if property_info is not Dictionary:
+		print("Could not get method '%s' in script: %s" % [method_name, script])
 		return
-	var args_array = []
-	var method_list = script.get_script_method_list()
-	for method_dict in method_list:
-		var name = method_dict.get("name")
-		if name != method_name:
-			continue
-		args_array = method_dict.get("args", [])
-		break
-	
+	var args_array = property_info.get("args", [])
 	if args_array.is_empty():
 		print("No args to list.")
 		return
@@ -146,15 +143,7 @@ static func list_args(script:Script, args:Array):
 	pr.display()
 
 
-static func get_valid_commands(current_commands:Array, command_obj_dict:Dictionary):
-	for cmd in command_obj_dict.keys():
-		if cmd in current_commands:
-			command_obj_dict.erase(cmd)
-			continue
-	return command_obj_dict
-
-
-static func get_list_commands(current_args:Array):
+static func get_list_completions(current_args:Array):
 	var commands_obj = Commands.new()
 	for cmd in LIST_COMMANDS_OPTIONS:
 		if cmd not in current_args:
@@ -169,7 +158,7 @@ static func get_list_commands(current_args:Array):
 	return commands_obj.get_commands()
 
 
-static func get_method_completions(script:Script, current_args:Array, show_private:bool):
+static func get_method_completions(script:Script, current_args:Array, show_private:bool, static_only:=false):
 	var commands_obj = Commands.new()
 	var method_list = script.get_script_method_list()
 	for method in method_list:
@@ -177,8 +166,13 @@ static func get_method_completions(script:Script, current_args:Array, show_priva
 		if not show_private:
 			if name in CONSOLE_METHODS or name.begins_with("_"):
 				continue
-		if UNode.has_static_method_compat(name, script):
+		if not static_only:
 			commands_obj.add_command(name)
+		else:
+			var flags = method.get("flags")
+			if flags & METHOD_FLAG_STATIC:
+			#if UNode.has_static_method_compat(name, script):
+				commands_obj.add_command(name)
 		if name in current_args:
 			return {}
 	commands_obj.show_variables()
@@ -190,6 +184,8 @@ static func print_members(script_name:String, args:Array, script:Script):
 	var print_data = LIST_MODIFIER_OPTIONS[1] in args
 	var print_lines = LIST_MODIFIER_OPTIONS[0] in args
 	var inherited = LIST_MODIFIER_OPTIONS[2] in args
+	for cmd in LIST_MODIFIER_OPTIONS:
+		args.erase(cmd)
 	var valid = false
 	for a in args:
 		if a in LIST_COMMANDS_OPTIONS:
@@ -260,13 +256,16 @@ static func print_members(script_name:String, args:Array, script:Script):
 				else:
 					pr.append("\t" + "  ".join(members.keys()), Colors.ACCENT_MUTE).display()
 			if i < args_size - 1:
-				print("")
+				print("") # print blank line between sections
 			continue
 
 
 func _get_standard_call_arguments(selected_command:String, commands:Array, arguments:Array) -> Array:
 	var script = EditorInterface.get_script_editor().get_current_script()
 	var script_name = script.resource_path.get_file()
+	script = resolve_script_member_access(commands, arguments)
+	if script.resource_path != "":
+		script_name = script.resource_path.get_file()
 	return get_standard_call_arguments_static(script_name, script, selected_command, commands, arguments)
 
 static func get_standard_call_arguments_static(script_name:String, script:GDScript, selected_command:String, _commands:Array, arguments:Array) -> Array:
@@ -279,6 +278,29 @@ static func get_standard_call_arguments_static(script_name:String, script:GDScri
 		LIST_COMMAND:
 			return [script_name, arguments, script]
 	return converted_args
+
+
+
+func _is_input_valid(commands:Array, arguments:Array) -> bool:
+	var script = resolve_script_member_access(commands, arguments)
+	if script == null:
+		ConsolePrint.error("Could not resolve script path: %s" % commands[0])
+		return false
+	
+	return _is_command_valid(commands[1], commands, arguments)
+
+static func resolve_script_member_access(commands:Array, _arguments:Array):
+	var script = EditorInterface.get_script_editor().get_current_script()
+	var c_1 = commands[0]
+	if c_1 == "script":
+		return script
+	if c_1.begins_with("script."):
+		c_1 = UString.trim_member_access_front(c_1)
+	var resolved_script = UClassDetail.get_member_info_by_path(script, c_1)
+	if resolved_script is GDScript:
+		return resolved_script
+	
+
 
 func get_help_message(_commands:Array, _arguments:Array):
 	return SCRIPT_HELP

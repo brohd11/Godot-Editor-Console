@@ -17,7 +17,7 @@ static func get_os_string():
 		hostname = hostname.strip_edges()
 		if hostname == "":
 			var output = []
-			var exit = OS.execute("hostname",[], output)
+			var _exit = OS.execute("hostname",[], output)
 			hostname = output[0].strip_edges()
 			if hostname == "":
 				hostname = "linux-pc"
@@ -33,7 +33,7 @@ static func get_os_string():
 		hostname = hostname.strip_edges()
 		if hostname == "":
 			var output = []
-			var exit = OS.execute("hostname",[], output)
+			var _exit = OS.execute("hostname", [], output)
 			hostname = output[0].strip_edges()
 			if hostname == "":
 				hostname = "mac"
@@ -61,18 +61,23 @@ func get_commands() -> Dictionary:
 
 func get_completion(completion_context:CompletionContext) -> Dictionary:
 	var commands = completion_context.commands
-	if commands.size() == 1:
+	var registered_commands = get_commands()
+	if not _check_command_index_valid(commands, 1, registered_commands.keys()):
+		if not EditorConsoleSingleton.get_instance().os_mode:
+			return {}
 		return get_commands()
 	
 	var commands_obj = Commands.new()
-	if commands.size() > 1:
-		var c_2 = commands[1]
-		if c_2 == "cd":
-			commands_obj.add_command("..")
-			var working_dir = EditorConsoleSingleton.get_instance().os_cwd
-			var dirs = DirAccess.get_directories_at(working_dir)
-			for dir in dirs:
-				commands_obj.add_command(dir)
+	var c_2 = commands[1]
+	if c_2 == "cd":
+		var working_dir = EditorConsoleSingleton.get_instance().os_cwd
+		var dirs = DirAccess.get_directories_at(working_dir)
+		dirs = Array(dirs)
+		dirs.push_front("..")
+		if _check_command_index_valid(commands, 2, dirs):
+			return {}
+		for dir in dirs:
+			commands_obj.add_command(dir)
 	
 	return commands_obj.get_commands()
 
@@ -113,7 +118,7 @@ static func _ls(commands:Array, arguments:Array):
 			return [_execute_wrapper(commands, arguments)[0]]
 	var result = _execute_wrapper(commands, arguments)
 	var result_string:String = result[0]
-	return[_one_line_result(result_string)]
+	return [_one_line_result(result_string)]
  
 static func _cd(commands:Array, arguments:Array):
 	var editor_console = _get_singleton_instance()
