@@ -1,25 +1,30 @@
 extends EditorConsoleSingleton.ConsoleCommandBase
 
-const MISC_HELP = \
-"Misc commands - Available:
-color-picker - Open a color picker in a window, selecting a color copies the html string to clipboard."
+const COLOR_PICKER = "color-picker"
 
-func get_help_message(_commands:Array, _arguments:Array):
-	return MISC_HELP
+const _HELP_DICT = {
+	"misc":{"c":[COLOR_PICKER]},
+	COLOR_PICKER:"open a color picker in a window, selecting a color copies the html string to clipboard"
+}
 
-func get_commands():
-	var commands = Commands.new()
-	commands.add_command("color-picker", false, _color_picker, "ColorPicker")
-	return commands.get_commands()
 
-#func get_completion(_raw_text:String, commands:Array, _arguments:Array):
-	#if commands.size() == 1:
-		#return get_commands()
+func _get_help_dict():
+	return _HELP_DICT
+
+func _get_valid_commands_for_index(completion_context:CompletionContext, cmd_idx:int) -> Dictionary:
+	var command = completion_context.commands[cmd_idx]
+	var commands_obj = Commands.new()
+	match command:
+		"misc": commands_obj.add_command("color-picker", false, _color_picker, "ColorPicker")
+	
+	return commands_obj.get_commands()
+
+
 
 
 #region Color Picker - This could be it's own script
 
-static func _color_picker(_commands, _arg):
+static func _color_picker():
 	var win = Window.new()
 	var color = ColorPicker.new()
 	win.size = Vector2i(400,600)

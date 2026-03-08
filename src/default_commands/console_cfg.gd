@@ -1,8 +1,8 @@
 extends EditorConsoleSingleton.ConsoleCommandBase
 
-const ScopeDataKeys = UtilsLocal.ScopeDataKeys
-
 const UClassDetail = UtilsRemote.UClassDetail
+
+const ScopeDataKeys = UtilsLocal.ScopeDataKeys
 
 const SCOPE_COMMAND = "scope"
 
@@ -17,79 +17,163 @@ const GLOBAL_COMMAND = "global-class"
 const GLOBAL_REG = "reg"
 const GLOBAL_DEREG = "dereg"
 
-func get_commands() -> Dictionary:
-	var commands = Commands.new()
-	commands.add_command(SCOPE_COMMAND, false, _scope)
-	commands.add_command(GLOBAL_COMMAND, false, _global)
-	return commands.get_commands()
-
-const CFG_HELP = \
-"Available commands:
-	%s - manage registered commands
-	%s - manage global classes that appear in autocomplete"
 
 const _CFG_CMDS = [SCOPE_COMMAND, GLOBAL_COMMAND]
-
-const SCOPE_HELP = \
-"Manage commands available to the console.
-	%s - register script -- <scope name, script path>
-	%s - register script to be scanned for scopes and variables -- <script path>
-	%s - deregister scope -- <scope name>
-	%s - deregister set -- <script path>
-	%s - reload scripts default and manually registered scopes"
-
 const _SCOPE_CMDS = [REG_SCOPE, REG_SET, DEREG_SCOPE, DEREG_SET, RELOAD]
-
-const GLOBAL_HELP = \
-"Manage classes that will appear in autocomplete.
-	%s - register class -- <class name>
-	%s - deregister class -- <class name>"
-
 const _GLOBAL_CMDS = [GLOBAL_REG, GLOBAL_DEREG]
 
 const CLEAR_HELP = \
-"Clear ouput text box.
+"Clear output text box.
 	--history - Clear command history."
 
-func get_help_message(_commands:Array, _arguments:Array):
-	return CFG_HELP % _CFG_CMDS
+const _HELP_DICT = {
+	"config":{
+		"c": _CFG_CMDS,
+	},
+	SCOPE_COMMAND:{
+		"m":"Manage commands available to the console.",
+		"c": _SCOPE_CMDS
+	},
+	REG_SCOPE: "register script -- <scope name, script path>",
+	REG_SET: "register script to be scanned for scopes and variables -- <script path>",
+	DEREG_SCOPE: "deregister scope -- <scope name>",
+	DEREG_SET: "deregister set -- <script path>",
+	RELOAD: "reload scripts default and manually registered scopes",
+	
+	GLOBAL_COMMAND:{
+		"m":"Manage classes that will appear in autocomplete.",
+		"c": _GLOBAL_CMDS
+	},
+	GLOBAL_REG: "register class -- <class name>",
+	GLOBAL_DEREG: "deregister class -- <class name>",
+	
+}
 
-func get_completion(completion_context:CompletionContext) -> Dictionary:
-	var raw_text = completion_context.input_text
+func _get_help_dict():
+	return _HELP_DICT
+
+
+
+#func _is_input_valid(commands:Array, _arguments:Array) -> bool:
+	#if not _check_command_index_valid(commands, 1, _CFG_CMDS):
+		#return false
+	#return _valid_sub_command(commands[1], commands)
+
+
+#func _valid_sub_command(selected_command:String, commands:Array):
+	#match selected_command:
+		#SCOPE_COMMAND: return _check_command_index_valid(commands, 2, _SCOPE_CMDS)
+		#GLOBAL_COMMAND: return _check_command_index_valid(commands, 2, _GLOBAL_CMDS)
+	#return false
+
+
+#func get_commands() -> Dictionary:
+	#var commands = Commands.new()
+	#commands.add_command(SCOPE_COMMAND, false, _scope)
+	#commands.add_command(GLOBAL_COMMAND, false, _global)
+	#return commands.get_commands()
+
+
+func _get_valid_commands_for_index(completion_context:CompletionContext, cmd_idx:int) -> Dictionary:
 	var commands = completion_context.commands
 	var arguments = completion_context.arguments
+	
 	var commands_obj = Commands.new()
-	var registered_commands = get_commands()
-	var registered_command_names = registered_commands.keys()
-	if not _check_command_index_valid(commands, 1, registered_command_names):
-		if commands[0] == "clear":
-			commands_obj.add_command("--history")
-			return commands_obj.get_commands()
-		return registered_commands
-	
-	var c_2 = commands[1]
-	if c_2 == SCOPE_COMMAND:
-		return _get_scope_completion(raw_text, commands, arguments)
-	elif c_2 == GLOBAL_COMMAND:
-		return _get_global_completion(raw_text, commands, arguments)
-	
+	var current_command = commands[cmd_idx]
+	match current_command:
+		"clear": commands_obj.add_command("--history")
+		"config":
+			commands_obj.add_command(SCOPE_COMMAND)
+			commands_obj.add_command(GLOBAL_COMMAND)
+		SCOPE_COMMAND:
+			for cmd_name in _SCOPE_CMDS:
+				commands_obj.add_command(cmd_name, cmd_name != RELOAD)
+		GLOBAL_COMMAND:
+			for cmd_name in _GLOBAL_CMDS:
+				commands_obj.add_command(cmd_name, true)
+		_:
+			if current_command in _SCOPE_CMDS:
+				return _get_scope_completion(completion_context)
+			elif current_command in _GLOBAL_CMDS:
+				return _get_global_completion(completion_context)
 	
 	return commands_obj.get_commands()
 
-func parse(commands:Array, arguments:Array):
-	if _display_help(commands, arguments):
-		return
-	var c_2 = commands[1]
-	if c_2 == SCOPE_COMMAND:
-		return _scope(commands, arguments)
-	elif c_2 == GLOBAL_COMMAND:
-		return _global(commands, arguments)
 
-static func _scope(commands:Array, arguments:Array):
-	if _has_help_command(commands, 2):
-		print(SCOPE_HELP.strip_edges() % _SCOPE_CMDS)
+
+static func _get_scope_completion(completion_context:CompletionContext):
+	if not completion_context.has_arg_delimiter:
+		return Commands.get_arg_delimiter_command()
+	if completion_context.arguments.size() > 0:
+		return {}
+	
+	var commands_obj = Commands.new()
+	var c_3 = completion_context.commands[2]
+	if c_3 == REG_SET or c_3 == REG_SCOPE:
+		commands_obj.show_variables()
+	elif c_3 == DEREG_SCOPE:
+		var scope_data = UtilsLocal.get_scope_data()
+		var scopes = scope_data.get(ScopeDataKeys.SCOPES, {})
+		for scope_name in scopes.keys():
+			commands_obj.add_command(scope_name)
+		return commands_obj.get_commands()
+	elif c_3 == DEREG_SET:
+		var scope_data = UtilsLocal.get_scope_data()
+		var sets = scope_data.get(ScopeDataKeys.SETS, [])
+		for path in sets:
+			commands_obj.add_command(path)
+		return commands_obj.get_commands()
+	return commands_obj.get_commands()
+
+static func _get_global_completion(completion_context:CompletionContext):
+	if not completion_context.has_arg_delimiter:
+		return Commands.get_arg_delimiter_command()
+	
+	var arguments = completion_context.arguments
+	var commands_obj = Commands.new()
+	var c_3 = completion_context.commands[2]
+	var scope_data = UtilsLocal.get_scope_data()
+	var global_classes = scope_data.get(ScopeDataKeys.GLOBAL_CLASSES, [])
+	var global_class_list = UClassDetail.get_all_global_class_paths().keys()
+	
+	for _class in global_class_list:
+		if _class in arguments:
+			continue
+		if c_3 == GLOBAL_REG:
+			if not _class in global_classes:
+				commands_obj.add_command(_class)
+		elif c_3 == GLOBAL_DEREG:
+			if _class in global_classes:
+				commands_obj.add_command(_class)
+	
+	if c_3 == GLOBAL_DEREG:
+		commands_obj.add_separator("No Global Class")
+		for registered_class in global_classes:
+			if registered_class in arguments:
+				continue
+			if not registered_class in global_class_list:
+				commands_obj.add_command(registered_class)
+			
+	return commands_obj.get_commands()
+
+
+func _command_requires_arguments(selected_command:String):
+	if selected_command == RELOAD:
+		return false
+	return true
+
+func parse(completion_context:CompletionContext):
+	if _display_help(completion_context):
 		return
-	var c_3 = commands[2]
+	var c_2 = completion_context.commands[1]
+	if c_2 == SCOPE_COMMAND:
+		return _scope(completion_context)
+	elif c_2 == GLOBAL_COMMAND:
+		return _global(completion_context)
+
+static func _scope(completion_context:CompletionContext):
+	var arguments = completion_context.arguments
+	var c_3 = completion_context.commands[2]
 	if c_3 == REG_SCOPE:
 		_call_method(EditorConsoleSingleton.register_persistent_scope, arguments)
 	elif c_3 == REG_SET:
@@ -103,39 +187,12 @@ static func _scope(commands:Array, arguments:Array):
 		if success:
 			print("Reloaded command sets.")
 	else:
-		_unrecognized_command(c_3)
+		pass
+		#_unrecognized_command(c_3)
 
-static func _get_scope_completion(raw_text:String, commands:Array, _arguments:Array):
-	var commands_obj = Commands.new()
-	if not _check_command_index_valid(commands, 2, [REG_SCOPE, REG_SET, DEREG_SCOPE, DEREG_SET, RELOAD]):
-		commands_obj.add_command(REG_SCOPE, true)
-		commands_obj.add_command(REG_SET, true)
-		commands_obj.add_command(DEREG_SCOPE, true)
-		commands_obj.add_command(DEREG_SET, true)
-		commands_obj.add_command(RELOAD)
-		return commands_obj.get_commands()
-	
-	var c_3 = commands[2]
-	if raw_text.find(" --") > -1:
-		if c_3 == DEREG_SCOPE:
-			var scope_data = UtilsLocal.get_scope_data()
-			var scopes = scope_data.get(ScopeDataKeys.SCOPES, {})
-			for scope_name in scopes.keys():
-				commands_obj.add_command(scope_name)
-			return commands_obj.get_commands()
-		elif c_3 == DEREG_SET:
-			var scope_data = UtilsLocal.get_scope_data()
-			var sets = scope_data.get(ScopeDataKeys.SETS, [])
-			for path in sets:
-				commands_obj.add_command(path)
-			return commands_obj.get_commands()
-	return commands_obj.get_commands()
-
-
-static func _global(commands:Array, arguments:Array):
-	if _has_help_command(commands, 2):
-		print(GLOBAL_HELP % _GLOBAL_CMDS)
-		return
+static func _global(completion_context:CompletionContext):
+	var commands = completion_context.commands
+	var arguments = completion_context.arguments
 	var c_3 = commands[2]
 	if c_3 == GLOBAL_REG:
 		if arguments.is_empty():
@@ -171,34 +228,13 @@ static func _global(commands:Array, arguments:Array):
 		_unrecognized_command(c_3)
 	
 
-static func _get_global_completion(raw_text:String, commands:Array, arguments:Array):
-	var commands_obj = Commands.new()
-	if not _check_command_index_valid(commands, 2, [GLOBAL_REG, GLOBAL_DEREG]):
-	#if commands.size() < 3:
-		commands_obj.add_command(GLOBAL_REG, true)
-		commands_obj.add_command(GLOBAL_DEREG, true)
-		return commands_obj.get_commands()
-	
-	if raw_text.find(Commands.ARG_DELIMITER) == -1:
-		return {}
-	
-	var c_3 = commands[2]
-	var scope_data = UtilsLocal.get_scope_data()
-	var global_classes = scope_data.get(ScopeDataKeys.GLOBAL_CLASSES, [])
-	var global_class_list = UClassDetail.get_all_global_class_paths().keys()
-	for _class in global_class_list:
-		if _class in arguments:
-			continue
-		if c_3 == GLOBAL_REG:
-			if not _class in global_classes:
-				commands_obj.add_command(_class)
-		elif c_3 == GLOBAL_DEREG:
-			if _class in global_classes:
-				commands_obj.add_command(_class)
-	return commands_obj.get_commands()
 
-static func clear_console(commands:Array, _arguments:Array): # this is a "parse" callable
-	if _has_help_command(commands):
+
+static func clear_console(completion_context:CompletionContext): # this is a "parse" callable
+	var commands = completion_context.commands
+	var arguments = completion_context.arguments
+	
+	if _has_help_command(commands, arguments):
 		print(CLEAR_HELP)
 		return
 	if commands.size() > 1:

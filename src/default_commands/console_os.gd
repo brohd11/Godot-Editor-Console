@@ -81,7 +81,10 @@ func get_completion(completion_context:CompletionContext) -> Dictionary:
 	
 	return commands_obj.get_commands()
 
-func parse(commands:Array, arguments:Array):
+func parse(completion_context:CompletionContext):
+	var commands = completion_context.commands
+	var arguments = completion_context.arguments
+	
 	var editor_console = _get_singleton_instance()
 	print_rich("%s %s" % [editor_console.os_string, editor_console.last_command])
 	

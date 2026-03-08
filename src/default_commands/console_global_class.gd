@@ -7,8 +7,24 @@ const UString = UtilsRemote.UString
 const ScopeDataKeys = UtilsLocal.ScopeDataKeys
 const ConsoleScript = UtilsLocal.ConsoleScript
 
-const _CLASS_VALID_MSG = \
-"Class valid: %s\n" + ConsoleScript.SCRIPT_HELP
+
+func _get_help_dict():
+	var dict = ConsoleScript.HELP_DICT.duplicate(true)
+	var script_dict = dict["script"]
+	script_dict["m"] = "Perform actions on global scripts, available commands:"
+	dict.erase("script")
+	dict["global"] = {"m": "Optional keyword 'global' will provide registered classes in autocomplete.\n'global' can be subbed for any global class name."}
+	
+	for class_nm in UClassDetail.get_all_global_class_paths():
+		dict[class_nm] = script_dict
+	
+	return dict
+
+func get_commands() -> Dictionary:
+	return ConsoleScript.get_commands_static()
+
+func _get_standard_call_command_index(commands:Array, arguments:Array):
+	return 1 # for this script, this makes it always choose the 2nd command for executing
 
 func get_completion(completion_context:CompletionContext) -> Dictionary:
 	var commands = completion_context.commands
@@ -17,8 +33,7 @@ func get_completion(completion_context:CompletionContext) -> Dictionary:
 		commands.push_front("global")
 	
 	var commands_obj = Commands.new()
-	var scope_data = UtilsLocal.get_scope_data()
-	var registered_classes = scope_data.get(ScopeDataKeys.GLOBAL_CLASSES, [])
+	var registered_classes = UtilsLocal.get_registered_global_classes()
 	
 	var global_classes = UClassDetail.get_all_global_class_paths().keys()
 	var valid_global_class_dict = {}
@@ -48,32 +63,27 @@ func get_completion(completion_context:CompletionContext) -> Dictionary:
 	
 	var script = UClassDetail.get_global_class_script(current_class_name)
 	completion_context.commands.remove_at(0)
-	
 	return ConsoleScript.get_completion_static(completion_context, get_commands(), script)
 
 
-func parse(commands:Array, arguments:Array):
-	if _display_help(commands, arguments):
+func parse(completion_context:CompletionContext):
+	if _display_help(completion_context):
 		return
+	var commands = completion_context.commands
 	var c_1 = commands[0]
 	if c_1 == "global":
 		commands.remove_at(0)
-	_call_standard_command(commands, arguments)
+	_call_standard_command(completion_context)
 
-func get_commands() -> Dictionary:
-	return ConsoleScript.get_commands_static()
-
-func _get_standard_call_arguments(_selected_command:String, commands:Array, arguments:Array) -> Array:
-	var global_class_name = commands[0]
-	var global_class_script = ConsoleScript.resolve_script_member_access(commands, arguments)
-	return ConsoleScript.get_standard_call_arguments_static(global_class_name, global_class_script, _selected_command, commands, arguments)
-
-
-func _is_input_valid(commands:Array, arguments:Array) -> bool:
+func _is_input_valid(completion_context:CompletionContext) -> bool:
+	var commands = completion_context.commands
 	var c_1 = commands[0]
 	if c_1 == "global":
+		if commands.size() == 1:
+			return false
 		commands.remove_at(0)
 		c_1 = commands[0]
+	
 	var class_nm = UString.get_member_access_front(c_1)
 	var global_classes = UClassDetail.get_all_global_class_paths()
 	if not class_nm in global_classes:
@@ -81,19 +91,21 @@ func _is_input_valid(commands:Array, arguments:Array) -> bool:
 		return false
 	if commands.size() == 1 and c_1.find(".") == -1:
 		var pr = Pr.new()
-		pr.append("Class valid: ").append(c_1, Color.WEB_GREEN).display().append(ConsoleScript.SCRIPT_HELP).display()
+		pr.append("Class valid: ").append(c_1, Color.WEB_GREEN).display()
 		return false
 	
-	var script = ConsoleScript.resolve_script_member_access(commands, arguments)
+	var script = ConsoleScript.resolve_script_member_access(commands, completion_context.arguments)
 	if script == null:
 		ConsolePrint.error("Could not resolve script path: %s" % commands[0])
 		return false
 	
-	return _is_command_valid(commands[1], commands, arguments)
+	return _check_command_index_valid(commands, 1, get_commands().keys())
 
-func get_help_message(commands:Array, _arguments:Array):
-	var c_1 = commands[0]
-	if c_1 == "global":
-		if commands.size() == 1:
-			return "Optional keyword 'global' will provide registered classes in autocomplete.\n'global' can be subbed for any global class name."
-	
+
+func _get_standard_call_arguments(_selected_command:String, commands:Array, arguments:Array) -> Array:
+	var global_class_name = commands[0]
+	var global_class_script = ConsoleScript.resolve_script_member_access(commands, arguments)
+	return ConsoleScript.get_standard_call_arguments_static(global_class_name, global_class_script, _selected_command, commands, arguments)
+
+func _command_requires_arguments(selected_command:String) -> bool:
+	return true

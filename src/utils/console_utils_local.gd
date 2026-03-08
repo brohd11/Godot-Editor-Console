@@ -30,6 +30,10 @@ const EDITOR_CONSOLE_SCOPE_PATH = "res://.addons/editor_console/scope_data.json"
 static func get_scope_data():
 	return UtilsRemote.UFile.read_from_json(EDITOR_CONSOLE_SCOPE_PATH)
 
+static func get_registered_global_classes():
+	var scope_data = get_scope_data()
+	return scope_data.get(ScopeDataKeys.GLOBAL_CLASSES, [])
+
 static func save_scope_data(new_data:Dictionary):
 	UtilsRemote.UFile.write_to_json(new_data, EDITOR_CONSOLE_SCOPE_PATH)
 
@@ -65,6 +69,8 @@ static func check_help(commands):
 		return true
 	return false
 
+static func is_command_help(command:String):
+	return command == "-h" or command == "--help"
 
 class Colors:
 	

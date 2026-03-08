@@ -10,6 +10,7 @@ const ScopeDataKeys = UtilsLocal.ScopeDataKeys
 const Colors = UtilsLocal.Colors
 const ConsoleCommandBase = UtilsLocal.ConsoleCommandBase
 const ConsoleCommandSetBase = UtilsLocal.ConsoleCommandSetBase
+const CompletionContext = UtilsLocal.CompletionContext
 
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 const RightClickHandler = UtilsRemote.RightClickHandler
@@ -367,10 +368,12 @@ func _set_console_text(text):
 	console_line_edit.set_caret_column(text.length())
 
 ## Command order - clear, os, help, command_dict, finally check global
-func parse_input(terminal_input:String) -> void:
+func parse_input(completion_context:CompletionContext) -> void:
 	working_variable_dict.clear()
 	
 	current_command_index = -1
+	var terminal_input = completion_context.input_text
+	
 	terminal_input = terminal_input.strip_edges()
 	if terminal_input == "": return
 	
@@ -382,42 +385,52 @@ func parse_input(terminal_input:String) -> void:
 		previous_commands.remove_at(cmd_index)
 		previous_commands.append(terminal_input)
 	
-	var parsed_commands = tokenizer.parse_command_string(terminal_input)
-	var commands:Array = parsed_commands.commands
-	var arguments:Array = parsed_commands.args
-	var display_text = parsed_commands.display
+	#var parsed_commands = tokenizer.parse_command_string(terminal_input)
+	#var commands:Array = parsed_commands.commands
+	#if commands.find("--") > -1:
+		#commands.remove_at(commands.rfind("--"))
+	#var arguments:Array = parsed_commands.args
+	#var display_text = parsed_commands.display
+	
+	var commands:Array = completion_context.commands
+	if commands.find("--") > -1:
+		commands.remove_at(commands.rfind("--"))
+	var arguments:Array = completion_context.arguments
+	var display_text = completion_context.display_text
+	
 	if commands.size() == 0:
 		return
+	
+	completion_context.execute = true
 	
 	var c_1 = commands[0]
 	if c_1 == "clear":
 		if UtilsLocal.check_help(commands):
 			print_rich("%s %s" % [_get_console_label_string(), display_text])
-		UtilsLocal.ConsoleCfg.clear_console(commands, arguments)
+		UtilsLocal.ConsoleCfg.clear_console(completion_context)
 		return
 	
 	if terminal_input == "os":
 		toggle_os_mode()
 		return
 	if os_mode:
-		_scope_parse("os", commands, arguments)
+		_scope_parse("os", completion_context)
 		return
 	
 	if c_1.to_lower() == "help":
 		c_1 = c_1.to_lower()
-	var formatted_console_input
 	print_rich("%s %s" % [_get_console_label_string(), display_text])
 	
 	c_1 = UString.get_member_access_front(c_1)
-	var parse_scopes = _scope_parse(c_1, commands, arguments)
+	var parse_scopes = _scope_parse(c_1, completion_context)
 	if parse_scopes == Keys.NO_MATCHING_COMMAND:
-		_scope_parse("global", commands, arguments)
+		_scope_parse("global", completion_context)
 	
 	if scope_dict.is_empty():
 		printerr("Need to load command set.")
 
 
-func _scope_parse(_name, commands:Array, arguments:Array):
+func _scope_parse(_name, completion_context:CompletionContext):
 	var scope = scope_dict.get(_name)
 	if scope == null:
 		scope = hidden_scope_dict.get(_name)
@@ -427,10 +440,10 @@ func _scope_parse(_name, commands:Array, arguments:Array):
 	var callable = scope.get(ScopeDataKeys.CALLABLE)
 	var result
 	if callable:
-		result = callable.call(commands, arguments)
+		result = callable.call(completion_context)
 	else:
 		if script.has_method("parse"):
-			result = script.parse(commands, arguments)
+			result = script.parse(completion_context)
 		else:
 			print("Could not parse in object: %s" % scope)
 	if result != null:
@@ -464,7 +477,8 @@ func _on_console_text_changed():
 	pass
 
 func _on_console_text_submitted(new_text:String) -> void:
-	parse_input(new_text)
+	var completion_context = CompletionContext.new(console_line_edit)
+	parse_input(completion_context)
 	
 	var console_text = get_console_text_box() as RichTextLabel
 	console_text.scroll_to_line(console_text.get_line_count())

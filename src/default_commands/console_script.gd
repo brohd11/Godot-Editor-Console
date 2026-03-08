@@ -3,8 +3,7 @@ extends EditorConsoleSingleton.ConsoleCommandBase
 const UString = UtilsRemote.UString
 const UClassDetail = UtilsRemote.UClassDetail
 const UNode = UtilsRemote.UNode
-
-const _ARG_CLASS_COLOR_SETTING = "text_editor/theme/highlighting/base_type_color"
+const EditorColors = UtilsRemote.EditorColors
 
 const CONSOLE_METHODS = ["parse", "get_completion"]
 
@@ -13,16 +12,19 @@ const PRIVATE_COMMAND = "private"
 const ARG_COMMAND = "args"
 const LIST_COMMAND = "list"
 
-const LIST_COMMANDS_OPTIONS = ["--methods", "--signals", "--constants", "--properties",
-"--enums"]
+const LIST_COMMANDS_OPTIONS = ["--methods", "--signals", "--constants", "--properties", "--enums"]
 const LIST_MODIFIER_OPTIONS = ["--lines", "--data", "--inherited"]
 
-const SCRIPT_HELP=\
-"Call static methods on current script, or create an instance.
-	call - call method -- <method_name, arg1, arg2, ... >
-	args - list arguments for method -- <method_name>
-	list - list members of script -- <list_flags> (--methods, --signals, --constants,\
---properties, --enums, --inherited, --lines, --data)"
+const HELP_DICT = {
+	"script":{"c":[CALL_COMMAND, ARG_COMMAND, LIST_COMMAND]},
+	CALL_COMMAND: "call method -- <method_name, arg1, arg2, ... >",
+	ARG_COMMAND: "list arguments for method -- <method_name>",
+	LIST_COMMAND: "list members of script -- <list_flags> (--methods, --signals, --constants, --properties, --enums, --inherited, --lines, --data)",
+	PRIVATE_COMMAND: "list private members in argument autocompletion"
+}
+
+func _get_help_dict():
+	return HELP_DICT
 
 static func get_commands_static():
 	var commands = Commands.new()
@@ -34,6 +36,11 @@ static func get_commands_static():
 func get_commands() -> Dictionary: 
 	return get_commands_static()
 
+func _get_standard_call_command_index(_commands:Array, _arguments:Array):
+	return 1 # for this script, this makes it always choose the 2nd command for executing
+
+func _command_requires_arguments(_selected_command:String) -> bool:
+	return true
 
 func get_completion(completion_context:CompletionContext) -> Dictionary:
 	var registered = get_commands()
@@ -95,8 +102,7 @@ static func get_completion_static(completion_context:CompletionContext, register
 			if main_command == CALL_COMMAND:
 				return get_method_completions(script, args, show_private, true)
 			elif main_command == ARG_COMMAND:
-				if args.size() == 0:
-					return get_method_completions(script, args, show_private)
+				return get_method_completions(script, args, show_private)
 			elif main_command == LIST_COMMAND:
 				return get_list_completions(args)
 	
@@ -131,7 +137,7 @@ static func list_args(script:Script, args:Array):
 		print("No args to list.")
 		return
 	
-	var class_name_color = EditorInterface.get_editor_settings().get_setting(_ARG_CLASS_COLOR_SETTING)
+	var class_name_color = EditorColors.get_syntax_color(EditorColors.SyntaxColor.BASE_TYPE)
 	var pr = Pr.new()
 	for dict in args_array:
 		var name = dict.get("name")
@@ -170,8 +176,8 @@ static func get_method_completions(script:Script, current_args:Array, show_priva
 			commands_obj.add_command(name)
 		else:
 			var flags = method.get("flags")
-			if flags & METHOD_FLAG_STATIC:
 			#if UNode.has_static_method_compat(name, script):
+			if flags & METHOD_FLAG_STATIC:
 				commands_obj.add_command(name)
 		if name in current_args:
 			return {}
@@ -281,13 +287,15 @@ static func get_standard_call_arguments_static(script_name:String, script:GDScri
 
 
 
-func _is_input_valid(commands:Array, arguments:Array) -> bool:
+func _is_input_valid(completion_context) -> bool:
+	var commands = completion_context.commands
+	var arguments = completion_context.arguments
 	var script = resolve_script_member_access(commands, arguments)
 	if script == null:
 		ConsolePrint.error("Could not resolve script path: %s" % commands[0])
 		return false
 	
-	return _is_command_valid(commands[1], commands, arguments)
+	return _check_command_index_valid(commands, 1, get_commands().keys())
 
 static func resolve_script_member_access(commands:Array, _arguments:Array):
 	var script = EditorInterface.get_script_editor().get_current_script()
@@ -299,8 +307,3 @@ static func resolve_script_member_access(commands:Array, _arguments:Array):
 	var resolved_script = UClassDetail.get_member_info_by_path(script, c_1)
 	if resolved_script is GDScript:
 		return resolved_script
-	
-
-
-func get_help_message(_commands:Array, _arguments:Array):
-	return SCRIPT_HELP

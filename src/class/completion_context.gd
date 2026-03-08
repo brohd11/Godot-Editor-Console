@@ -8,6 +8,8 @@ const Commands = UtilsLocal.ConsoleCommandBase.Commands
 
 const ARG_DELIMITER = Commands.ARG_DELIMITER
 
+var execute:bool = false
+
 var line_edit:ConsoleLineEdit
 
 var caret_col:int
@@ -22,6 +24,7 @@ var has_arg_delimiter:=false
 
 var commands:Array
 var arguments:Array
+var display_text:String
 
 var scope_names:Array
 var global_classes:Dictionary
@@ -53,12 +56,13 @@ func _init(_line_edit:ConsoleLineEdit):
 	if not words.is_empty():
 		first_word = words[0]
 	
-	has_arg_delimiter = input_text.find(Commands.get_arg_delimiter(false)) > -1
+	has_arg_delimiter = input_text.find(Commands.ARG_DELIMITER) > -1
 	
 	var tokenizer = UtilsLocal.ConsoleTokenizer.new()
 	var result = tokenizer.parse_command_string(input_text)
 	commands = result.commands
 	arguments = result.args
+	display_text = result.display
 	
 	scope_names = line_edit.scope_dict.keys()
 	#scope_names = line_edit.combined_scope_dict.keys()

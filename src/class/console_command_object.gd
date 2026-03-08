@@ -13,11 +13,8 @@ var _command_dict:= {
 	Keys.COMMAND_META: {}
 }
 
-static func get_arg_delimiter(dict:=true):
-	if dict:
-		return {ARG_DELIMITER: {}}
-	else:
-		return ARG_DELIMITER
+static func get_arg_delimiter_command():
+	return {ARG_DELIMITER: {}}
 
 func get_commands():
 	return _command_dict

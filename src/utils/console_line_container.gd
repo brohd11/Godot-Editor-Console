@@ -165,9 +165,9 @@ class ConsoleLineEdit extends CodeEdit:
 		
 		var command_meta = commands.get_commands().get(CommandKeys.COMMAND_META, {}) # should this be from the commands?
 		var show_variables = command_meta.get(CommandKeys.SHOW_VARIABLES, false)
-		show_variables = true #ALERT
-		if completion_context.input_text.find(Commands.get_arg_delimiter(false)) > -1:
-			commands.remove_command(Commands.get_arg_delimiter(false))
+		#show_variables = true #ALERT
+		if completion_context.input_text.find(Commands.ARG_DELIMITER) > -1:
+			commands.remove_command(Commands.ARG_DELIMITER)
 			if show_variables:
 				var var_nms = variable_dict.keys()
 				if var_nms.size() > 0:
@@ -182,6 +182,7 @@ class ConsoleLineEdit extends CodeEdit:
 		item_dict.erase(CommandKeys.COMMAND_META)
 		
 		item_dict = _filter_commands(item_dict, get_word_at_pos(get_caret_draw_pos()))
+		item_dict = _clean_up_separators(item_dict)
 		if item_dict.is_empty():
 			_clear_popup()
 			return
@@ -217,21 +218,34 @@ class ConsoleLineEdit extends CodeEdit:
 	func _filter_commands(commands_dict:Dictionary, filter_text:=""):
 		if filter_text.length() < 2:
 			return commands_dict
-		var has_non_sep := false
+		#var has_non_sep := false
+		var commands = commands_dict.keys()
+		#commands.reverse()
+		for cmd in commands:
+			if cmd.begins_with(CommandKeys.SEPARATOR_STRING):
+				#if not has_non_sep:
+					#commands_dict.erase(cmd)
+				#has_non_sep = false
+				continue
+			if filter_text.is_subsequence_ofn(cmd):
+				#has_non_sep = true
+				continue
+			commands_dict.erase(cmd)
+		
+		return commands_dict # moved the separator stuff below, this covers filtering and non filtering, seems ok
+	
+	func _clean_up_separators(commands_dict:Dictionary):
 		var commands = commands_dict.keys()
 		commands.reverse()
+		var has_non_sep := false
 		for cmd in commands:
 			if cmd.begins_with(CommandKeys.SEPARATOR_STRING):
 				if not has_non_sep:
 					commands_dict.erase(cmd)
 				has_non_sep = false
 				continue
-			if filter_text.is_subsequence_ofn(cmd):
-				has_non_sep = true
-				continue
-			commands_dict.erase(cmd)
+			has_non_sep = true
 		return commands_dict
-	
 	#^ Look at this stuff TODO
 	 
 	func _on_item_selected(id_text:String, metadata:Dictionary):
@@ -331,7 +345,7 @@ class ConsoleLineEdit extends CodeEdit:
 		_on_text_changed()
 
 
-class AutoCompletePopup extends Panel:
+class AutoCompletePopup extends ScrollContainer:
 	var item_list = ItemList.new()
 	
 	var _position:Vector2 = Vector2.ZERO
@@ -357,8 +371,8 @@ class AutoCompletePopup extends Panel:
 		var _hash = item_dict.hash()
 		if _hash != last_item_hash:
 			modulate.a = 0
-			custom_minimum_size.y = 0
-			size.y = 0
+			custom_minimum_size = Vector2.ZERO
+			size = Vector2.ZERO
 		last_item_hash = _hash
 		
 		for item in item_dict.keys():
@@ -392,7 +406,9 @@ class AutoCompletePopup extends Panel:
 				continue
 			item_list.set_item_icon(i, sep)
 		
-		custom_minimum_size.y = item_list.get_rect().size.y
+		custom_minimum_size = item_list.get_rect().size
+		custom_minimum_size.y = min(custom_minimum_size.y, get_window().size.y * 0.5)
+		
 		set_anchors_preset(PRESET_BOTTOM_LEFT)
 		offset_popup()
 		modulate.a = 1
@@ -429,7 +445,7 @@ class AutoCompletePopup extends Panel:
 		var first_next = next
 		while not item_list.is_item_selectable(next) and next != first_next - 1:
 			next = UList.get_next_item(item_list.item_count, next)
-		item_list.select(next)
+		select_and_scroll(next)
 	
 	func previous_item():
 		var selected = _get_selected_idx()
@@ -439,7 +455,7 @@ class AutoCompletePopup extends Panel:
 		var first_prev = prev
 		while not item_list.is_item_selectable(prev) and prev != first_prev + 1:
 			prev = UList.get_previous_item(item_list.item_count, prev)
-		item_list.select(prev)
+		select_and_scroll(prev)
 	
 	func _get_selected_idx():
 		var selected = item_list.get_selected_items()
@@ -463,8 +479,13 @@ class AutoCompletePopup extends Panel:
 			if s.begins_with(word):
 				item_list.select(items.find_key(s))
 				return
-		item_list.select(items.find_key(sorted[0]))
+		
+		select_and_scroll(items.find_key(sorted[0]))
+		#item_list.select(items.find_key(sorted[0]))
 	
+	func select_and_scroll(index:int):
+		item_list.select(index)
+		scroll_vertical = int(item_list.get_item_rect(index).position.y / 2)
 	
 	func _item_list_gui_input(event: InputEvent) -> void:
 		if event is InputEventMouseButton:
