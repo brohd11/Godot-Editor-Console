@@ -5,6 +5,7 @@ const BACKPORTED = 100
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 const UClassDetail = UtilsRemote.UClassDetail
 const UResource = UtilsRemote.UResource
+const UTexture = UtilsRemote.UTexture
 const PopupHelper = UtilsRemote.PopupHelper
 const UNode = UtilsRemote.UNode
 const UList = UtilsRemote.UList
@@ -398,7 +399,8 @@ class AutoCompletePopup extends ScrollContainer:
 		await get_tree().process_frame
 		
 		var rect = item_list.get_item_rect(0)
-		var sep = UResource.create_rect_texture(Color.GRAY, rect.size.x)
+		var image_size_x = max(2, rect.size.x)
+		var sep = UTexture.create_rect_texture(Color.GRAY, image_size_x)
 		for i in range(item_list.item_count):
 			if item_list.is_item_selectable(i):
 				continue

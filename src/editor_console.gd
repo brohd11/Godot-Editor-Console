@@ -97,8 +97,6 @@ func _init(plugin:EditorPlugin) -> void:
 	# add func to load user config
 
 func _ready() -> void:
-	right_click_handler = RightClickHandler.new()
-	add_child(right_click_handler)
 	EditorNodeRef.call_on_ready(_add_console_line_edit)
 	_ready_deferred.call_deferred()
 
@@ -355,7 +353,7 @@ func _get_console_label_string(os:=false):
 		if display_cwd == "":
 			display_cwd = "/"
 		#os_string_raw = "%s:~%s$ " % [os_user, display_cwd] # not sure what this is for?
-		return Pr.new().append(os_user, Colors.OS_USER).append(display_cwd, Colors.OS_PATH).get_string()
+		return Pr.new().append(os_user, Colors.OS_USER).append(":").append("~"+display_cwd, Colors.OS_PATH).append("$").get_string()
 	var accent_color = UtilsRemote.EditorColors.get_theme_color(UtilsRemote.EditorColors.ThemeColor.ACCENT)
 	return Pr.new().append("Console$", accent_color).get_string()
 
@@ -569,6 +567,9 @@ func _add_console_line_edit():
 	filter_button.toggled.connect(_on_filter_toggled)
 	
 	set_var_highlighter()
+	
+	right_click_handler = RightClickHandler.new()
+	console_line_container.add_child(right_click_handler)
 
 
 func _remove_console_line_edit():

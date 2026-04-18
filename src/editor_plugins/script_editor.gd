@@ -1,5 +1,7 @@
 extends EditorContextMenuPlugin
 
+const SLOT = CONTEXT_SLOT_SCRIPT_EDITOR_CODE
+
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 const UClassDetail = UtilsRemote.UClassDetail

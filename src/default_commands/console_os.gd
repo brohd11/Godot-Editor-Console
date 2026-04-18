@@ -91,7 +91,10 @@ func parse(completion_context:CompletionContext):
 	var command_needs_scan = false
 	var result
 	var exe = commands[0]
-	if exe in EMULATED_COMMANDS:
+	if exe == "os":
+		editor_console.toggle_os_mode()
+		return
+	elif exe in EMULATED_COMMANDS:
 		result = _emulated_command(commands, arguments)
 	else:
 		result = _execute_wrapper(commands, arguments)

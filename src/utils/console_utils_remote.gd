@@ -1,16 +1,18 @@
 #! remote
 
 const DockManager = preload("res://addons/addon_lib/brohd/dock_manager/dock_manager.gd")
-const BottomPanel = preload("res://addons/addon_lib/brohd/alib_editor/utils/src/editor_nodes/bottom_panel.gd")
-const PopupHelper = preload("res://addons/addon_lib/brohd/alib_runtime/popup_menu/popup_menu_path_helper.gd")
-const RightClickHandler = preload("res://addons/addon_lib/brohd/gui_click_handler/right_click_handler.gd")
 
-const EditorColors = preload("res://addons/addon_lib/brohd/alib_editor/misc/colors/editor_colors.gd")
-const EditorIcons = preload("res://addons/addon_lib/brohd/alib_editor/misc/icons/editor_icons.gd")
-const UClassDetail = preload("uid://gyx3o6jv751x") # u_class_detail.gd
+const BottomPanel = preload("uid://bectqj8saobq5") #! resolve ALibEditor.Nodes.BottomPanel
+const PopupHelper = preload("uid://bb13ihrvdkjdj") #! resolve PopupWrapper.PopupHelper
+const RightClickHandler = preload("uid://mmtkf4h8er3m") #! resolve ClickHandlers.RightClickHandler
 
-const UFile = preload("uid://gs632l1nhxaf") # u_file.gd
-const UNode = preload("uid://dsywt12xnn7oh") # u_node.gd
-const UString = preload("uid://cwootkivqiwq1") # u_string.gd
-const UResource = preload("uid://72uu8yngsoht") # u_resource.gd
-const UList = preload("uid://cpehya7u8ggby") # u_list.gd
+const EditorColors = preload("uid://bhb1vgeh8ibjq") #! resolve ALibEditor.Colors
+const EditorIcons = preload("uid://viocyrti6wce") #! resolve ALibEditor.Singletons.EditorIcons
+const UClassDetail = preload("uid://gyx3o6jv751x") #! resolve ALibEditor.Utils.UClassDetail
+
+const UFile = preload("uid://gs632l1nhxaf") #! resolve ALibRuntime.Utils.UFile
+const UNode = preload("uid://dsywt12xnn7oh") #! resolve ALibRuntime.Utils.UNode
+const UString = preload("uid://cwootkivqiwq1") #! resolve ALibRuntime.Utils.UString
+const UResource = preload("uid://72uu8yngsoht") #! resolve ALibRuntime.Utils.UResource
+const UTexture = preload("uid://ddu76iygjkxih") #! resolve ALibRuntime.Utils.UTexture
+const UList = preload("uid://cpehya7u8ggby") #! resolve ALibRuntime.Utils.UList
