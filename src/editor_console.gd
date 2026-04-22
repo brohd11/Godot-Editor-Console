@@ -383,17 +383,10 @@ func parse_input(completion_context:CompletionContext) -> void:
 		previous_commands.remove_at(cmd_index)
 		previous_commands.append(terminal_input)
 	
-	#var parsed_commands = tokenizer.parse_command_string(terminal_input)
-	#var commands:Array = parsed_commands.commands
-	#if commands.find("--") > -1:
-		#commands.remove_at(commands.rfind("--"))
-	#var arguments:Array = parsed_commands.args
-	#var display_text = parsed_commands.display
-	
 	var commands:Array = completion_context.commands
 	if commands.find("--") > -1:
 		commands.remove_at(commands.rfind("--"))
-	var arguments:Array = completion_context.arguments
+	#var arguments:Array = completion_context.arguments # UNUSED
 	var display_text = completion_context.display_text
 	
 	if commands.size() == 0:
@@ -470,9 +463,6 @@ func _console_gui_input(event: InputEvent) -> void:
 		elif keycode_text == "Ctrl+Shift+Down":
 			next_valid_command()
 
-
-func _on_console_text_changed():
-	pass
 
 func _on_console_text_submitted(new_text:String) -> void:
 	var completion_context = CompletionContext.new(console_line_edit)
@@ -556,11 +546,8 @@ func _add_console_line_edit():
 	os_label = console_line_container.os_label
 	os_label.text = _get_console_label_string()
 	console_line_container.console_line_edit.gui_event_passthrough.connect(_console_gui_input)
-	#console_line_container.console_line_edit.gui_input.connect(_console_gui_input)
 	console_line_container.console_button.pressed.connect(_toggle_console)
 	console_line_container.console_button.gui_input.connect(_on_button_gui_input)
-	
-	
 	
 	console_line_edit = console_line_container.console_line_edit
 	

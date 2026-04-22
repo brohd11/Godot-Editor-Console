@@ -23,7 +23,7 @@ func _get_help_dict():
 func get_commands() -> Dictionary:
 	return ConsoleScript.get_commands_static()
 
-func _get_standard_call_command_index(commands:Array, arguments:Array):
+func _get_standard_call_command_index(_commands:Array, _arguments:Array):
 	return 1 # for this script, this makes it always choose the 2nd command for executing
 
 func get_completion(completion_context:CompletionContext) -> Dictionary:
@@ -107,5 +107,5 @@ func _get_standard_call_arguments(_selected_command:String, commands:Array, argu
 	var global_class_script = ConsoleScript.resolve_script_member_access(commands, arguments)
 	return ConsoleScript.get_standard_call_arguments_static(global_class_name, global_class_script, _selected_command, commands, arguments)
 
-func _command_requires_arguments(selected_command:String) -> bool:
+func _command_requires_arguments(_selected_command:String) -> bool:
 	return true
