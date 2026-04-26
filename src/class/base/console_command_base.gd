@@ -3,6 +3,7 @@ const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils
 const Pr = UtilsRemote.UString.PrintRich
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
+const ConsoleTokenizer = UtilsLocal.ConsoleTokenizer
 const Commands = UtilsLocal.ConsoleCommandObject
 const CompletionContext = UtilsLocal.CompletionContext
 const ConsolePrint = UtilsLocal.Print
@@ -106,13 +107,21 @@ static func _call_method(callable:Callable, args:Array, create_default_args:=fal
 		var new_args = []
 		for i in range(callable_args.size()):
 			var arg_data = callable_args[i]
-			var type = arg_data.get("type")
+			var type:int = arg_data.get("type")
 			if i < args.size():
 				var passed = args[i]
 				if type > 0 and typeof(passed) != type:
+					var err:= true
 					var pass_str = type_string(typeof(passed))
-					ConsolePrint.error("Arg '%s' type mismatch: %s passed, should be %s" % [arg_data.get("name"), pass_str, type_string(type)])
-					valid_args = false
+					if type != TYPE_OBJECT:
+						var converted = ConsoleTokenizer.Var.auto_convert(passed, type)
+						if converted != null:
+							args[i] = converted
+							print("Arg '%s' conversion: %s %s -> %s %s" % [arg_data.get("name"), pass_str, passed, type_string(type), converted])
+							err = false
+					if err:
+						ConsolePrint.error("Arg '%s' type mismatch: %s passed, should be %s" % [arg_data.get("name"), pass_str, type_string(type)])
+						valid_args = false
 				continue
 			
 			var default_val = default_args[i]

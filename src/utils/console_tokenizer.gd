@@ -3,6 +3,7 @@ const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_
 const Colors = UtilsLocal.Colors
 
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
+const UString = UtilsRemote.UString
 const Pr = UtilsRemote.UString.PrintRich
 const UClassDetail = UtilsRemote.UClassDetail
 const EditorColors = UtilsRemote.EditorColors
@@ -156,6 +157,66 @@ func get_variable(variable_string):
 
 class Var:
 	const NUM_TYPES = ["int", "float"]
+	
+	static func auto_convert(arg:Variant, target_type:int):
+		var passed_type = typeof(arg)
+		print("Convert: ", arg, type_string(passed_type), " -> " ,type_string(target_type))
+		if passed_type == TYPE_STRING: # string conversions
+			arg = arg as String
+			if target_type == TYPE_OBJECT:
+				return null
+			if target_type == TYPE_STRING_NAME:
+				return StringName(arg)
+			elif target_type == TYPE_BOOL:
+				if arg in ["true", "t", "y", "1"]:
+					return true
+				if arg in ["false", "f", "n", "0"]:
+					return false
+			elif target_type == TYPE_FLOAT:
+				var val = arg.to_float()
+				if is_zero_approx(val) and not arg.is_valid_float():
+					return null
+				return val
+			elif target_type == TYPE_INT:
+				var val = arg.to_int()
+				if val == 0 and not arg.begins_with("0"):
+					return null
+				return val
+			elif target_type == TYPE_ARRAY:
+				if not arg.begins_with("[") and arg.ends_with("]"):
+					return null
+				var contents = arg.trim_prefix("[").trim_suffix("]")
+				var array = []
+				var parts = contents.split(",", false)
+				for p:String in parts:
+					var stripped = p.strip_edges()
+					if stripped.ends_with("'") or stripped.ends_with('"'):
+						array.append(UString.unquote(stripped))
+					else:
+						array.append(infer_type(stripped))
+				return array
+			else:
+				var converted = type_convert(arg, target_type)
+				print("CONVERTED::", converted)
+				return converted
+		
+		
+		return null
+	
+	
+	static func infer_type(string:String):
+		if string in ["true", "t", "y"]:
+			return true
+		if string in ["false", "f", "n"]:
+			return false
+		if string.is_valid_int():
+			return string.to_int()
+		if string.is_valid_float():
+			return string.to_float()
+		if string.is_valid_html_color():
+			return Color.html(string)
+		
+		return string
 	
 	static func check_type(arg):
 		var type_idx = arg.find("<")
