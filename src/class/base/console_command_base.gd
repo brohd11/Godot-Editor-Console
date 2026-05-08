@@ -93,8 +93,12 @@ static func _call_method(callable:Callable, args:Array, create_default_args:=fal
 			return
 		
 	var obj = callable.get_object()
+	var script = obj
+	if not obj is GDScript:
+		script = obj.get_script()
+	
 	var method_name = callable.get_method()
-	var property_info = UtilsRemote.UClassDetail.get_member_info_by_path(obj, method_name)
+	var property_info = UtilsRemote.UClassDetail.get_member_info_by_path(script, method_name)
 	if not (property_info is Dictionary and property_info.has("args")):
 		ConsolePrint.error("Could not get method '%s' info in object: %s" % [method_name, obj])
 		return

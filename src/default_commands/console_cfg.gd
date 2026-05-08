@@ -234,7 +234,7 @@ static func clear_console(completion_context:CompletionContext): # this is a "pa
 	var commands = completion_context.commands
 	var arguments = completion_context.arguments
 	
-	if _has_help_command(commands, arguments):
+	if _has_help_command(completion_context):
 		print(CLEAR_HELP)
 		return
 	if commands.size() > 1:
