@@ -1,5 +1,7 @@
 extends EditorConsoleSingleton.ConsoleCommandBase
 
+const VarInsertType = preload("res://addons/addon_lib/brohd/alib_runtime/utils/gdscript/parser/utils/type_lookup/var_insert_type.gd")
+
 const UString = UtilsRemote.UString
 const UClassDetail = UtilsRemote.UClassDetail
 const UNode = UtilsRemote.UNode
@@ -34,17 +36,26 @@ static func get_commands_static():
 	return commands.get_commands()
 
 func get_commands() -> Dictionary: 
-	return get_commands_static()
+	var commands = Commands.new()
+	commands.add_command("format", false, format_script_type_hint)
+	commands.add_separator("Script")
+	var script_commands = get_commands_static()
+	commands._command_dict.merge(script_commands)
+	return commands.get_commands()
+	#return get_commands_static()
 
 func _get_standard_call_command_index(_commands:Array, _arguments:Array):
 	return 1 # for this script, this makes it always choose the 2nd command for executing
 
-func _command_requires_arguments(_selected_command:String) -> bool:
+func _command_requires_arguments(selected_command:String) -> bool:
+	if selected_command == "format":
+		return false
 	return true
 
 func get_completion(completion_context:CompletionContext) -> Dictionary:
 	var registered = get_commands()
 	var script = EditorInterface.get_script_editor().get_current_script()
+	#var script_commands = get_completion_static(completion_context, registered, script)
 	return get_completion_static(completion_context, registered, script)
 	
 static func get_completion_static(completion_context:CompletionContext, registered_commands:Dictionary, script:GDScript) -> Dictionary:
@@ -307,3 +318,11 @@ static func resolve_script_member_access(commands:Array, _arguments:Array):
 	var resolved_script = UClassDetail.get_member_info_by_path(script, c_1)
 	if resolved_script is GDScript:
 		return resolved_script
+
+
+func format_script_type_hint():
+	var parser = ALibEditor.Singletons.EditorGDScriptParser.get_parser()
+	var code_edit = ScriptEditorRef.get_current_code_edit()
+	VarInsertType.format_script(parser, code_edit)
+	
+	pass
