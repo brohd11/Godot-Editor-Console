@@ -1,5 +1,6 @@
 extends EditorConsoleSingleton.ConsoleCommandBase
 
+const EditorGDScriptParser = ALibEditor.Singleton.EditorGDScriptParser
 const VarInsertType = preload("res://addons/addon_lib/brohd/alib_runtime/utils/gdscript/parser/utils/type_lookup/var_insert_type.gd")
 
 const UString = UtilsRemote.UString
@@ -321,7 +322,7 @@ static func resolve_script_member_access(commands:Array, _arguments:Array):
 
 
 func format_script_type_hint():
-	var parser = ALibEditor.Singletons.EditorGDScriptParser.get_parser()
+	var parser = EditorGDScriptParser.get_parser()
 	var code_edit = ScriptEditorRef.get_current_code_edit()
 	VarInsertType.format_script(parser, code_edit)
 	

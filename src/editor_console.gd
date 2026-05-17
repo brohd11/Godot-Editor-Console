@@ -1,6 +1,6 @@
 class_name EditorConsoleSingleton #! singleton-module
 extends SingletonRefCount
-const SingletonRefCount = Singleton.RefCount
+const SingletonRefCount = Singletons.RefCount
 
 const SCRIPT = preload("res://addons/editor_console/src/editor_console.gd")
 
