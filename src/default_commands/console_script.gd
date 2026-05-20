@@ -1,7 +1,7 @@
 extends EditorConsoleSingleton.ConsoleCommandBase
 
-const EditorGDScriptParser = ALibEditor.Singleton.EditorGDScriptParser
-const VarInsertType = preload("res://addons/addon_lib/brohd/alib_runtime/utils/gdscript/parser/utils/type_lookup/var_insert_type.gd")
+const EditorGDScriptParser = preload("uid://t2dewmuth0sy") #! resolve ALibEditor.Singleton.EditorGDScriptParser
+const VarInsertType = preload("uid://ci11vn1timw1r") #! resolve ALibEditor.Utils.UGDScript.VarInsertType
 
 const UString = UtilsRemote.UString
 const UClassDetail = UtilsRemote.UClassDetail
