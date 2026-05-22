@@ -550,8 +550,8 @@ func _add_console_line_edit():
 	console_line_container.console_button.gui_input.connect(_on_button_gui_input)
 	
 	console_line_edit = console_line_container.console_line_edit
-	
-	filter_button.toggled.connect(_on_filter_toggled)
+	if is_instance_valid(filter_button):
+		filter_button.toggled.connect(_on_filter_toggled)
 	
 	set_var_highlighter()
 	

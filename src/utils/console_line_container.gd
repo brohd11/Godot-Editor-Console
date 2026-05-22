@@ -69,7 +69,8 @@ func apply_styleboxes(line_edit:LineEdit):
 	console_line_edit.add_theme_constant_override("caret_width", 8)
 	console_line_edit.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	
-	var log_text_edit = get_parent().get_parent().get_child(0) as RichTextLabel
+	#var log_text_edit = get_parent().get_parent().get_child(0) as RichTextLabel
+	var log_text_edit = EditorNodeRef.get_node_ref(EditorNodeRef.Nodes.EDITOR_LOG_RICH_TEXT_LABEL)
 	var font = log_text_edit.get_theme_font("normal_font")
 	os_label.add_theme_font_override("normal_font", font)
 	console_line_edit.add_theme_font_override("font", font)
