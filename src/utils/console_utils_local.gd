@@ -56,7 +56,7 @@ class ScopeDataKeys:
 class ParsePopupKeys extends UtilsRemote.PopupHelper.ParamKeys:
 	const ADD_ARGS = &"ADD_ARGS"
 	const REPLACE_WORD = &"REPLACE_WORD"
-	const ADD_TRAILING_SPACE = &"ADD_TRAILING_SPACE"
+	const TRAILING_CHAR = &"TRAILING_CHAR"
 	const ARG_COUNT = &"ARG_COUNT"
 	
 	const COMMAND_META = &"COMMAND_META"

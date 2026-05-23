@@ -52,11 +52,11 @@ static func get_os_home_dir():
 		return home
 
 func get_commands() -> Dictionary:
-	var commands_obj = Commands.new()
-	for cmd in EMULATED_COMMANDS:
+	var commands_obj:Commands = Commands.new()
+	for cmd:String in EMULATED_COMMANDS:
 		commands_obj.add_command(cmd)
-	for cmd in COMMAND_NEED_SCAN:
-		commands_obj.add_command(cmd)
+	#for cmd in COMMAND_NEED_SCAN: # Hiding these for now
+		#commands_obj.add_command(cmd)
 	return commands_obj.get_commands()
 
 func get_completion(completion_context:CompletionContext) -> Dictionary:
@@ -70,31 +70,52 @@ func get_completion(completion_context:CompletionContext) -> Dictionary:
 	var commands_obj = Commands.new()
 	var c_2 = commands[1]
 	if c_2 == "cd":
-		var working_dir = EditorConsoleSingleton.get_instance().os_cwd
-		var dirs = DirAccess.get_directories_at(working_dir)
+		var target_dir = EditorConsoleSingleton.get_instance().os_cwd
+		if commands.size() > 2:
+			var next_dir = commands[2]
+			if next_dir.ends_with("/"):
+				pass
+			elif next_dir.contains("/"):
+				next_dir = next_dir.get_base_dir()
+			else:
+				next_dir = ""
+			target_dir = target_dir.path_join(next_dir)
+		if not DirAccess.dir_exists_absolute(target_dir):
+			return {}
+		var dirs = DirAccess.get_directories_at(target_dir)
 		dirs = Array(dirs)
 		dirs.push_front("..")
 		if _check_command_index_valid(commands, 2, dirs):
 			return {}
 		for dir in dirs:
-			commands_obj.add_command(dir)
+			var p = Commands.Params.new()
+			p.replace_current_word = true
+			p.trailing_char = "/"
+			commands_obj.add_command_with_params(dir, p)
 	
 	return commands_obj.get_commands()
 
 func parse(completion_context:CompletionContext):
 	var commands = completion_context.commands
 	var arguments = completion_context.arguments
+	commands.remove_at(0) # remove preceding os passed by singleton parser, this should be fine to remove
 	
 	var editor_console = _get_singleton_instance()
-	print_rich("%s %s" % [editor_console.os_string, editor_console.last_command])
 	
 	var command_needs_scan = false
 	var result
 	var exe = commands[0]
 	if exe == "os":
-		editor_console.toggle_os_mode()
-		return
-	elif exe in EMULATED_COMMANDS:
+		if commands.size() == 1 or not EditorConsoleSingleton.get_instance().os_mode:
+			editor_console.toggle_os_mode()
+			return
+	
+	var trimmed_command = editor_console.last_command.trim_prefix("os").strip_edges()
+	if trimmed_command.is_empty():
+		trimmed_command = "os"
+	print_rich("%s %s" % [editor_console.os_string, trimmed_command])
+	
+	if exe in EMULATED_COMMANDS:
 		result = _emulated_command(commands, arguments)
 	else:
 		result = _execute_wrapper(commands, arguments)
@@ -139,6 +160,8 @@ static func _cd(commands:Array, arguments:Array):
 	#var global_res = ProjectSettings.globalize_path("res://")
 	if c_2 == "..":
 		editor_console.os_cwd = editor_console.os_cwd.get_base_dir()
+		return [""]
+	elif c_2 == ".":
 		return [""]
 	var dir_exists = _check_dir_exists_shell(c_2)
 	if dir_exists:

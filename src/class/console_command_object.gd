@@ -51,7 +51,7 @@ func add_command_no_space(cmd_name:String, add_arg_delim:=false, callable = null
 	var param = Params.new(add_arg_delim, callable)
 	param.icon = icon
 	param.replace_current_word = true
-	param.add_trailing_space = false
+	param.trailing_char = ""
 	add_command_with_params(cmd_name, param)
 
 func add_command_with_params(cmd_name:String, command_params:Params=null):
@@ -72,7 +72,7 @@ func add_command_with_params(cmd_name:String, command_params:Params=null):
 	
 	command_params.metadata[Keys.ADD_ARGS] = command_params.add_argument_delimiter
 	command_params.metadata[Keys.REPLACE_WORD] = command_params.replace_current_word
-	command_params.metadata[Keys.ADD_TRAILING_SPACE] = command_params.add_trailing_space
+	command_params.metadata[Keys.TRAILING_CHAR] = command_params.trailing_char
 	
 	if command_params.argument_count > -1:
 		command_params.metadata[Keys.ARG_COUNT] = command_params.argument_count
@@ -91,7 +91,7 @@ class Params:
 	var icon = null
 	var add_argument_delimiter:= false
 	var replace_current_word:= false
-	var add_trailing_space:= true
+	var trailing_char:= " " # default to a space
 	var argument_count:= -1
 	var metadata = {}
 	

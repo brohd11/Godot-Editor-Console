@@ -15,6 +15,7 @@ const CommandKeys = UtilsLocal.ParsePopupKeys
 const Commands = UtilsLocal.ConsoleCommandObject
 const CompletionContext = UtilsLocal.CompletionContext
 
+const REPLACE_DELIMS = [" ", ".", "/"]
 
 var console_panel:PanelContainer
 var console_hsplit:HBoxContainer#:HSplitContainer # this was an hsplit to allow the label to clip I think
@@ -255,8 +256,9 @@ class ConsoleLineEdit extends CodeEdit:
 		
 		if metadata.get(CommandKeys.ADD_ARGS, false):
 			text_to_add = text_to_add + " --"
-		if metadata.get(CommandKeys.ADD_TRAILING_SPACE, true):
-			text_to_add += " "
+		
+		var trailing_char = metadata.get(CommandKeys.TRAILING_CHAR, " ")
+		text_to_add += trailing_char
 		
 		var replace_word = metadata.get(CommandKeys.REPLACE_WORD, false)
 		if replace_word and get_word_at_pos(get_caret_draw_pos()) != "":
@@ -286,10 +288,18 @@ class ConsoleLineEdit extends CodeEdit:
 	
 	func _get_indexes_before_caret():
 		var caret_col = get_caret_column()
-		var substring = text.substr(0, caret_col).strip_edges().trim_suffix(".")
-		var space_idx = UtilsRemote.UString.rfind_index_safe(substring, " ", caret_col)
-		var dot_idx = UtilsRemote.UString.rfind_index_safe(substring, ".", caret_col)
-		var del_idx = max(space_idx, dot_idx)
+		var substring = text.substr(0, caret_col).strip_edges()
+		for del in REPLACE_DELIMS:
+			if substring.ends_with(del):
+				substring = substring.trim_suffix(del)
+				break
+		
+		var del_idx = -1
+		for del in REPLACE_DELIMS:
+			var idx = UtilsRemote.UString.rfind_index_safe(substring, del, caret_col)
+			if idx > -1:
+				del_idx = idx
+		
 		if del_idx == -1:
 			del_idx = 0
 		elif text.substr(0, del_idx).strip_edges() == "":
