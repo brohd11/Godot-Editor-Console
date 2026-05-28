@@ -19,7 +19,7 @@ static func get_arg_delimiter_command():
 func get_options():
 	return _option_dict
 
-func set_commands(option_dict:Dictionary):
+func set_options(option_dict:Dictionary):
 	_option_dict = option_dict
 
 func merge(options, overwrite:=false):

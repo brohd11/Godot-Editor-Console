@@ -11,7 +11,6 @@ const Colors = UtilsLocal.Colors
 
 const CommandBase = UtilsLocal.CommandBase
 
-const ConsoleCommandBase = UtilsLocal.ConsoleCommandBase
 const ConsoleCommandSetBase = UtilsLocal.ConsoleCommandSetBase
 const CompletionContext = UtilsLocal.CompletionContext
 
@@ -398,11 +397,11 @@ func parse_input(completion_context:CompletionContext) -> void:
 	completion_context.execute = true
 	
 	var c_1 = commands[0]
-	if c_1 == "clear":
-		if UtilsLocal.check_help(commands):
-			print_rich("%s %s" % [_get_console_label_string(), display_text])
-		UtilsLocal.ConsoleCfg.clear_console(completion_context)
-		return
+	#if c_1 == "clear":
+		#if UtilsLocal.check_help(commands):
+			#print_rich("%s %s" % [_get_console_label_string(), display_text])
+		#UtilsLocal.ConsoleCfg.clear_console(completion_context)
+		#return
 	
 	if terminal_input == "os":
 		toggle_os_mode()
@@ -444,8 +443,9 @@ func _scope_parse(_name, completion_context:CompletionContext):
 			result = script.execute(completion_context)
 		else:
 			print("Could not parse in object: %s" % scope)
-	if result != null:
-		print(result)
+	
+	#if result != null: # this is now CommandBase.ExitCode
+		#print(result)
 
 
 func _console_gui_input(event: InputEvent) -> void:

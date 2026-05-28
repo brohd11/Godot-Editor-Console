@@ -21,7 +21,6 @@ static func get_self_option_data() -> Dictionary:
 
 func _consume_self(ctx:CompletionContext) -> ExitCode:
 	var class_nm = _consume_token(ctx)
-	
 	if class_nm == "global":
 		if ctx.tokens_empty_and_execute():
 			return ExitCode.HELP
@@ -34,13 +33,6 @@ func _consume_self(ctx:CompletionContext) -> ExitCode:
 	if script != null:
 		global_access_path = class_nm
 		ctx.data["script"] = script
-	
-	
-	#if script == null and not ctx.execute:
-		#return ExitCode.OK
-	#
-	#global_access_path = class_nm
-	#ctx.data["script"] = script
 	
 	if ctx.tokens_empty_and_execute():
 		return ExitCode.HELP

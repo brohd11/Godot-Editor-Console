@@ -4,7 +4,7 @@ const Pr = UtilsRemote.UString.PrintRich
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 const ConsoleTokenizer = UtilsLocal.ConsoleTokenizer
-const Commands = UtilsLocal.ConsoleCommandObject
+const Options = UtilsLocal.Options
 const CompletionContext = UtilsLocal.CompletionContext
 const ConsolePrint = UtilsLocal.Print
 const Colors = UtilsLocal.Colors
@@ -20,8 +20,8 @@ static func _convert_args_to_variables(arguments:Array):
 
 
 func get_commands() -> Dictionary:
-	var commands = Commands.new()
-	return commands.get_commands()
+	var commands = Options.new()
+	return commands.get_options()
 
 func _get_valid_commands_for_index(completion_context:CompletionContext, cmd_idx:int) -> Dictionary:
 	var commands = completion_context.commands
@@ -37,10 +37,10 @@ func _get_valid_commands_for_index(completion_context:CompletionContext, cmd_idx
 	if data is String:
 		return {}
 	if data is Dictionary:
-		var commands_obj = Commands.new()
+		var commands_obj = Options.new()
 		for c in data.get("c", []):
-			commands_obj.add_command(c)
-		return commands_obj.get_commands()
+			commands_obj.add_option(c)
+		return commands_obj.get_options()
 	return {}
 
 func get_completion(completion_context:CompletionContext) -> Dictionary:
@@ -77,7 +77,7 @@ func _call_standard_command(completion_context:CompletionContext):
 		print("Standard call")
 		_unrecognized_command(target_command)
 		return
-	var callable = command_data.get(Commands.Keys.CALLABLE)
+	var callable = command_data.get(Options.Keys.CALLABLE)
 	if callable == null:
 		UtilsLocal.Print.error("No callable for command: %s" % target_command)
 	else:

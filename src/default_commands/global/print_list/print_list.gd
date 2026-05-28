@@ -22,16 +22,17 @@ static func get_self_option_data() -> Dictionary:
 
 
 func _get_flags() -> Dictionary:
-	var completions = Completions.new()
+	var options = Options.new()
 	for arg in _PRINT_LIST_OPTIONS:
 		if arg.ends_with("="):
-			completions.add_command_no_space(arg)
+			options.add_option(arg, {
+				&"trailing_char": ""
+			})
 		else:
-			completions.add_command(arg)
-	return completions.get_commands()
+			options.add_option(arg)
+	return options.get_options()
 
 func _process_flag(flag:String):
-	print("FLAG::", flag)
 	if flag in ["-t", "--tool"]:
 		show_tool = true
 	elif flag in ["-a", "--abstract"]:
@@ -54,7 +55,7 @@ func _get_completions(ctx:CompletionContext):
 		return {}
 	return get_flags(true)
 
-func _execute(ctx:CompletionContext):
+func _execute(_ctx:CompletionContext):
 	_print_list()
 
 # global commands

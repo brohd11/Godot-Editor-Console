@@ -1,20 +1,16 @@
 
 const EditorConsoleSingleton = preload("res://addons/editor_console/src/editor_console.gd")
 
-const ConsoleCommandBase = preload("uid://d2x2726tmgnq0") # console_command_base.gd
 const ConsoleCommandSetBase = preload("uid://bu27r1hpnfinp") # console_command_set_base.gd
 
 const CommandBase = preload("res://addons/editor_console/src/class/base/command_base.gd")
+const Options = preload("res://addons/editor_console/src/class/base/command_options.gd")
 
 
 const DefaultCommands = preload("res://addons/editor_console/src/default_commands/scope_set/default.gd")
-const ConsoleCfg = preload("res://addons/editor_console/src/default_commands/console_cfg.gd")
-const ConsoleHelp = preload("res://addons/editor_console/src/default_commands/console_help.gd")
-const ConsoleOS = preload("res://addons/editor_console/src/default_commands/console_os.gd")
-const ConsoleMisc = preload("res://addons/editor_console/src/default_commands/console_misc.gd")
 
-const ConsoleGlobalClass = preload("res://addons/editor_console/src/default_commands/console_global_class.gd")
-const ConsoleScript = preload("res://addons/editor_console/src/default_commands/console_script.gd")
+const ConsoleOS = preload("res://addons/editor_console/src/default_commands/misc/os/os.gd")
+
 
 const SyntaxHl = preload("res://addons/editor_console/src/utils/console_syntax.gd")
 

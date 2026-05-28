@@ -20,16 +20,16 @@ static func get_self_option_data() -> Dictionary:
 	})
 
 func _get_flags() -> Dictionary:
-	var commands_obj = Commands.new()
+	var options = Options.new()
 	for cmd in LIST_COMMANDS_OPTIONS:
-		commands_obj.add_command(cmd)
+		options.add_option(cmd)
 	
-	#if commands_obj.size() < LIST_COMMANDS_OPTIONS.size():
-	commands_obj.add_separator("Modifiers")
+	#if options.size() < LIST_COMMANDS_OPTIONS.size():
+	options.add_separator("Modifiers")
 	for cmd in LIST_MODIFIER_OPTIONS:
-		commands_obj.add_command(cmd)
+		options.add_option(cmd)
 	
-	return commands_obj.get_commands()
+	return options.get_options()
 
 
 
@@ -49,7 +49,7 @@ func _get_completions(ctx:CompletionContext):
 func _execute(ctx:CompletionContext):
 	consumed_tokens.erase("list")
 	if consumed_tokens.is_empty():
-		print("USAGE")
+		_get_help_for_token("list")
 		return
 	if not ctx.unconsumed_tokens.is_empty():
 		print("Unrecognized commands: ", ctx.unconsumed_tokens)

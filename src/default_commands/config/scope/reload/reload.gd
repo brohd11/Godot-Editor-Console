@@ -12,7 +12,7 @@ static func get_self_option_data() -> Dictionary:
 		&"help": _HELP
 	})
 
-func _execute(ctx:CompletionContext):
+func _execute(_ctx:CompletionContext):
 	var success = EditorConsoleSingleton.get_instance()._load_default_commands()
 	if success:
 		print("Reloaded command sets.")

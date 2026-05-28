@@ -12,7 +12,7 @@ const UList = UtilsRemote.UList
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 const CommandKeys = UtilsLocal.ParsePopupKeys
-const Commands = UtilsLocal.ConsoleCommandObject
+const Options = UtilsLocal.Options
 const CompletionContext = UtilsLocal.CompletionContext
 
 const REPLACE_DELIMS = [" ", ".", "/"]
@@ -140,11 +140,11 @@ class ConsoleLineEdit extends CodeEdit:
 				return
 			first_word = front
 		
-		var commands = Commands.new()
+		var options = Options.new()
 		if not (first_word in all_scope_names or first_word in global_class_names):
 			for scope:String in scope_names:
-				commands.add_command(scope)
-			_build_popup(commands.get_commands())
+				options.add_option(scope)
+			_build_popup(options.get_options())
 			return
 		
 		if completion_context.word_before_cursor == first_word:
@@ -166,23 +166,23 @@ class ConsoleLineEdit extends CodeEdit:
 				var comp_data = command_script.complete(completion_context)
 				if comp_data != null:
 					if comp_data is Dictionary:
-						commands.set_commands(comp_data)
+						options.set_options(comp_data)
 					else:
 						print("Error getting completion in object: %s" % command_script, " -> ", comp_data)
 		
-		var command_meta = commands.get_commands().get(CommandKeys.COMMAND_META, {}) # should this be from the commands?
+		var command_meta = options.get_options().get(CommandKeys.COMMAND_META, {}) # should this be from the commands?
 		var show_variables = command_meta.get(CommandKeys.SHOW_VARIABLES, false)
 		#show_variables = true #ALERT
-		if completion_context.input_text.find(Commands.ARG_DELIMITER) > -1:
-			commands.remove_command(Commands.ARG_DELIMITER)
+		if completion_context.input_text.find(Options.ARG_DELIMITER) > -1:
+			options.remove_option(Options.ARG_DELIMITER)
 			if show_variables:
 				var var_nms = variable_dict.keys()
 				if var_nms.size() > 0:
-					commands.add_separator("Variables")
+					options.add_separator("Variables")
 				for nm in var_nms:
-					commands.add_command(nm)
+					options.add_option(nm)
 		
-		_build_popup(commands.get_commands())
+		_build_popup(options.get_options())
 	
 	
 	func _build_popup(item_dict:Dictionary):

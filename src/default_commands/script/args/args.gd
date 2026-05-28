@@ -20,9 +20,9 @@ static func get_self_option_data() -> Dictionary:
 	})
 
 func _get_flags():
-	var commands = Commands.new()
-	commands.add_command("--private")
-	return commands.get_commands()
+	var options = Options.new()
+	options.add_option("--private")
+	return options.get_options()
 
 func _process_flag(flag:String):
 	if flag == "--private":
@@ -41,9 +41,7 @@ func _get_completions(ctx:CompletionContext):
 	return methods
 
 func _execute(ctx:CompletionContext):
-	print("EXECUTE")
 	var method_name = positional_args[0]
-	
 	var script = ScriptUtil.get_script_from_ctx(ctx)
 	var methods = ScriptUtil.get_methods_from_ctx(ctx, show_private, false, false)
 	if not method_name in methods:
@@ -74,7 +72,3 @@ static func list_args(script:Script, method_name:String):
 			color = Colors.VAR_RED
 		pr.append(name + ":").append(type, color).append("  ")
 	pr.display()
-
-
-static func test():
-	return "YER"

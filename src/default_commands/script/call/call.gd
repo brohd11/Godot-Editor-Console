@@ -19,10 +19,10 @@ static func get_self_option_data() -> Dictionary:
 
 
 func _get_flags():
-	var commands = Commands.new()
-	commands.add_command("--private")
-	commands.add_command("--default")
-	return commands.get_commands()
+	var options = Options.new()
+	options.add_option("--private")
+	options.add_option("--default")
+	return options.get_options()
 
 func _process_flag(flag:String):
 	if flag == "--private":
@@ -43,10 +43,6 @@ func _get_completions(ctx:CompletionContext):
 	return methods
 
 func _execute(ctx:CompletionContext):
-	if not _correct_positional_count(1):
-		print(positional_args)
-		return ExitCode.FAIL
-	
 	var method_name = positional_args[0]
 	var script = ScriptUtil.get_script_from_ctx(ctx)
 	var methods = ScriptUtil.get_methods_from_ctx(ctx, show_private, true)
@@ -63,8 +59,3 @@ func call_method(script:Script, method_name:String, args:Array):
 		return
 	var callable = script.get(method_name)
 	_call_method(callable, args, create_default)
-
-
-static func test(arg1:int):
-	print("ARGS::", arg1)
-	return "YER"

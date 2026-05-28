@@ -21,8 +21,7 @@ func _process_flag(flag:String):
 	if flag == "--history":
 		clear_history = true
 
-func _execute(ctx:CompletionContext):
-	return
+func _execute(_ctx:CompletionContext):
 	if clear_history:
 		EditorConsoleSingleton.get_instance().previous_commands.clear()
 		

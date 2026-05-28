@@ -4,9 +4,8 @@ const UClassDetail = UtilsRemote.UClassDetail
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 const ConsoleLineEdit = UtilsLocal.ConsoleLineContainer.ConsoleLineEdit
-const Commands = UtilsLocal.ConsoleCommandBase.Commands
 
-const ARG_DELIMITER = Commands.ARG_DELIMITER
+const ARG_DELIMITER = UtilsLocal.Options.ARG_DELIMITER
 
 var execute:bool = false
 
@@ -60,7 +59,7 @@ func _init(_line_edit:ConsoleLineEdit):
 	if not words.is_empty():
 		first_word = words[0]
 	
-	has_arg_delimiter = input_text.find(Commands.ARG_DELIMITER) > -1
+	has_arg_delimiter = input_text.find(UtilsLocal.Options.ARG_DELIMITER) > -1
 	
 	var tokenizer = UtilsLocal.ConsoleTokenizer.new()
 	var result = tokenizer.parse_command_string(input_text)

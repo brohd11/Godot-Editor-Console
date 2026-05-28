@@ -63,12 +63,12 @@ func _get_commands() -> Dictionary:
 	return {}
 
 func _get_os_commands() -> Dictionary:
-	var commands_obj:Commands = Commands.new()
+	var options:Options = Options.new()
 	for cmd:String in EMULATED_COMMANDS:
-		commands_obj.add_command(cmd)
+		options.add_option(cmd)
 	#for cmd in COMMAND_NEED_SCAN: # Hiding these for now
 		#commands_obj.add_command(cmd)
-	return commands_obj.get_commands()
+	return options.get_options()
 
 func _consume_self(ctx:CompletionContext) -> ExitCode:
 	consumed_tokens.append(_consume_token(ctx))
@@ -120,12 +120,7 @@ func _execute(_ctx:CompletionContext):
 		editor_console.toggle_os_mode()
 		return ExitCode.OK
 	
-	print("NEW OS")
-	print(positional_args)
-	
 	var command_needs_scan = false # not being set?
-	
-	
 	
 	var trimmed_command = editor_console.last_command.trim_prefix("os").strip_edges()
 	if trimmed_command.is_empty():

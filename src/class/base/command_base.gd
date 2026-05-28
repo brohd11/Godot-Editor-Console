@@ -1,17 +1,15 @@
-const PRINT_DEBUG = true
+const PRINT_DEBUG = false
 
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 const Pr = UtilsRemote.UString.PrintRich
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 const ConsoleTokenizer = UtilsLocal.ConsoleTokenizer
-const Completions = UtilsLocal.ConsoleCommandObject
-const Commands = UtilsLocal.ConsoleCommandObject
 const CompletionContext = UtilsLocal.CompletionContext
 const ConsolePrint = UtilsLocal.Print
 const Colors = UtilsLocal.Colors
 
-const Options = preload("res://addons/editor_console/src/class/base/command_options.gd")
+const Options = UtilsLocal.Options
 
 const _RESULTS_TO_SKIP = ["GDScriptFunctionState"]
 const _UNAMED = "UnamedCommand"
@@ -76,7 +74,6 @@ func _route(ctx:CompletionContext): # shared by both passes
 				if i == 1:
 					_get_help_for_token(consumed_tokens.back())
 				else:
-					print("GET HELP FOR:", ctx.unconsumed_tokens[i - 2])
 					_get_help_for_token(ctx.unconsumed_tokens[i - 2])
 			return ExitCode.HELP
 		
@@ -86,7 +83,7 @@ func _route(ctx:CompletionContext): # shared by both passes
 		if PRINT_DEBUG:
 			print("DATA::", option_data)
 		if token in flags:
-			var pos_args = []
+			#var pos_args = []
 			#if option_data.has(&"token_count"): #TODO this needs to be rethunked
 				#var tok_count = option_data.token_count
 				#if tok_count > 1:
@@ -98,20 +95,16 @@ func _route(ctx:CompletionContext): # shared by both passes
 			consumed += 1
 		elif token in commands:
 			if option_data.has(&"get_command"):
-				#print("HAS COMMAND")
 				selected = option_data.get_command.call()
 			else:
 				selected = _get_command(token)
-			
-			#print("SELECTED::", selected)
-			#consumed += 1 # consume the child's name too, so it doesn't re-see it
 			break
 		else:
-			print("IN UNREC::", ctx.unconsumed_tokens)
 			for j in range(consumed, ctx.unconsumed_tokens.size()):
 				positional_count += 1
+			
 			if ctx.execute:
-				if ctx.unconsumed_tokens.is_empty():
+				if ctx.unconsumed_tokens.is_empty(): # not sure about this, think it's irrelavant
 					selected = ExitCode.FAIL
 				else:
 					selected = null # eExitCode will cause an exit. null will attempt execute
@@ -241,12 +234,17 @@ func _get_commands_in_dir(sort_priority:=true):
 		if file_path == path:
 			continue
 		var script = load(file_path)
-		print(file_path)
 		Options.add_command_to_dict(script, options)
 	if sort_priority:
 		options = ALibRuntime.Utils.USort.sort_dict_with_priority_key(options, &"priority")
 		
 	return options
+
+func print_available_commands():
+	var commands = get_commands()
+	print("Available commands:")
+	for c in commands:
+		print("\t", c)
 
 func _get_command(command:String):
 	print("Unrecognized command - get command: ", command)
@@ -279,7 +277,7 @@ static func _call_method(callable:Callable, args:Array, create_default_args:=fal
 	# convert variables to $VAR
 	var tok = EditorConsoleSingleton.get_instance().tokenizer
 	for i in range(args.size()):
-		args[i] = tok.get_arg_variables(args[i])
+		args[i] = tok.get_variable(args[i])
 	# end
 	
 	var callable_arg_count = callable.get_argument_count()
@@ -300,7 +298,7 @@ static func _call_method(callable:Callable, args:Array, create_default_args:=fal
 		return
 	var valid_args = true
 	var callable_args = property_info.get("args")
-	if create_default_args:
+	if create_default_args or args.size() == callable_arg_count:
 		var default_args = property_info.get("default_args", []) as Array
 		for i in range(callable_args.size() - default_args.size()):
 			default_args.push_front(null)
@@ -350,6 +348,7 @@ static func _call_method(callable:Callable, args:Array, create_default_args:=fal
 		return
 	var result = callable.callv(args)
 	if result != null:
+		print("RES::", result)
 		if result is Object:
 			if result.get_class() in _RESULTS_TO_SKIP:
 				return
