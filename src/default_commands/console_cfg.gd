@@ -231,6 +231,9 @@ static func _global(completion_context:CompletionContext):
 
 
 static func clear_console(completion_context:CompletionContext): # this is a "parse" callable
+	print("CALLING HERE")
+	return
+	
 	var commands = completion_context.commands
 	var arguments = completion_context.arguments
 	

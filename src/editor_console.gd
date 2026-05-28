@@ -8,6 +8,9 @@ const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_
 
 const ScopeDataKeys = UtilsLocal.ScopeDataKeys
 const Colors = UtilsLocal.Colors
+
+const CommandBase = UtilsLocal.CommandBase
+
 const ConsoleCommandBase = UtilsLocal.ConsoleCommandBase
 const ConsoleCommandSetBase = UtilsLocal.ConsoleCommandSetBase
 const CompletionContext = UtilsLocal.CompletionContext
@@ -433,8 +436,12 @@ func _scope_parse(_name, completion_context:CompletionContext):
 	if callable:
 		result = callable.call(completion_context)
 	else:
+		if script is GDScript:
+			script = script.new()
 		if script.has_method("parse"):
 			result = script.parse(completion_context)
+		elif script.has_method("execute"):
+			result = script.execute(completion_context)
 		else:
 			print("Could not parse in object: %s" % scope)
 	if result != null:

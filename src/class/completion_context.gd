@@ -10,11 +10,15 @@ const ARG_DELIMITER = Commands.ARG_DELIMITER
 
 var execute:bool = false
 
+var unconsumed_tokens:= []
+var data := {}
+
 var line_edit:ConsoleLineEdit
 
 var caret_col:int
 var char_before_cursor:String
 var word_before_cursor:String
+var token_before_cursor:String
 var raw_text:String
 var input_text:String
 var words:Array
@@ -35,8 +39,8 @@ func _init(_line_edit:ConsoleLineEdit):
 	
 	raw_text = line_edit.text
 	input_text = raw_text
-	if line_edit.os_mode:
-		input_text = "os " + raw_text
+	if line_edit.os_mode and not input_text.strip_edges().begins_with("os"):
+		input_text = "os " + raw_text # add os so that the parser triggers, will be consumed by the os node
 	
 	caret_col = line_edit.get_caret_column()
 	char_before_cursor = ""
@@ -64,7 +68,20 @@ func _init(_line_edit:ConsoleLineEdit):
 	arguments = result.args
 	display_text = result.display
 	
+	var left_tokens = tokenizer.parse_command_string(input_text.left(caret_col))
+	token_before_cursor = ""
+	if left_tokens.commands.size() > 0:
+		token_before_cursor = left_tokens.commands[left_tokens.commands.size() - 1]
+	
+	unconsumed_tokens = commands.duplicate()
+	
 	scope_names = line_edit.scope_dict.keys()
 	#scope_names = line_edit.combined_scope_dict.keys()
 	global_classes = UClassDetail.get_all_global_class_paths()
 	global_class_names = global_classes.keys()
+
+func tokens_empty_and_execute():
+	return unconsumed_tokens.is_empty() and execute
+
+func tokens_empty():
+	return unconsumed_tokens.is_empty()

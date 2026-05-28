@@ -1,0 +1,356 @@
+const PRINT_DEBUG = true
+
+const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
+const Pr = UtilsRemote.UString.PrintRich
+
+const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
+const ConsoleTokenizer = UtilsLocal.ConsoleTokenizer
+const Completions = UtilsLocal.ConsoleCommandObject
+const Commands = UtilsLocal.ConsoleCommandObject
+const CompletionContext = UtilsLocal.CompletionContext
+const ConsolePrint = UtilsLocal.Print
+const Colors = UtilsLocal.Colors
+
+const Options = preload("res://addons/editor_console/src/class/base/command_options.gd")
+
+const _RESULTS_TO_SKIP = ["GDScriptFunctionState"]
+const _UNAMED = "UnamedCommand"
+
+enum ExitCode {
+	OK,
+	FAIL,
+	HELP,
+}
+
+var consumed_tokens = []
+var positional_args = []
+
+func _initialize():
+	positional_args = []
+	consumed_tokens = []
+
+static func get_command_name() -> String:
+	return _UNAMED
+
+func __get_name__():
+	var nm = get_command_name()
+	if nm == _UNAMED:
+		print("Unamed Command in -> ", get_script().resource_path.get_file())
+	return nm
+
+static func get_self_option_data() -> Dictionary:
+	return {_UNAMED: true}
+
+func __get_self_option_data__() -> Dictionary:
+	var data = get_self_option_data()
+	if data.has(_UNAMED):
+		print("Command doesn't have self_option_data defined -> ", get_script().resource_path.get_file())
+		return {}
+	return data
+
+
+
+func _route(ctx:CompletionContext): # shared by both passes
+	_initialize()
+	if PRINT_DEBUG:
+		print("UNCONSUMED BEFORE::", ctx.unconsumed_tokens)
+	
+	var self_command_data = __get_self_option_data__()
+	var consume_exit = _consume_self(ctx)
+	if consume_exit == ExitCode.HELP:
+		if ctx.execute:
+			_get_help_for_token(consumed_tokens.back())
+		return ExitCode.HELP
+	var flags = get_flags()
+	var commands = get_commands()
+	var consumed = 0
+	var positional_count = 0
+	var selected = null
+	#for token in ctx.unconsumed_tokens:
+	var i = 0
+	while i < ctx.unconsumed_tokens.size():
+		var token = ctx.unconsumed_tokens[i]
+		i += 1
+		if token == "--help":
+			if ctx.execute: # i - 2 because we added 1 right away
+				if i == 1:
+					_get_help_for_token(consumed_tokens.back())
+				else:
+					print("GET HELP FOR:", ctx.unconsumed_tokens[i - 2])
+					_get_help_for_token(ctx.unconsumed_tokens[i - 2])
+			return ExitCode.HELP
+		
+		var full_token = token # keep full to pass to flag
+		token = _split_flag(token)
+		var option_data = _get_option_data(token, flags, commands)
+		if PRINT_DEBUG:
+			print("DATA::", option_data)
+		if token in flags:
+			var pos_args = []
+			#if option_data.has(&"token_count"): #TODO this needs to be rethunked
+				#var tok_count = option_data.token_count
+				#if tok_count > 1:
+					#if ctx.unconsumed_tokens.size() < tok_count:
+						#return ExitCode.FAIL # is this right?
+					#for j in range(1, tok_count):
+						#pos_args.append(_consume_token(ctx))
+			_process_flag(full_token)
+			consumed += 1
+		elif token in commands:
+			if option_data.has(&"get_command"):
+				#print("HAS COMMAND")
+				selected = option_data.get_command.call()
+			else:
+				selected = _get_command(token)
+			
+			#print("SELECTED::", selected)
+			#consumed += 1 # consume the child's name too, so it doesn't re-see it
+			break
+		else:
+			print("IN UNREC::", ctx.unconsumed_tokens)
+			for j in range(consumed, ctx.unconsumed_tokens.size()):
+				positional_count += 1
+			if ctx.execute:
+				if ctx.unconsumed_tokens.is_empty():
+					selected = ExitCode.FAIL
+				else:
+					selected = null # eExitCode will cause an exit. null will attempt execute
+					#for j in range(consumed, ctx.unconsumed_tokens.size()):
+						#positional_count += 1
+				break
+				#return null # unrecognized; caller decides how to report
+			elif token != ctx.token_before_cursor or ctx.char_before_cursor == " ": # if you are past the current or char is 
+				selected = ExitCode.FAIL
+				break
+			else:
+				break
+	
+	if selected is ExitCode and selected == ExitCode.FAIL:
+		_get_help_for_token(ctx.unconsumed_tokens.front())
+	
+	for j in range(consumed):
+		_consume_token(ctx)
+	for j in range(positional_count):
+		positional_args.append(_consume_token(ctx))
+	
+	if PRINT_DEBUG:
+		print("UNCONSUMED AFTER::", ctx.unconsumed_tokens)
+	return selected
+
+func _consume_self(ctx:CompletionContext) -> ExitCode:
+	_consume_token(ctx)
+	#if ctx.unconsumed_tokens.is_empty(): # not sure about this..
+	#if ctx.tokens_empty_and_execute():
+		#return ExitCode.HELP
+	return ExitCode.OK
+
+func _consume_token(ctx:CompletionContext):
+	var tok = ctx.unconsumed_tokens.pop_front()
+	consumed_tokens.append(tok)
+	return tok
+
+func execute(ctx:CompletionContext):
+	var selected = _route(ctx)
+	if PRINT_DEBUG:
+		print("SEL::", selected)
+	if selected is ExitCode:
+		return selected
+	if selected:
+		return selected.execute(ctx)
+	# no child selected: this node requires one -> print usage
+	if not _correct_positional_count():
+		_get_help_for_token(consumed_tokens.front())
+		#print(positional_args)
+		return ExitCode.FAIL
+	return _execute(ctx)
+
+func _execute(ctx:CompletionContext):
+	var help = consumed_tokens.front()
+	_get_help_for_token(help)
+	return ExitCode.FAIL
+
+func complete(ctx:CompletionContext):
+	var selected = _route(ctx)
+	if selected is ExitCode:
+		return selected
+	if PRINT_DEBUG:
+		print("SEL in COMPLETE::", selected)
+	if selected:
+		return selected.complete(ctx)
+	# no child selected: complete against remaining flags / child names
+	return _get_completions(ctx)
+
+func _get_completions(ctx:CompletionContext):
+	var options = get_flags(true)
+	options.merge(get_commands(true))
+	return options
+
+
+func get_flags(hide_consumed:=false) -> Dictionary:
+	var options = _get_flags()
+	if not hide_consumed:
+		return options
+	for c in options.keys():
+		var split = _split_flag(c)
+		if split in consumed_tokens:
+			options.erase(c)
+	return options
+
+
+func _get_flags() -> Dictionary:
+	return {}
+
+func _split_flag(token:String):
+	if not token.contains("="):
+		return token
+	return token.substr(0, token.find("=") + 1)
+
+#! keys i-Options.add_option;
+func _get_option_data(token:String, flags:Dictionary, commands:Dictionary):
+	if token == __get_name__():
+		return __get_self_option_data__()
+	var data = flags.get(token)
+	if data == null:
+		data = commands.get(token)
+	return data
+
+func _process_flag(flag:String):
+	return
+
+func get_commands(hide_consumed:=false) -> Dictionary:
+	var options = _get_commands()
+	if not hide_consumed:
+		return options
+	for c in options.keys():
+		if c in consumed_tokens:
+			options.erase(c)
+	return options
+
+func _get_commands() -> Dictionary:
+	return _get_commands_in_dir()
+
+func _get_commands_in_dir(sort_priority:=true):
+	var path = get_script().resource_path
+	var base_dir = path.get_base_dir()
+	var dirs = DirAccess.get_directories_at(base_dir)
+	var options = {}
+	for d in dirs:
+		var file_path = base_dir.path_join(d).path_join(d) + ".gd"
+		if not FileAccess.file_exists(file_path):
+			continue
+		if file_path == path:
+			continue
+		var script = load(file_path)
+		print(file_path)
+		Options.add_command_to_dict(script, options)
+	if sort_priority:
+		options = ALibRuntime.Utils.USort.sort_dict_with_priority_key(options, &"priority")
+		
+	return options
+
+func _get_command(command:String):
+	print("Unrecognized command - get command: ", command)
+	return
+
+func _get_help_for_token(token:String):
+	var split = _split_flag(token)
+	var option_data = _get_option_data(split, get_flags(), get_commands())
+	if option_data != null and option_data.has(&"help"):
+		print(option_data.get(&"help"))
+	else:
+		_get_help(token)
+
+
+func _get_help(what:String):
+	print("Unrecognized command - help base: ", what)
+
+func _correct_positional_count(target_size:int=-1):
+	if target_size == -1:
+		target_size = _get_target_positional_count()
+	if positional_args.size() != target_size:
+		print("Positional argument count incorrect: Expected %s, got %s" % [target_size, positional_args.size()])
+		return false
+	return true
+
+func _get_target_positional_count() -> int:
+	return get_self_option_data().get(&"positional_count", 0)
+
+static func _call_method(callable:Callable, args:Array, create_default_args:=false):
+	# convert variables to $VAR
+	var tok = EditorConsoleSingleton.get_instance().tokenizer
+	for i in range(args.size()):
+		args[i] = tok.get_arg_variables(args[i])
+	# end
+	
+	var callable_arg_count = callable.get_argument_count()
+	if args.size() != callable_arg_count:
+		if not create_default_args:
+			UtilsLocal.Print.error_arg_count(callable, args)
+			return
+		
+	var obj = callable.get_object()
+	var script = obj
+	if not obj is GDScript:
+		script = obj.get_script()
+	
+	var method_name = callable.get_method()
+	var property_info = UtilsRemote.UClassDetail.get_member_info_by_path(script, method_name)
+	if not (property_info is Dictionary and property_info.has("args")):
+		ConsolePrint.error("Could not get method '%s' info in object: %s" % [method_name, obj])
+		return
+	var valid_args = true
+	var callable_args = property_info.get("args")
+	if create_default_args:
+		var default_args = property_info.get("default_args", []) as Array
+		for i in range(callable_args.size() - default_args.size()):
+			default_args.push_front(null)
+		var new_args = []
+		for i in range(callable_args.size()):
+			var arg_data = callable_args[i]
+			var type:int = arg_data.get("type")
+			if i < args.size():
+				var passed = args[i]
+				if type > 0 and typeof(passed) != type:
+					var err:= true
+					var pass_str = type_string(typeof(passed))
+					if type != TYPE_OBJECT:
+						var converted = ConsoleTokenizer.Var.auto_convert(passed, type)
+						if converted != null:
+							args[i] = converted
+							print("Arg '%s' conversion: %s %s -> %s %s" % [arg_data.get("name"), pass_str, passed, type_string(type), converted])
+							err = false
+					if err:
+						ConsolePrint.error("Arg '%s' type mismatch: %s passed, should be %s" % [arg_data.get("name"), pass_str, type_string(type)])
+						valid_args = false
+				continue
+			
+			var default_val = default_args[i]
+			if default_val != null:
+				new_args.append(default_val)
+				continue
+			if arg_data.get("class_name") != "":
+				var _class = arg_data.get("class_name")
+				if _class == "GDScript" or _class == "Script":
+					new_args.append(EditorInterface.get_script_editor().get_current_script())
+				continue
+			else:
+				var variant = type_convert(null, type)
+				new_args.append(variant)
+		
+		if args.size() + new_args.size() != callable_arg_count:
+			Pr.new().append("Could not create default args for method ", Colors.ERROR_RED).append("'%s'" % method_name)\
+			.append(" in object: ", Colors.ERROR_RED).append(obj).display()
+			Pr.new().append("Passed: ").append("%s" % [args], Colors.ACCENT_MUTE).append(" Created:").append("%s" % [new_args], Colors.ACCENT_MUTE).display()
+			return
+		
+		args.append_array(new_args)
+	
+	if not valid_args:
+		ConsolePrint.error("Invalid arguments.")
+		return
+	var result = callable.callv(args)
+	if result != null:
+		if result is Object:
+			if result.get_class() in _RESULTS_TO_SKIP:
+				return
+		print(result)

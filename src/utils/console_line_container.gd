@@ -158,13 +158,17 @@ class ConsoleLineEdit extends CodeEdit:
 		elif first_word in global_class_names:
 			command_script = editor_console.get_scope_script("global")
 		if command_script != null:
-			if UNode.has_static_method_compat("get_completion", command_script):
-				var comp_data = command_script.get_completion(completion_context)
+			if command_script is GDScript:
+				command_script = command_script.new()
+			#if UNode.has_static_method_compat("get_completion", command_script):
+				#var comp_data = command_script.get_completion(completion_context)
+			if UNode.has_static_method_compat("complete", command_script):
+				var comp_data = command_script.complete(completion_context)
 				if comp_data != null:
 					if comp_data is Dictionary:
 						commands.set_commands(comp_data)
 					else:
-						print("Error getting completion in object: %s" % command_script)
+						print("Error getting completion in object: %s" % command_script, " -> ", comp_data)
 		
 		var command_meta = commands.get_commands().get(CommandKeys.COMMAND_META, {}) # should this be from the commands?
 		var show_variables = command_meta.get(CommandKeys.SHOW_VARIABLES, false)
@@ -298,7 +302,7 @@ class ConsoleLineEdit extends CodeEdit:
 		for del in REPLACE_DELIMS:
 			var idx = UtilsRemote.UString.rfind_index_safe(substring, del, caret_col)
 			if idx > -1:
-				del_idx = idx
+				del_idx = max(idx, del_idx)
 		
 		if del_idx == -1:
 			del_idx = 0

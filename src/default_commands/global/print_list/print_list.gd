@@ -1,0 +1,130 @@
+extends EditorConsoleSingleton.CommandBase
+
+const UString = UtilsRemote.UString
+const UClassDetail = UtilsRemote.UClassDetail
+
+const _PRINT_LIST_OPTIONS = ["--tool", "--abstract", "--name=", "--lang=", "--base="]
+
+var show_abstract:= false
+var show_tool:= false
+var target_name:String = "--"
+var target_language:String="GDScript"
+var target_base:String = "--"
+
+static func get_command_name() -> String:
+	return "print_list"
+
+
+static func get_self_option_data() -> Dictionary:
+	return Options.get_single_option_dict(get_command_name(), {
+		&"help": "List global classes\nUsage: global print_list <options>",
+	})
+
+
+func _get_flags() -> Dictionary:
+	var completions = Completions.new()
+	for arg in _PRINT_LIST_OPTIONS:
+		if arg.ends_with("="):
+			completions.add_command_no_space(arg)
+		else:
+			completions.add_command(arg)
+	return completions.get_commands()
+
+func _process_flag(flag:String):
+	print("FLAG::", flag)
+	if flag in ["-t", "--tool"]:
+		show_tool = true
+	elif flag in ["-a", "--abstract"]:
+		show_abstract = true
+	elif flag.begins_with("--name="):
+		target_name = flag.get_slice("--name=", 1)
+		target_name = UString.unquote(target_name)
+	elif flag.begins_with("--lang="):
+		target_language = flag.get_slice("--lang=", 1)
+		target_language = UString.unquote(target_language)
+	elif flag.begins_with("--base="):
+		target_base = flag.get_slice("--base=", 1)
+		target_base = UString.unquote(target_base)
+	else:
+		UtilsLocal.Print.error("Unrecognized argument: " + flag)
+
+
+func _get_completions(ctx:CompletionContext):
+	if ctx.token_before_cursor.contains("=") and ctx.char_before_cursor != " ":
+		return {}
+	return get_flags(true)
+
+func _execute(ctx:CompletionContext):
+	_print_list()
+
+# global commands
+func _print_list():
+	var name_check:TextCheck
+	if target_name != "--":
+		name_check = TextCheck.new(target_name)
+	
+	var base_check:TextCheck
+	if target_base != "--":
+		base_check = TextCheck.new(target_base)
+	var did_print = false
+	print("Printing global class list:")
+	var pr = Pr.new()
+	var global_class_list = ProjectSettings.get_global_class_list()
+	for data:Dictionary in global_class_list:
+		var name = data.get("class")
+		var base = data.get("base")
+		var language = data.get("language")
+		var is_tool = data.get("is_tool")
+		var is_abstract = data.get("is_abstract")
+		
+		if show_tool and not is_tool:
+			continue
+		if show_abstract and not is_abstract:
+			continue
+		if target_language != language:
+			continue
+		#prints(target_base, base)
+		if is_instance_valid(name_check):
+			if not name_check.check_text(name):
+				continue
+		if is_instance_valid(base_check):
+			if not base_check.check_text(base):
+				continue
+		
+		did_print = true
+		print("")
+		pr.append(name, UtilsRemote.EditorColors.get_syntax_color(UtilsRemote.EditorColors.SyntaxColor.USER_TYPE)).display()
+		for key:String in data.keys():
+			pr.append("\t" + str(key), Colors.SCOPE).append(": ").append(str(data[key])).display()
+	
+	if not did_print:
+		print("No classes to show.")
+
+
+class TextCheck:
+	
+	var target_text_raw:String
+	var _target_text:String
+	
+	var check_begin:bool
+	var check_end:bool
+	
+	func _init(target_text:String) -> void:
+		target_text_raw = target_text
+		check_begin = target_text_raw.ends_with("*")
+		check_end = target_text_raw.begins_with("*")
+		_target_text = target_text_raw.trim_prefix("*").trim_suffix("*")
+	
+	func check_text(text:String):
+		var valid_text = false
+		if check_begin and check_end:
+			valid_text = text.contains(_target_text)
+		elif check_begin:
+			valid_text = text.begins_with(_target_text)
+		elif check_end:
+			valid_text = text.ends_with(_target_text)
+		else:
+			valid_text = _target_text == text
+		return valid_text
+		
+		

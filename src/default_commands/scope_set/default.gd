@@ -3,16 +3,20 @@ extends EditorConsoleSingleton.ConsoleCommandSetBase
 static func register_scopes():
 	return {
 		"script": {
-			ScopeDataKeys.SCRIPT: UtilsLocal.ConsoleScript.new()
+			#ScopeDataKeys.SCRIPT: UtilsLocal.ConsoleScript.new()
+			ScopeDataKeys.SCRIPT: load("res://addons/editor_console/src/default_commands/script/script.gd")
 		},
 		"global":{
-			ScopeDataKeys.SCRIPT: UtilsLocal.ConsoleGlobalClass.new()
+			#ScopeDataKeys.SCRIPT: UtilsLocal.ConsoleGlobalClass.new()
+			ScopeDataKeys.SCRIPT: load("res://addons/editor_console/src/default_commands/global/global.gd")
 		},
 		"config":{
-			ScopeDataKeys.SCRIPT: UtilsLocal.ConsoleCfg.new()
+			#ScopeDataKeys.SCRIPT: UtilsLocal.ConsoleCfg.new()
+			ScopeDataKeys.SCRIPT: load("res://addons/editor_console/src/default_commands/config/config.gd")
 		},
 		"misc":{
-			ScopeDataKeys.SCRIPT :UtilsLocal.ConsoleMisc.new()
+			#ScopeDataKeys.SCRIPT :UtilsLocal.ConsoleMisc.new()
+			ScopeDataKeys.SCRIPT: load("res://addons/editor_console/src/default_commands/misc/misc/misc.gd")
 		},
 	}
 
@@ -20,13 +24,16 @@ static func register_scopes():
 static func register_hidden_scopes():
 	return {
 		"clear":{
-			ScopeDataKeys.SCRIPT: UtilsLocal.ConsoleCfg.new(),
+			#ScopeDataKeys.SCRIPT: UtilsLocal.ConsoleCfg.new(),
+			ScopeDataKeys.SCRIPT: load("res://addons/editor_console/src/default_commands/misc/clear/clear.gd")
 		},
 		"help": {
-			ScopeDataKeys.SCRIPT: UtilsLocal.ConsoleHelp.new(),
+			ScopeDataKeys.SCRIPT: load("res://addons/editor_console/src/default_commands/misc/help/help.gd")
+			#ScopeDataKeys.SCRIPT: UtilsLocal.ConsoleHelp.new(),
 		},
 		"os":{
-			ScopeDataKeys.SCRIPT: UtilsLocal.ConsoleOS.new()
+			ScopeDataKeys.SCRIPT: load("res://addons/editor_console/src/default_commands/misc/os/os.gd")
+			#ScopeDataKeys.SCRIPT: UtilsLocal.ConsoleOS.new()
 		},
 	}
 

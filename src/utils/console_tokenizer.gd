@@ -24,6 +24,7 @@ func _init() -> void:
 	
 	editor_console = EditorConsoleSingleton.get_instance()
 
+#! keys commands:PackedStringArray args:PackedStringArray display:String
 func parse_command_string(input_string: String) -> Dictionary:
 	var result := {
 		"commands": PackedStringArray(),
