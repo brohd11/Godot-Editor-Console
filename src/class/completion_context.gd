@@ -5,14 +5,15 @@ const UClassDetail = UtilsRemote.UClassDetail
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 const ConsoleLineEdit = UtilsLocal.ConsoleLineContainer.ConsoleLineEdit
 
-const ARG_DELIMITER = UtilsLocal.Options.ARG_DELIMITER
-
-var execute:bool = false
-
-var unconsumed_tokens:= []
-var data := {}
+static var _arg_delim_regex:RegEx
 
 var line_edit:ConsoleLineEdit
+
+# common used
+var execute:bool = false
+var unconsumed_tokens:= []
+var data := {}
+#
 
 var caret_col:int
 var char_before_cursor:String
@@ -20,21 +21,22 @@ var word_before_cursor:String
 var token_before_cursor:String
 var raw_text:String
 var input_text:String
-var words:Array
-var first_word:String
 
-var has_arg_delimiter:=false
+var words:Array
 
 var commands:Array
 var arguments:Array
 var display_text:String
 
-var scope_names:Array
-var global_classes:Dictionary
-var global_class_names:Array
+var argument_index:int= -1
 
 func _init(_line_edit:ConsoleLineEdit):
 	line_edit = _line_edit
+	
+	if not is_instance_valid(_arg_delim_regex):
+		_arg_delim_regex = RegEx.new()
+		#_arg_delim_regex.compile("(--)(?:[ ]|$)")
+		_arg_delim_regex.compile("(-- )") # simple seems to be the best
 	
 	raw_text = line_edit.text
 	input_text = raw_text
@@ -53,19 +55,32 @@ func _init(_line_edit:ConsoleLineEdit):
 			if arg_check_i > -1 and raw_text[arg_check_i] == "-":
 				word_before_cursor = "--"
 	
-	
 	words = input_text.split(" ", false)
-	first_word = ""
-	if not words.is_empty():
-		first_word = words[0]
-	
-	has_arg_delimiter = input_text.find(UtilsLocal.Options.ARG_DELIMITER) > -1
 	
 	var tokenizer = UtilsLocal.ConsoleTokenizer.new()
 	var result = tokenizer.parse_command_string(input_text)
 	commands = result.commands
 	arguments = result.args
 	display_text = result.display
+
+	var arg_delim_match = _arg_delim_regex.search(raw_text)
+	if arg_delim_match:
+		var delim_index = arg_delim_match.get_start(1)
+		var arg_string = raw_text.substr(delim_index + 2)
+		var adjusted_caret_idx = caret_col - (delim_index + 2)
+		var start_idx = 0
+		argument_index = arguments.size()
+		if char_before_cursor != " ": # if a space before, assume next arg
+			argument_index -= 1 # if it's actually in an arg, like string, this will be caught below
+			
+		for i in range(arguments.size()):
+			var arg = arguments[i]
+			var arg_start = arg_string.find(arg, start_idx)
+			var arg_end = arg_start + arg.length()
+			if adjusted_caret_idx >= arg_start and adjusted_caret_idx <= arg_end:
+				argument_index = i
+			
+			start_idx = arg_end
 	
 	var left_tokens = tokenizer.parse_command_string(input_text.left(caret_col))
 	token_before_cursor = ""
@@ -73,14 +88,12 @@ func _init(_line_edit:ConsoleLineEdit):
 		token_before_cursor = left_tokens.commands[left_tokens.commands.size() - 1]
 	
 	unconsumed_tokens = commands.duplicate()
-	
-	scope_names = line_edit.scope_dict.keys()
-	#scope_names = line_edit.combined_scope_dict.keys()
-	global_classes = UClassDetail.get_all_global_class_paths()
-	global_class_names = global_classes.keys()
 
 func tokens_empty_and_execute():
 	return unconsumed_tokens.is_empty() and execute
 
 func tokens_empty():
 	return unconsumed_tokens.is_empty()
+
+func in_arguments():
+	return argument_index > -1

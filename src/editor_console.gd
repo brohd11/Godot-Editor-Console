@@ -4,22 +4,24 @@ const SingletonRefCount = Singletons.RefCount
 
 const SCRIPT = preload("res://addons/editor_console/src/editor_console.gd")
 
-const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
-
-const ScopeDataKeys = UtilsLocal.ScopeDataKeys
-const Colors = UtilsLocal.Colors
-
-const CommandBase = UtilsLocal.CommandBase
-
-const ConsoleCommandSetBase = UtilsLocal.ConsoleCommandSetBase
-const CompletionContext = UtilsLocal.CompletionContext
-
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 const RightClickHandler = UtilsRemote.RightClickHandler
 const BottomPanel = UtilsRemote.BottomPanel
 const UNode = UtilsRemote.UNode
 const UString = UtilsRemote.UString
 const Pr = UString.PrintRich
+
+
+const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
+
+const ScopeDataKeys = UtilsLocal.ScopeDataKeys
+const Colors = UtilsLocal.Colors
+
+const ConsoleCommandSetBase = UtilsLocal.ConsoleCommandSetBase
+const CommandBase = UtilsLocal.CommandBase
+const CompletionContext = UtilsLocal.CompletionContext
+
+
 
 const ScriptEditorContext = preload("res://addons/editor_console/src/editor_plugins/script_editor.gd")
 
@@ -46,7 +48,7 @@ var show_filter:bool = true
 
 
 
-var settings_helper:ALibEditor.Settings.SettingHelperEditor
+var settings_helper:UtilsRemote.SettingHelperEditor
 var _console_replace_filter:bool=false
 
 var console_line_edit:UtilsLocal.ConsoleLineContainer.ConsoleLineEdit
@@ -84,7 +86,7 @@ func _init(plugin:EditorPlugin) -> void:
 		DirAccess.make_dir_recursive_absolute(UtilsLocal.EDITOR_CONSOLE_SCOPE_PATH.get_base_dir())
 		UtilsRemote.UFile.write_to_json({}, UtilsLocal.EDITOR_CONSOLE_SCOPE_PATH)
 	
-	settings_helper = ALibEditor.Settings.SettingHelperEditor.new()
+	settings_helper = UtilsRemote.SettingHelperEditor.new()
 	settings_helper.subscribe_property(self, &"_console_replace_filter", EditorSet.CONSOLE_REPLACE_FILTER, false)
 	settings_helper.initialize()
 	
@@ -359,55 +361,58 @@ func _get_console_label_string(os:=false):
 	var accent_color = UtilsRemote.EditorColors.get_theme_color(UtilsRemote.EditorColors.ThemeColor.ACCENT)
 	return Pr.new().append("Console$", accent_color).get_string()
 
-func set_console_text(text):
+func set_console_text(text:String) -> void:
 	_set_console_text(text)
 
-func _set_console_text(text):
+func _set_console_text(text:String) -> void:
 	console_line_edit.text = text
 	await console_line_edit.get_tree().process_frame
 	console_line_edit.set_caret_column(text.length())
 
 ## Command order - clear, os, help, command_dict, finally check global
-func parse_input(completion_context:CompletionContext) -> void:
+func parse_input(ctx:CompletionContext) -> void:
 	working_variable_dict.clear()
 	
 	current_command_index = -1
-	var terminal_input = completion_context.input_text
+	var terminal_input = ctx.input_text
 	
 	terminal_input = terminal_input.strip_edges()
 	if terminal_input == "": return
 	
 	last_command = terminal_input
-	var cmd_index = previous_commands.rfind(terminal_input)
+	var history_prompt = terminal_input
+	if os_mode and history_prompt.begins_with("os"):
+		history_prompt = history_prompt.trim_prefix("os").strip_edges()
+	var cmd_index = previous_commands.rfind(history_prompt)
 	if cmd_index == -1:
-		previous_commands.append(terminal_input)
+		previous_commands.append(history_prompt)
 	else:
 		previous_commands.remove_at(cmd_index)
-		previous_commands.append(terminal_input)
+		previous_commands.append(history_prompt)
 	
-	var commands:Array = completion_context.commands
+	var commands:Array = ctx.commands
 	if commands.find("--") > -1:
 		commands.remove_at(commands.rfind("--"))
 	#var arguments:Array = completion_context.arguments # UNUSED
-	var display_text = completion_context.display_text
+	var display_text = ctx.display_text
 	
 	if commands.size() == 0:
 		return
 	
-	completion_context.execute = true
+	ctx.execute = true
 	
 	var c_1 = commands[0]
-	#if c_1 == "clear":
-		#if UtilsLocal.check_help(commands):
-			#print_rich("%s %s" % [_get_console_label_string(), display_text])
-		#UtilsLocal.ConsoleCfg.clear_console(completion_context)
-		#return
+	if c_1 == "clear" or (os_mode and commands.size() > 1 and commands[1] == "clear"):
+		if os_mode: # clear reroutes in os mode, pop os from unconsumed
+			ctx.unconsumed_tokens.pop_front()
+		_scope_parse("clear", ctx)
+		return
 	
 	if terminal_input == "os":
 		toggle_os_mode()
 		return
 	if os_mode:
-		_scope_parse("os", completion_context)
+		_scope_parse("os", ctx)
 		return
 	
 	if c_1.to_lower() == "help":
@@ -415,15 +420,15 @@ func parse_input(completion_context:CompletionContext) -> void:
 	print_rich("%s %s" % [_get_console_label_string(), display_text])
 	
 	c_1 = UString.get_member_access_front(c_1)
-	var parse_scopes = _scope_parse(c_1, completion_context)
+	var parse_scopes = _scope_parse(c_1, ctx)
 	if parse_scopes == Keys.NO_MATCHING_COMMAND:
-		_scope_parse("global", completion_context)
+		_scope_parse("global", ctx)
 	
 	if scope_dict.is_empty():
 		printerr("Need to load command set.")
 
 
-func _scope_parse(_name, completion_context:CompletionContext):
+func _scope_parse(_name, ctx:CompletionContext):
 	var scope = scope_dict.get(_name)
 	if scope == null:
 		scope = hidden_scope_dict.get(_name)
@@ -433,14 +438,14 @@ func _scope_parse(_name, completion_context:CompletionContext):
 	var callable = scope.get(ScopeDataKeys.CALLABLE)
 	var result
 	if callable:
-		result = callable.call(completion_context)
+		result = callable.call(ctx)
 	else:
 		if script is GDScript:
 			script = script.new()
 		if script.has_method("parse"):
-			result = script.parse(completion_context)
+			result = script.parse(ctx)
 		elif script.has_method("execute"):
-			result = script.execute(completion_context)
+			result = script.execute(ctx)
 		else:
 			print("Could not parse in object: %s" % scope)
 	
@@ -474,11 +479,12 @@ func _console_gui_input(event: InputEvent) -> void:
 func _on_console_text_submitted(new_text:String) -> void:
 	var completion_context = CompletionContext.new(console_line_edit)
 	parse_input(completion_context)
+
+	await console_line_edit.get_tree().process_frame
+	console_line_edit.clear()
 	
 	var console_text = get_console_text_box() as RichTextLabel
 	console_text.scroll_to_line(console_text.get_line_count())
-	await console_line_edit.get_tree().process_frame
-	console_line_edit.clear()
 
 func prev_command():
 	current_command_index -= 1

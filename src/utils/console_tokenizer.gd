@@ -33,10 +33,11 @@ func parse_command_string(input_string: String) -> Dictionary:
 	}
 	var command_str := input_string
 	var args_str := ""
-	var separator_pos = input_string.find(" -- ")
+	var delim = "-- "
+	var separator_pos = input_string.find(delim)
 	if separator_pos != -1:
 		command_str = input_string.substr(0, separator_pos).strip_edges()
-		args_str = input_string.substr(separator_pos + 4).strip_edges()
+		args_str = input_string.substr(separator_pos + delim.length()).strip_edges()
 	else:
 		# If no separator, the whole string is considered commands
 		command_str = input_string.strip_edges()

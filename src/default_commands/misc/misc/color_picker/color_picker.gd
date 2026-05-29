@@ -3,7 +3,7 @@ extends EditorConsoleSingleton.CommandBase
 static func get_command_name() -> String:
 	return "color-picker"
 
-static func get_self_option_data() -> Dictionary:
+static func get_self_command_data() -> Dictionary:
 	return Options.get_single_option_dict(get_command_name(), {
 		&"help": "Open a color picker in a window, selecting a color copies the html string to clipboard"
 	})

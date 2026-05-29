@@ -6,6 +6,7 @@ const BottomPanel = preload("uid://bectqj8saobq5") #! resolve ALibEditor.Nodes.B
 const PopupHelper = preload("uid://bb13ihrvdkjdj") #! resolve PopupWrapper.PopupHelper
 const RightClickHandler = preload("uid://mmtkf4h8er3m") #! resolve ClickHandlers.RightClickHandler
 
+const SettingHelperEditor = preload("uid://c4l4v4eufkmtx") #! resolve ALibEditor.Settings.SettingHelperEditor
 const EditorColors = preload("uid://bhb1vgeh8ibjq") #! resolve ALibEditor.Colors
 const EditorIcons = preload("uid://viocyrti6wce") #! resolve ALibEditor.Singleton.EditorIcons
 const UClassDetail = preload("uid://gyx3o6jv751x") #! resolve ALibEditor.Utils.UClassDetail

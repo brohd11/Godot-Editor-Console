@@ -12,7 +12,7 @@ static func get_command_name() -> String:
 	return "args"
 
 
-static func get_self_option_data() -> Dictionary:
+static func get_self_command_data() -> Dictionary:
 	return Options.get_single_option_dict(get_command_name(), {
 		&"help": "List arguments of method in target script\nUsage: script args <options> <method_name>",
 		&"positional_count": 1,

@@ -22,6 +22,7 @@ enum ExitCode {
 
 var consumed_tokens = []
 var positional_args = []
+var positional_arg_index = -1
 
 func _initialize():
 	positional_args = []
@@ -36,15 +37,23 @@ func __get_name__():
 		print("Unamed Command in -> ", get_script().resource_path.get_file())
 	return nm
 
-static func get_self_option_data() -> Dictionary:
+static func get_self_command_data() -> Dictionary:
 	return {_UNAMED: true}
 
-func __get_self_option_data__() -> Dictionary:
-	var data = get_self_option_data()
-	if data.has(_UNAMED):
+#! keys i-Options.add_option;
+static func _command_data(params:={}):
+	return params
+
+func __get_self_command_data__() -> Dictionary:
+	var params = get_self_command_data()
+	if params.has(_UNAMED):
 		print("Command doesn't have self_option_data defined -> ", get_script().resource_path.get_file())
 		return {}
-	return data
+	if params.has("name"):
+		return params
+	var name = get_command_name()
+	var processed = Options.get_single_option_dict(name, params)
+	return processed
 
 
 
@@ -53,7 +62,7 @@ func _route(ctx:CompletionContext): # shared by both passes
 	if PRINT_DEBUG:
 		print("UNCONSUMED BEFORE::", ctx.unconsumed_tokens)
 	
-	var self_command_data = __get_self_option_data__()
+	var self_command_data = __get_self_command_data__()
 	var consume_exit = _consume_self(ctx)
 	if consume_exit == ExitCode.HELP:
 		if ctx.execute:
@@ -83,14 +92,7 @@ func _route(ctx:CompletionContext): # shared by both passes
 		if PRINT_DEBUG:
 			print("DATA::", option_data)
 		if token in flags:
-			#var pos_args = []
-			#if option_data.has(&"token_count"): #TODO this needs to be rethunked
-				#var tok_count = option_data.token_count
-				#if tok_count > 1:
-					#if ctx.unconsumed_tokens.size() < tok_count:
-						#return ExitCode.FAIL # is this right?
-					#for j in range(1, tok_count):
-						#pos_args.append(_consume_token(ctx))
+			# if flag has a token to consume after, unhandled currently
 			_process_flag(full_token)
 			consumed += 1
 		elif token in commands:
@@ -112,19 +114,24 @@ func _route(ctx:CompletionContext): # shared by both passes
 						#positional_count += 1
 				break
 				#return null # unrecognized; caller decides how to report
-			elif token != ctx.token_before_cursor or ctx.char_before_cursor == " ": # if you are past the current or char is 
+			elif token != ctx.token_before_cursor:# or ctx.char_before_cursor == " ": # if you are past the current or char is ' ', do nothing?
 				selected = ExitCode.FAIL
 				break
 			else:
 				break
 	
-	if selected is ExitCode and selected == ExitCode.FAIL:
+	if ctx.execute and selected is ExitCode and selected == ExitCode.FAIL:
 		_get_help_for_token(ctx.unconsumed_tokens.front())
 	
 	for j in range(consumed):
 		_consume_token(ctx)
 	for j in range(positional_count):
-		positional_args.append(_consume_token(ctx))
+		var pos_arg = _consume_token(ctx)
+		positional_args.append(pos_arg)
+		if ctx.token_before_cursor == pos_arg:
+			positional_arg_index = j
+			if ctx.char_before_cursor == " ":
+				positional_arg_index += 1
 	
 	if PRINT_DEBUG:
 		print("UNCONSUMED AFTER::", ctx.unconsumed_tokens)
@@ -165,7 +172,7 @@ func _execute(ctx:CompletionContext):
 func complete(ctx:CompletionContext):
 	var selected = _route(ctx)
 	if selected is ExitCode:
-		return selected
+		return {} # selected # completions recieve a dictionary, should not be an issue I think
 	if PRINT_DEBUG:
 		print("SEL in COMPLETE::", selected)
 	if selected:
@@ -174,6 +181,8 @@ func complete(ctx:CompletionContext):
 	return _get_completions(ctx)
 
 func _get_completions(ctx:CompletionContext):
+	if not _positional_arg_index_valid():
+		return {}
 	var options = get_flags(true)
 	options.merge(get_commands(true))
 	return options
@@ -201,7 +210,7 @@ func _split_flag(token:String):
 #! keys i-Options.add_option;
 func _get_option_data(token:String, flags:Dictionary, commands:Dictionary):
 	if token == __get_name__():
-		return __get_self_option_data__()
+		return __get_self_command_data__()
 	var data = flags.get(token)
 	if data == null:
 		data = commands.get(token)
@@ -234,17 +243,13 @@ func _get_commands_in_dir(sort_priority:=true):
 		if file_path == path:
 			continue
 		var script = load(file_path)
-		Options.add_command_to_dict(script, options)
+		Options.add_command_script_to_dict(script, options)
 	if sort_priority:
 		options = ALibRuntime.Utils.USort.sort_dict_with_priority_key(options, &"priority")
 		
 	return options
 
-func print_available_commands():
-	var commands = get_commands()
-	print("Available commands:")
-	for c in commands:
-		print("\t", c)
+
 
 func _get_command(command:String):
 	print("Unrecognized command - get command: ", command)
@@ -255,6 +260,8 @@ func _get_help_for_token(token:String):
 	var option_data = _get_option_data(split, get_flags(), get_commands())
 	if option_data != null and option_data.has(&"help"):
 		print(option_data.get(&"help"))
+		if split == get_command_name():
+			print_available_commands()
 	else:
 		_get_help(token)
 
@@ -271,7 +278,7 @@ func _correct_positional_count(target_size:int=-1):
 	return true
 
 func _get_target_positional_count() -> int:
-	return get_self_option_data().get(&"positional_count", 0)
+	return get_self_command_data().get(&"positional_count", 0)
 
 static func _call_method(callable:Callable, args:Array, create_default_args:=false):
 	# convert variables to $VAR
@@ -353,3 +360,22 @@ static func _call_method(callable:Callable, args:Array, create_default_args:=fal
 			if result.get_class() in _RESULTS_TO_SKIP:
 				return
 		print(result)
+
+
+# utils
+
+func _positional_arg_index_valid():
+	var target_pos_count = _get_target_positional_count()
+	if target_pos_count == 0 and positional_arg_index < 1:
+		return true  # if 0, allow 1, this will let completion of 1 unconsumed token through
+	return target_pos_count > positional_arg_index
+
+func _add_variables_to_completions(dict:Dictionary):
+	Options.add_show_variables_to_dict(dict)
+
+func print_available_commands():
+	var commands = get_commands()
+	if commands.size() > 0:
+		print("Available commands:")
+		for c in commands:
+			print("\t", c)

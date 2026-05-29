@@ -12,7 +12,7 @@ const COMMAND_NEED_SCAN = ["rm", "mkdir", "touch"]
 static func get_command_name() -> String:
 	return "os"
 
-static func get_self_option_data() -> Dictionary:
+static func get_self_command_data() -> Dictionary:
 	return Options.get_single_option_dict(get_command_name(), {
 		&"help": ""
 	})
@@ -67,7 +67,7 @@ func _get_os_commands() -> Dictionary:
 	for cmd:String in EMULATED_COMMANDS:
 		options.add_option(cmd)
 	#for cmd in COMMAND_NEED_SCAN: # Hiding these for now
-		#commands_obj.add_command(cmd)
+		#commands_obj.add_option(cmd)
 	return options.get_options()
 
 func _consume_self(ctx:CompletionContext) -> ExitCode:
@@ -195,41 +195,55 @@ static func _ls(commands:Array):
 static func _cd(commands:Array):
 	var editor_console = EditorConsoleSingleton.get_instance()
 	if commands.size() == 1:
+		_execute_wrapper(commands, true)
 		return [""]
 	var c_2 = commands[1]
 	if c_2.begins_with("--"):
 		_execute_wrapper(commands, true)
 		return [""]
 	
-	c_2 = ProjectSettings.globalize_path(c_2)
+	var target_dir = ProjectSettings.globalize_path(c_2)
 	#var global_res = ProjectSettings.globalize_path("res://")
-	if c_2 == "..":
-		editor_console.os_cwd = editor_console.os_cwd.get_base_dir()
-		return [""]
-	elif c_2 == ".":
-		return [""]
-	var dir_exists = _check_dir_exists_shell(c_2)
+	if c_2.begins_with("..") or c_2.begins_with("."):
+		target_dir = editor_console.os_cwd.path_join(c_2)
+		target_dir = target_dir.simplify_path()
+	
+	var dir_exists = _check_dir_exists_shell(target_dir)
 	if dir_exists:
-		if c_2.begins_with("/"):
-			editor_console.os_cwd = c_2
-		else:
-			editor_console.os_cwd = editor_console.os_cwd.path_join(c_2)
+		if not dir_exists.ends_with("/"):
+			dir_exists += "/"
+		editor_console.os_cwd = dir_exists
 	else:
-		if c_2.begins_with("/"):
+		var check_cwd = _check_dir_exists_shell(editor_console.os_cwd)
+		if not check_cwd:
+			editor_console.os_cwd = "res://"
+			print("Current working dir not valid, resetting to 'res://'")
+		if target_dir.begins_with("/"):
 			return ["Directory does not exist: %s" % c_2]
 		else:
 			return ["Directory does not exist: %s" % editor_console.os_cwd.path_join(c_2)]
+		
 	return [""]
+
+#static func _check_dir_exists_shell(dir):
+	#var check_dir_command = []
+	#var os_name = OS.get_name()
+	#if os_name == _OS_LINUX or os_name == _OS_MAC:
+		#check_dir_command = ["test -d '%s' && echo 'true' || echo 'false'" % dir]
+	#elif os_name == _OS_WIN:
+		#check_dir_command = ["if exist \"%s\" (echo true) else (echo false)" % dir]
+	#var result = _execute_wrapper(check_dir_command)
+	#return result[0].strip_edges() == "true"
 
 static func _check_dir_exists_shell(dir):
 	var check_dir_command = []
 	var os_name = OS.get_name()
 	if os_name == _OS_LINUX or os_name == _OS_MAC:
-		check_dir_command = ["test -d '%s' && echo 'true' || echo 'false'" % dir]
+		check_dir_command = ['test -d "%s" && realpath "%s"' % [dir, dir]]
 	elif os_name == _OS_WIN:
 		check_dir_command = ["if exist \"%s\" (echo true) else (echo false)" % dir]
 	var result = _execute_wrapper(check_dir_command)
-	return result[0].strip_edges() == "true"
+	return result[0].strip_edges()
 
 static func _one_line_result(result_string):
 	var one_line = result_string.replace("\n", "  ").strip_edges()

@@ -11,8 +11,9 @@ const UNode = UtilsRemote.UNode
 const UList = UtilsRemote.UList
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
-const CommandKeys = UtilsLocal.ParsePopupKeys
 const Options = UtilsLocal.Options
+const CommandKeys = Options.Keys
+
 const CompletionContext = UtilsLocal.CompletionContext
 
 const REPLACE_DELIMS = [" ", ".", "/"]
@@ -129,10 +130,13 @@ class ConsoleLineEdit extends CodeEdit:
 		
 		var completion_context = CompletionContext.new(self)
 		
-		var scope_names = completion_context.scope_names
+		var scope_names = scope_dict.keys()
 		var all_scope_names = combined_scope_dict.keys()
-		var global_class_names = completion_context.global_class_names
-		var first_word:String = completion_context.first_word
+		var global_classes = UClassDetail.get_all_global_class_paths()
+		var global_class_names = global_classes.keys()
+		var first_word:String = ""
+		if completion_context.words.size() > 0:
+			first_word = completion_context.words[0]
 		if first_word.find(".") > -1:
 			var front = UtilsRemote.UString.get_member_access_front(first_word)
 			if not (front in all_scope_names or front in global_class_names):

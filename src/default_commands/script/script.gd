@@ -19,14 +19,14 @@ var script_access_path:String
 static func get_command_name() -> String:
 	return "script"
 
-static func get_self_option_data() -> Dictionary:
+static func get_self_command_data() -> Dictionary:
 	return Options.get_single_option_dict(get_command_name(), {
 		&"help": _HELP,
 	})
 
 func _get_commands():
 	var options = {}
-	Options.add_command_to_dict(Infer, options)
+	Options.add_command_script_to_dict(Infer, options)
 	options.merge(get_commands_static())
 	return options
 
@@ -39,7 +39,6 @@ func _get_completions(ctx:CompletionContext):
 	var options = Options.new()
 	if script_access_path == "script" and not ctx.input_text.left(ctx.caret_col).ends_with(script_access_path):
 		return get_commands(true)
-	
 	options.merge(get_completion_static(self, ctx, script_access_path))
 	return options.get_options()
 
@@ -64,7 +63,7 @@ static func get_completion_static(command_obj, ctx:CompletionContext, target_acc
 	return {}
 
 static func get_commands_static():
-	var opt = {}
+	var opt = Options.new()
 	for command in [Call, List, Args]:
-		Options.add_command_to_dict(command, opt)
-	return opt
+		opt.add_command_script(command)
+	return opt.get_options()

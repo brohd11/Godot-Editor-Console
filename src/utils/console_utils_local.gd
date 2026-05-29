@@ -1,6 +1,4 @@
 
-const EditorConsoleSingleton = preload("res://addons/editor_console/src/editor_console.gd")
-
 const ConsoleCommandSetBase = preload("uid://bu27r1hpnfinp") # console_command_set_base.gd
 
 const CommandBase = preload("res://addons/editor_console/src/class/base/command_base.gd")
@@ -8,13 +6,10 @@ const Options = preload("res://addons/editor_console/src/class/base/command_opti
 
 
 const DefaultCommands = preload("res://addons/editor_console/src/default_commands/scope_set/default.gd")
-
 const ConsoleOS = preload("res://addons/editor_console/src/default_commands/misc/os/os.gd")
 
 
 const SyntaxHl = preload("res://addons/editor_console/src/utils/console_syntax.gd")
-
-const ConsoleCommandObject = preload("res://addons/editor_console/src/class/console_command_object.gd")
 
 const ConsoleLineContainer = preload("res://addons/editor_console/src/utils/console_line_container.gd")
 const CompletionContext = preload("res://addons/editor_console/src/class/completion_context.gd")
@@ -36,8 +31,6 @@ static func get_registered_global_classes():
 static func save_scope_data(new_data:Dictionary):
 	UtilsRemote.UFile.write_to_json(new_data, EDITOR_CONSOLE_SCOPE_PATH)
 
-static func pr_arg_size_err(expected_size:int, arg_size:int):
-	printerr("EditorConsole - Expected %s arguments, received %s" % [expected_size, arg_size])
 
 
 class ScopeDataKeys:
@@ -52,24 +45,6 @@ class ScopeDataKeys:
 	const SCRIPT = &"script"
 	const CALLABLE = &"callable"
 
-class ParsePopupKeys extends UtilsRemote.PopupHelper.ParamKeys:
-	const ADD_ARGS = &"ADD_ARGS"
-	const REPLACE_WORD = &"REPLACE_WORD"
-	const TRAILING_CHAR = &"TRAILING_CHAR"
-	const ARG_COUNT = &"ARG_COUNT"
-	
-	const COMMAND_META = &"COMMAND_META"
-	const SHOW_VARIABLES = &"SHOW_VARIABLES"
-
-
-
-static func check_help(commands):
-	if "-h" in commands or "--help" in commands:
-		return true
-	return false
-
-static func is_command_help(command:String):
-	return command == "-h" or command == "--help"
 
 class Colors:
 	

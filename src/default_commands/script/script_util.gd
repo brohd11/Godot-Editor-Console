@@ -53,12 +53,21 @@ static func get_method_completions(script:Script, show_private:bool, static_only
 		if not show_private:
 			if name.begins_with("_"):
 				continue
+		var arg_count = method.get("args").size()
 		if not static_only:
-			options.add_option(name)
+			options.add_option(name, {
+				&"metadata": {
+					Options.Keys.ARG_COUNT: arg_count
+				}
+			})
 		else:
 			var flags = method.get("flags")
 			if flags & METHOD_FLAG_STATIC:
-				options.add_option(name)
+				options.add_option(name, {
+					&"metadata": {
+						Options.Keys.ARG_COUNT: arg_count
+					}
+				})
 	
 	return options.get_options()
 

@@ -11,7 +11,7 @@ static func get_command_name() -> String:
 	return "call"
 
 
-static func get_self_option_data() -> Dictionary:
+static func get_self_command_data() -> Dictionary:
 	return Options.get_single_option_dict(get_command_name(), {
 		&"help": "Call a static function in target script\nUsage: script call <options> <method> -- <...args>",
 		&"positional_count": 1,
@@ -31,6 +31,14 @@ func _process_flag(flag:String):
 		create_default = true
 
 func _get_completions(ctx:CompletionContext):
+	if ctx.in_arguments():
+		var dict = {}
+		Options.add_show_variables_to_dict(dict)
+		return dict
+	
+	if not _positional_arg_index_valid():
+		return {}
+	
 	var flags = get_flags(true)
 	
 	var methods = ScriptUtil.get_methods_from_ctx(ctx, show_private, true)
@@ -39,7 +47,15 @@ func _get_completions(ctx:CompletionContext):
 		if current_name in methods:
 			return {}
 	
+	for m in methods.keys():
+		var meta = methods[m].get_or_add(Options.Keys.METADATA, {})
+		if meta.get(Options.Keys.ARG_COUNT, 0) > 0:
+			meta[Options.Keys.ADD_ARGS] = true
+	
 	methods.merge(flags)
+	
+	
+	
 	return methods
 
 func _execute(ctx:CompletionContext):

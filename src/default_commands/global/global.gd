@@ -14,8 +14,8 @@ var global_access_path:String = ""
 static func get_command_name() -> String:
 	return "global"
 
-static func get_self_option_data() -> Dictionary:
-	return Options.get_single_option_dict(get_command_name(), {
+static func get_self_command_data() -> Dictionary:
+	return _command_data({
 		&"help": _HELP
 	})
 
@@ -40,7 +40,8 @@ func _consume_self(ctx:CompletionContext) -> ExitCode:
 
 func _get_help(what:String):
 	if global_access_path != "":
-		print(get_self_option_data().get(&"help"))
+		print(get_self_command_data().get(&"help"))
+		print_available_commands()
 	else:
 		print("Unrecognized command: ", what)
 
