@@ -11,13 +11,6 @@ const ARG_DELIMITER = "--"
 var _option_dict:= {
 	Keys.COMMAND_META: {}
 }
-# potential DEPRECATED
-#static func get_arg_delimiter_command():
-	#return {ARG_DELIMITER: {}}
-
-#func add_arg_delimiter(replace_current_word:=true):
-	#add_option(ARG_DELIMITER, {&"replace_current_word": replace_current_word})
-# /end
 
 func get_options():
 	return _option_dict
@@ -100,19 +93,6 @@ static func add_show_variables_to_dict(dict:Dictionary):
 static func add_key_to_meta(dict:Dictionary, key:StringName, value=true):
 	var meta = dict.get_or_add(Keys.METADATA)
 	meta[key] = value
-
-#class Params:
-	#var callable = null
-	#var icon = null
-	#var add_argument_delimiter:= false
-	#var replace_current_word:= false
-	#var trailing_char:= " " # default to a space
-	#var argument_count:= -1
-	#var metadata = {}
-	#
-	#func _init(add_arg_delim:=false, _callable=null):
-		#add_argument_delimiter = add_arg_delim
-		#callable = _callable
 
 
 class Keys extends UtilsRemote.PopupHelper.ParamKeys:

@@ -68,7 +68,8 @@ func _tokenize_string(text: String) -> Dictionary:
 		if (token.begins_with("\"") and token.ends_with("\"")) or \
 			(token.begins_with("'") and token.ends_with("'")):
 			# This removes the first and last character (the quote)
-			token = token.substr(1, token.length() - 2)
+			if not editor_console.os_mode: # TEST if in os mode, preserve quotes so things aren't changed
+				token = token.substr(1, token.length() - 2)
 		
 		var var_token_check = token
 		if token.begins_with("$"):

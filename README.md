@@ -21,7 +21,7 @@ Sub commands should be in a folder, and should have the same file name as the fo
 
 By default the console will parse the input text and each command will consume tokens and select the next command until there are no more tokens, or an unrecognized token. At this point the command will attempt to execute. See [command example](export_ignore/doc/command_base.md) for a deeper explanation as well as a list of functions that can be overidden to customize behaviour.
 
-Base commands can be found [here](export_ignore/commands.md). Adding `--help` after any token will print help for that token if defined.
+Base commands can be found [here](export_ignore/doc/commands.md). Adding `--help` after any token will print help for that token if defined.
 
 ## Using it with your Plugin
 The plugin is "portable", meaning you can include it as a sub-plugin easily. Due to the duck typed singleton design, multiple plugins can have their own copy of the source and interact with a shared instance. This is made easy using [Plugin Exporter](https://github.com/brohd11/Godot-Plugin-Exporter). The console plugin will be packaged in with your plugin package, class_names will be stripped from all the files, instead using preload to reference the classes. There will be no name clashes between plugins.

@@ -127,6 +127,12 @@ func _execute(_ctx:CompletionContext):
 		trimmed_command = "os"
 	print_rich("%s %s" % [editor_console.os_string, trimmed_command])
 	
+	var cwd_check = _check_dir_exists_shell(editor_console.os_cwd)
+	if cwd_check == "" or not editor_console.os_cwd.is_absolute_path():
+		print("Sanity check, resetting cwd.")
+		editor_console.os_cwd = ProjectSettings.globalize_path("res://")
+		return [""]
+	
 	var result
 	if positional_args[0] in EMULATED_COMMANDS:
 		result = _emulated_command(positional_args)
@@ -142,23 +148,34 @@ func _execute(_ctx:CompletionContext):
 
 
 static func _execute_wrapper(commands:Array, print_result:=false):
+	
 	var editor_console = EditorConsoleSingleton.get_instance()
+	
+	#print(commands)
+	#for i in range(commands.size()):
+		#var c = commands[i]
+		#if c.contains(" "):
+			#commands[i] = "'" + c + "'"
+	
+	#print(commands)
 	var combined = " ".join(commands)
+	#print(combined)
 	var shell_exe = ""
 	var execute_commands = []
 	var os_name = OS.get_name()
 	if os_name == _OS_LINUX:
 		shell_exe = "bash"
-		var shell_command = "cd '%s' && %s" % [editor_console.os_cwd, combined]
+		var shell_command = 'cd "%s" && %s' % [editor_console.os_cwd, combined]
 		execute_commands = ["-c", shell_command]
 	elif os_name == _OS_MAC:
 		shell_exe = "zsh"
-		var shell_command = "cd '%s' && %s" % [editor_console.os_cwd, combined]
+		var shell_command = 'cd "%s" && %s' % [editor_console.os_cwd, combined]
 		execute_commands = ["-c", shell_command]
 	elif os_name == _OS_WIN:
 		shell_exe = "cmd.exe"
 		var shell_command = 'cd "%s" && %s' % [editor_console.os_cwd, combined]
 		execute_commands = ["/C", shell_command]
+	
 	
 	var output = []
 	var exit = OS.execute(shell_exe, execute_commands, output, true)

@@ -62,7 +62,7 @@ func _route(ctx:CompletionContext): # shared by both passes
 	if PRINT_DEBUG:
 		print("UNCONSUMED BEFORE::", ctx.unconsumed_tokens)
 	
-	var self_command_data = __get_self_command_data__()
+	#var self_command_data = __get_self_command_data__()
 	var consume_exit = _consume_self(ctx)
 	if consume_exit == ExitCode.HELP:
 		if ctx.execute:
