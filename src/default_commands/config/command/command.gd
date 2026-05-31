@@ -1,7 +1,12 @@
 extends EditorConsoleSingleton.CommandBase
 
+const _HELP = \
+""
+
 static func get_command_name() -> String:
-	return "misc"
+	return "command"
 
 static func get_self_command_data() -> Dictionary:
-	return {"cmd":"misc"}
+	return _command_data({
+		&"help": _HELP
+	})

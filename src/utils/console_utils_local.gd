@@ -21,6 +21,7 @@ const Pr = UtilsRemote.UString.PrintRich
 
 const EDITOR_CONSOLE_SCOPE_PATH = "res://.addons/editor_console/scope_data.json" #! ignore-remote
 
+# deprecate these
 static func get_scope_data():
 	return UtilsRemote.UFile.read_from_json(EDITOR_CONSOLE_SCOPE_PATH)
 
@@ -41,10 +42,16 @@ class ScopeDataKeys:
 	const GLOBAL_CLASSES = &"scope_data_keys.global_classes"
 	const SETS = &"scope_data_keys.sets"
 	const SCOPES = &"scope_data_keys.scopes"
+	const COMMAND_DIRS = &"scope_data_keys.command_dirs"
 	
 	const SCRIPT = &"script"
 	const CALLABLE = &"callable"
 
+
+class GDSHKeys:
+	const GDCONF = "user://addons/editor_console/gdsh.cfg"
+	
+	const ALIAS = &"gdsh_keys.alias"
 
 class Colors:
 	
@@ -90,4 +97,96 @@ class Print:
 	
 	static func error(message):
 		Pr.new().append("EditorConsole: ", Colors.ERROR_RED).append(message).display()
+
+
+class Config:
+	const PROJECT_PATH = "res://.addons/editor_console/config.yml"  #! ignore-remote
+	
+	const ALIAS = &"config.alias"
+	const SCOPE = &"config.scope"
+	const COMMAND_DIRS = &"config.command_dirs"
+	const GLOBAL_CLASSES = &"config.global_classes"
+	
+	static var _merged_config:Config
+	
+	var file_path:String
+	var data:Dictionary
+	
+	#! arg_location section:Config
+	func get_section(section:StringName, default:={}) -> Variant:
+		return data.get_or_add(section, default)
+	
+	func write():
+		_write_config(data, file_path)
+	
+	static func get_merged_config() -> Config:
+		if not is_instance_valid(_merged_config):
+			load_config()
+		return _merged_config
 		
+	
+	static func get_global_config() -> Config:
+		var cfg:Config = new()
+		cfg.file_path = get_global_config_path()
+		cfg.data = _get_global_config_data()
+		return cfg
+	
+	static func get_project_config() -> Config:
+		var cfg:Config = new()
+		cfg.file_path = PROJECT_PATH
+		cfg.data = _get_project_config_data()
+		return cfg
+	
+	static func get_global_config_path() -> String:
+		var paths:EditorPaths = EditorInterface.get_editor_paths()
+		return paths.get_config_dir().path_join("addons/editor_console/config.yml")
+	
+	static func _get_global_config_data():
+		return _get_config_data(get_global_config_path())
+	
+	static func _get_project_config_data():
+		return _get_config_data(PROJECT_PATH)
+	
+	static func _get_config_data(path:String) -> Dictionary:
+		if not FileAccess.file_exists(path):
+			DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+			return {}
+		var content = FileAccess.get_file_as_string(path)
+		var parser = YAMLParser.new()
+		var parse_data:Variant = parser.parse(content)
+		return parse_data
+	
+	static func _write_config(new_data:Dictionary, path:String, reload:=true):
+		var dumped = YAMLParser.dump(new_data)
+		DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+		var fa = FileAccess.open(path, FileAccess.WRITE)
+		fa.store_string(dumped)
+		fa.close()
+		if reload:
+			load_config()
+	
+	static func load_config():
+		_merged_config = new()
+		var project_data = _get_project_config_data()
+		var global_data = _get_global_config_data()
+		_recursive_merge(project_data, global_data)
+		_merged_config.data = project_data
+	
+	static func _recursive_merge(dict_a:Dictionary, dict_b:Dictionary):
+		for key in dict_a.keys():
+			var a_value = dict_a[key]
+			var b_value = dict_b.get(key)
+			if b_value == null:
+				continue
+			if a_value is Dictionary and b_value is Dictionary:
+				_recursive_merge(a_value, b_value)
+			elif a_value is Array and b_value is Array:
+				for a in b_value:
+					if not a in a_value:
+						a_value.append(a)
+			elif typeof(a_value) != typeof(b_value):
+				print("EditorConsole config - incompatible types: ", a_value, " - ", b_value)
+		
+		dict_a.merge(dict_b)
+		
+		pass

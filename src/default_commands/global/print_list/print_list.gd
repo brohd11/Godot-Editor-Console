@@ -55,11 +55,11 @@ func _get_completions(ctx:CompletionContext):
 		return {}
 	return get_flags(true)
 
-func _execute(_ctx:CompletionContext):
-	_print_list()
+func _execute(ctx:CompletionContext):
+	_print_list(ctx)
 
 # global commands
-func _print_list():
+func _print_list(ctx:CompletionContext):
 	var name_check:TextCheck
 	if target_name != "--":
 		name_check = TextCheck.new(target_name)
@@ -68,7 +68,7 @@ func _print_list():
 	if target_base != "--":
 		base_check = TextCheck.new(target_base)
 	var did_print = false
-	print("Printing global class list:")
+	ctx.append_output_rich("Printing global class list:")
 	var pr = Pr.new()
 	var global_class_list = ProjectSettings.get_global_class_list()
 	for data:Dictionary in global_class_list:
@@ -93,13 +93,20 @@ func _print_list():
 				continue
 		
 		did_print = true
-		print("")
-		pr.append(name, UtilsRemote.EditorColors.get_syntax_color(UtilsRemote.EditorColors.SyntaxColor.USER_TYPE)).display()
+		
+		ctx.append_output(name)
+		if ctx.print:
+			ctx.append_output_rich("")
+			ctx.append_output_rich(pr.append(name, UtilsRemote.EditorColors.get_syntax_color(UtilsRemote.EditorColors.SyntaxColor.USER_TYPE)).get_string(true))
+		
 		for key:String in data.keys():
-			pr.append("\t" + str(key), Colors.SCOPE).append(": ").append(str(data[key])).display()
+			ctx.append_output("\t" + str(key) + ": " + str(data[key]))
+			if ctx.print:
+				ctx.append_output_rich(pr.append("\t" + str(key), Colors.SCOPE).append(": ").append(str(data[key])).get_string(true))
+			#pr.append("\t" + str(key), Colors.SCOPE).append(": ").append(str(data[key])).display()
 	
-	if not did_print:
-		print("No classes to show.")
+	if not did_print and ctx.print:
+		ctx.append_output_rich("No classes to show.")
 
 
 class TextCheck:

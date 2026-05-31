@@ -16,7 +16,7 @@ const CommandKeys = Options.Keys
 
 const CompletionContext = UtilsLocal.CompletionContext
 
-const REPLACE_DELIMS = [" ", ".", "/"]
+const REPLACE_DELIMS = [" ", ".", "/", "'", '"']
 
 var console_panel:PanelContainer
 var console_hsplit:HBoxContainer#:HSplitContainer # this was an hsplit to allow the label to clip I think
@@ -128,15 +128,29 @@ class ConsoleLineEdit extends CodeEdit:
 			_clear_popup()
 			return
 		
-		var completion_context = CompletionContext.new(self)
+		var ctx = CompletionContext.new()
+		ctx.line_edit = self
+		ctx.completion_parse()
+		if ctx.token_before_cursor.begins_with("@"):
+			var options = Options.new()
+			var config = UtilsLocal.Config.get_merged_config()
+			var alias_data = config.get_section(UtilsLocal.Config.ALIAS)
+			for k in alias_data.keys():
+				var val = UtilsLocal.ConsoleTokenizer.clean_alias_token(alias_data[k])
+				options.add_option(k + " = [%s]" % val, {
+					&"insert": k
+				})
+			_build_popup(options.get_options())
+			return
+		#ctx = ctx.get_current_command_context_object()
 		
 		var scope_names = scope_dict.keys()
 		var all_scope_names = combined_scope_dict.keys()
 		var global_classes = UClassDetail.get_all_global_class_paths()
 		var global_class_names = global_classes.keys()
 		var first_word:String = ""
-		if completion_context.words.size() > 0:
-			first_word = completion_context.words[0]
+		if ctx.unconsumed_tokens.size() > 0:
+			first_word = ctx.unconsumed_tokens[0]
 		if first_word.find(".") > -1:
 			var front = UtilsRemote.UString.get_member_access_front(first_word)
 			if not (front in all_scope_names or front in global_class_names):
@@ -151,7 +165,7 @@ class ConsoleLineEdit extends CodeEdit:
 			_build_popup(options.get_options())
 			return
 		
-		if completion_context.word_before_cursor == first_word:
+		if ctx.word_before_cursor == first_word:
 			_clear_popup()
 			return
 		
@@ -167,17 +181,19 @@ class ConsoleLineEdit extends CodeEdit:
 			#if UNode.has_static_method_compat("get_completion", command_script):
 				#var comp_data = command_script.get_completion(completion_context)
 			if UNode.has_static_method_compat("complete", command_script):
-				var comp_data = command_script.complete(completion_context)
+				var comp_data = command_script.complete(ctx)
 				if comp_data != null:
 					if comp_data is Dictionary:
 						options.set_options(comp_data)
+					elif comp_data.has_method("get_options"):
+						comp_data = comp_data.get_options()
 					else:
 						print("Error getting completion in object: %s" % command_script, " -> ", comp_data)
 		
 		var command_meta = options.get_options().get(CommandKeys.COMMAND_META, {}) # should this be from the commands?
 		var show_variables = command_meta.get(CommandKeys.SHOW_VARIABLES, false)
 		#show_variables = true #ALERT
-		if completion_context.input_text.find(Options.ARG_DELIMITER) > -1:
+		if ctx.input_text.find(Options.ARG_DELIMITER) > -1:
 			options.remove_option(Options.ARG_DELIMITER)
 			if show_variables:
 				var var_nms = variable_dict.keys()
@@ -260,7 +276,7 @@ class ConsoleLineEdit extends CodeEdit:
 	#^ Look at this stuff TODO
 	 
 	func _on_item_selected(id_text:String, metadata:Dictionary):
-		var text_to_add = id_text
+		var text_to_add = metadata.get(CommandKeys.INSERT, id_text)
 		
 		if metadata.get(CommandKeys.ADD_ARGS, false):
 			text_to_add = text_to_add + " --"
@@ -269,7 +285,13 @@ class ConsoleLineEdit extends CodeEdit:
 		text_to_add += trailing_char
 		
 		var replace_word = metadata.get(CommandKeys.REPLACE_WORD, false)
-		if replace_word and get_word_at_pos(get_caret_draw_pos()) != "":
+		var force_replace = false
+		var caret_col = get_caret_column()
+		if caret_col > 0:
+			if text[caret_col - 1] in ["@"]:
+				force_replace = true
+			
+		if replace_word and (get_word_at_pos(get_caret_draw_pos()) != "" or force_replace):
 			start_action(TextEdit.ACTION_TYPING)
 			var idxes = _get_indexes_before_caret()
 			var start = idxes.start

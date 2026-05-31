@@ -15,6 +15,7 @@ const Pr = UString.PrintRich
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 
 const ScopeDataKeys = UtilsLocal.ScopeDataKeys
+const GDSHKeys = UtilsLocal.GDSHKeys
 const Colors = UtilsLocal.Colors
 
 const ConsoleCommandSetBase = UtilsLocal.ConsoleCommandSetBase
@@ -26,10 +27,7 @@ const CompletionContext = UtilsLocal.CompletionContext
 const ScriptEditorContext = preload("res://addons/editor_console/src/editor_plugins/script_editor.gd")
 
 
-
-## GDTERM
-var gd_term_instance
-##
+const GDCONF = "user://addons/editor_console/gdsh.cfg"
 
 #region Old plugin.gd vars
 
@@ -166,6 +164,7 @@ static func remove_temp_scope(scope_name:String): # for plugins
 	ins._load_default_commands()
 
 
+
 func _load_default_commands():
 	scope_dict.clear()
 	hidden_scope_dict.clear()
@@ -183,7 +182,7 @@ func _load_default_commands():
 			printerr("Could not find script: %s" % script_path)
 			continue
 		var script = load(script_path)
-		scope_dict[scope] = {ScopeDataKeys.SCRIPT: script.new()}
+		scope_dict[scope] = {ScopeDataKeys.SCRIPT: script}
 	
 	var sets = scope_data.get(ScopeDataKeys.SETS, [])
 	for script_path in sets:
@@ -270,6 +269,42 @@ static func remove_persistent_scope_set(script_path:String) -> void:
 	UtilsLocal.save_scope_data(scope_data)
 	get_instance()._load_default_commands()
 
+static func register_command_dir(dir_path:String):
+	if not _instance_valid_err(): return
+	if not dir_path.get_extension() == "":
+		print("Directory path has extension: ", dir_path)
+		return
+	if not dir_path.ends_with("/"):
+		dir_path += "/"
+	var scope_data = UtilsLocal.get_scope_data()
+	var dirs = scope_data.get(ScopeDataKeys.COMMAND_DIRS, [])
+	if dir_path in dirs:
+		print("Script already registered as set: %s" % dir_path)
+		return
+	
+	dirs.append(dir_path)
+	scope_data[ScopeDataKeys.COMMAND_DIRS] = dirs
+	UtilsLocal.save_scope_data(scope_data)
+	get_instance()._load_default_commands()
+	pass
+
+static func remove_command_dir(dir_path:String):
+	if not _instance_valid_err(): return
+	var scope_data = UtilsLocal.get_scope_data()
+	var dirs = scope_data.get(ScopeDataKeys.COMMAND_DIRS, [])
+	if not dir_path in dirs:
+		print("Script set not registered: %s" % dir_path)
+		return
+	
+	var idx = dirs.find(dir_path)
+	dirs.remove_at(idx)
+	
+	scope_data[ScopeDataKeys.COMMAND_DIRS] = dirs
+	UtilsLocal.save_scope_data(scope_data)
+	get_instance()._load_default_commands()
+	pass
+
+
 func get_scope_script(scope_name):
 	var scope = null
 	if hidden_scope_dict.has(scope_name):
@@ -353,11 +388,18 @@ func _toggle_os_mode():
 
 func _get_console_label_string(os:=false):
 	if os:
-		var display_cwd = os_cwd.trim_prefix(os_home_dir)
+		var display_cwd = os_cwd#.trim_prefix(os_home_dir)
 		if display_cwd == "":
 			display_cwd = "/"
-		#os_string_raw = "%s:~%s$ " % [os_user, display_cwd] # not sure what this is for?
-		return Pr.new().append(os_user, Colors.OS_USER).append(":").append("~"+display_cwd, Colors.OS_PATH).append("$").get_string()
+		elif display_cwd == os_home_dir:
+			display_cwd = "~"
+		else:
+			if true: # make this a setting?
+				display_cwd = display_cwd.trim_suffix("/").get_file()
+			else:
+				display_cwd = "~/" + display_cwd
+		return Pr.new().append(os_user, Colors.OS_USER).append(":").append(display_cwd, Colors.OS_PATH).append(" $").get_string()
+	
 	var accent_color = UtilsRemote.EditorColors.get_theme_color(UtilsRemote.EditorColors.ThemeColor.ACCENT)
 	return Pr.new().append("Console$", accent_color).get_string()
 
@@ -370,39 +412,77 @@ func _set_console_text(text:String) -> void:
 	console_line_edit.set_caret_column(text.length())
 
 ## Command order - clear, os, help, command_dict, finally check global
-func parse_input(ctx:CompletionContext) -> void:
-	working_variable_dict.clear()
+func parse_input(ctx:CompletionContext, print_to_log:=true) -> void:
+	if ctx.expanded_command_statements.is_empty():
+		ctx.expand()
 	
+	if ctx.print and ctx.input_text.strip_edges() != "os":
+		if not os_mode:
+			ctx.console_display_string = "%s %s" % [_get_console_label_string(), ctx.display_text]
+		else:
+			ctx.console_display_string = "%s %s" % [os_string, ctx.raw_text.strip_edges()]
+		
+		if print_to_log:
+			print_rich(ctx.console_display_string)
+	
+	if ctx.expanded_command_statements.size() == 1 or os_mode:
+		ctx.execute_parse()
+		_parse_input(ctx)
+	else:
+		var working_ctx = null
+		if ctx.add_to_hist:
+			_add_to_history(ctx.input_text)
+		
+		for i in range(ctx.expanded_command_statements.size()):
+			var cmd = ctx.expanded_command_statements[i].strip_edges()
+			var new_ctx = CompletionContext.new(cmd)
+			new_ctx.execute_parse()
+			new_ctx.chained_command = true
+			new_ctx.add_to_hist = false
+			new_ctx.print = ctx.print and i == ctx.expanded_command_statements.size() - 1
+			
+			if is_instance_valid(working_ctx):
+				new_ctx.input = working_ctx.output.strip_edges()
+			_parse_input(new_ctx)
+			working_ctx = new_ctx
+		
+		ctx.output = working_ctx.output
+		ctx.output_rich = working_ctx.output_rich
+	
+	ctx.output_rich = ctx.output_rich.strip_edges(false, true).lstrip("\n")
+	if print_to_log:
+		if ctx.error != "":
+			print(ctx.error.lstrip("\n"))
+		elif ctx.print and not ctx.output_rich.is_empty():
+			if ctx.output_rich.contains("[/color]"):
+				print_rich(ctx.output_rich)
+			else:
+				print(ctx.output_rich)
+	
+	
+func _parse_input(ctx:CompletionContext) -> void:
+	working_variable_dict.clear()
 	current_command_index = -1
 	var terminal_input = ctx.input_text
 	
 	terminal_input = terminal_input.strip_edges()
 	if terminal_input == "": return
 	
-	last_command = terminal_input
-	var history_prompt = terminal_input
-	if os_mode and history_prompt.begins_with("os"):
-		history_prompt = history_prompt.trim_prefix("os").strip_edges()
-	var cmd_index = previous_commands.rfind(history_prompt)
-	if cmd_index == -1:
-		previous_commands.append(history_prompt)
-	else:
-		previous_commands.remove_at(cmd_index)
-		previous_commands.append(history_prompt)
+	if ctx.add_to_hist:
+		_add_to_history(ctx.raw_text)
 	
-	var commands:Array = ctx.commands
-	if commands.find("--") > -1:
-		commands.remove_at(commands.rfind("--"))
-	#var arguments:Array = completion_context.arguments # UNUSED
-	var display_text = ctx.display_text
+	var tokens:Array = ctx.unconsumed_tokens
+	print("TOKENS:", tokens)
+	if tokens.find("--") > -1:
+		tokens.remove_at(tokens.rfind("--"))
 	
-	if commands.size() == 0:
+	if tokens.size() == 0:
 		return
 	
 	ctx.execute = true
 	
-	var c_1 = commands[0]
-	if c_1 == "clear" or (os_mode and commands.size() > 1 and commands[1] == "clear"):
+	var c_1 = tokens[0]
+	if c_1 == "clear" or (os_mode and tokens.size() > 1 and tokens[1] == "clear"):
 		if os_mode: # clear reroutes in os mode, pop os from unconsumed
 			ctx.unconsumed_tokens.pop_front()
 		_scope_parse("clear", ctx)
@@ -411,21 +491,26 @@ func parse_input(ctx:CompletionContext) -> void:
 	if terminal_input == "os":
 		toggle_os_mode()
 		return
-	if os_mode:
+	if os_mode or terminal_input.begins_with("os"):
 		_scope_parse("os", ctx)
 		return
 	
 	if c_1.to_lower() == "help":
 		c_1 = c_1.to_lower()
-	print_rich("%s %s" % [_get_console_label_string(), display_text])
+	
+	#if ctx.print:
+		#print_rich("%s %s" % [_get_console_label_string(), display_text])
 	
 	c_1 = UString.get_member_access_front(c_1)
 	var parse_scopes = _scope_parse(c_1, ctx)
 	if parse_scopes == Keys.NO_MATCHING_COMMAND:
 		_scope_parse("global", ctx)
 	
+	#if ctx.print and ctx.output_rich.is_empty():
+		#print_rich(ctx.output_rich)
+	
 	if scope_dict.is_empty():
-		printerr("Need to load command set.")
+		ctx.append_error("Need to load command set.")
 
 
 func _scope_parse(_name, ctx:CompletionContext):
@@ -441,17 +526,32 @@ func _scope_parse(_name, ctx:CompletionContext):
 		result = callable.call(ctx)
 	else:
 		if script is GDScript:
+			script = ensure_fresh_script(script)
 			script = script.new()
+		
 		if script.has_method("parse"):
+			printerr("OLD VERSION PARSE: ", script)
 			result = script.parse(ctx)
 		elif script.has_method("execute"):
 			result = script.execute(ctx)
 		else:
-			print("Could not parse in object: %s" % scope)
+			ctx.append_error("Could not parse in object: %s" % scope)
 	
 	#if result != null: # this is now CommandBase.ExitCode
 		#print(result)
 
+
+func _add_to_history(command:String):
+	last_command = command
+	var history_prompt = command
+	if os_mode and history_prompt.begins_with("os"):
+		history_prompt = history_prompt.trim_prefix("os").strip_edges()
+	var cmd_index = previous_commands.rfind(history_prompt)
+	if cmd_index == -1:
+		previous_commands.append(history_prompt)
+	else:
+		previous_commands.remove_at(cmd_index)
+		previous_commands.append(history_prompt)
 
 func _console_gui_input(event: InputEvent) -> void:
 	if not console_line_edit.has_focus():
@@ -477,8 +577,10 @@ func _console_gui_input(event: InputEvent) -> void:
 
 
 func _on_console_text_submitted(new_text:String) -> void:
-	var completion_context = CompletionContext.new(console_line_edit)
-	parse_input(completion_context)
+	var ctx = CompletionContext.new()
+	ctx.line_edit = console_line_edit
+	ctx.parse()
+	parse_input(ctx)
 
 	await console_line_edit.get_tree().process_frame
 	console_line_edit.clear()
@@ -657,19 +759,38 @@ func _toggle_os_label_minimum_size() -> void:
 	else:
 		os_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 
+static func get_completion_for_input(input:String, only_commands:bool=true, current_command=null):
+	var first = input.get_slice(" ", 0)
+	var console = EditorConsoleSingleton.get_instance()
+	var scope_script = console.get_scope_script(first)
+	if not is_instance_valid(scope_script):
+		var options = CommandBase.Options.new()
+		for s in console.scope_dict.keys():
+			options.add_option(s)
+		
+		if is_instance_valid(current_command):
+			options.merge(current_command.get_flags(true))
+		return options.get_options()
+	
+	var ins = scope_script.new()
+	var new_ctx = CompletionContext.new(input)
+	new_ctx.parse()
+	var completion = ins.complete(new_ctx)
+	
+	for option in completion.keys():
+		var data = completion[option]
+		if only_commands and not data.has(&"get_command"):
+			completion.erase(option)
+	return completion
 
-func toggle_term(commands, args):
-	if gd_term_instance.visible:
-		gd_term_instance.hide()
-		gd_term_instance.set_active(false)
+static func load_command(path:String) -> Resource:
+	if not UFile.path_in_res(path):
+		return ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE_DEEP)
 	else:
-		gd_term_instance.show()
-		_get_gd_term().grab_focus()
-		gd_term_instance.set_active(true)
+		return load(path)
 
-func _get_gd_term():
-	return gd_term_instance.get_node("term_container/term/GDTerm")
-
+static func ensure_fresh_script(script:GDScript) -> Resource:
+	return UtilsRemote.UResource.ensure_fresh_load(script)
 
 #endregion
 

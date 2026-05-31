@@ -58,10 +58,10 @@ func _execute(ctx:CompletionContext):
 	var script_name = UClassDetail.get_global_class_name(script.resource_path)
 	if script_name == "":
 		script_name = script.resource_path.get_file()
-	print_members(script_name, consumed_tokens, script)
+	print_members(ctx, script_name, consumed_tokens, script)
 
 
-static func print_members(script_name:String, flags:Array, script:Script):
+static func print_members(ctx:CompletionContext, script_name:String, flags:Array, script:Script):
 	var print_data = LIST_MODIFIER_OPTIONS[1] in flags
 	var print_lines = LIST_MODIFIER_OPTIONS[0] in flags
 	var inherited = LIST_MODIFIER_OPTIONS[2] in flags
@@ -74,9 +74,9 @@ static func print_members(script_name:String, flags:Array, script:Script):
 	var flags_size = flags.size()
 	if not valid:
 		if flags_size > 0:
-			print("'--data', '--lines', and '--inherited' should be passed with another argument.")
+			ctx.append_error("'--data', '--lines', and '--inherited' should be passed with another argument.")
 		else:
-			print("Pass arguments for the list command.")
+			ctx.append_error("Pass arguments for the list command.")
 		return
 	
 	var pr = Pr.new()
@@ -86,56 +86,62 @@ static func print_members(script_name:String, flags:Array, script:Script):
 			var members = {}
 			if command == LIST_COMMANDS_OPTIONS[0]: # methods
 				if inherited:
-					print("Printing class methods: %s" % script_name)
+					ctx.append_output("Printing class methods: %s" % script_name, true)
 					members = UClassDetail.class_get_all_methods(script)
 				else:
-					print("Printing script methods: %s" % script_name)
+					ctx.append_output("Printing script methods: %s" % script_name, true)
 					members = UClassDetail.script_get_all_methods(script)
 			elif command == LIST_COMMANDS_OPTIONS[1]: # signals
 				if inherited:
-					print("Printing class signals: %s" % script_name)
+					ctx.append_output("Printing class signals: %s" % script_name, true)
 					members = UClassDetail.class_get_all_signals(script)
 				else:
-					print("Printing script signals: %s" % script_name)
+					ctx.append_output("Printing script signals: %s" % script_name, true)
 					members = UClassDetail.script_get_all_signals(script)
 			elif command == LIST_COMMANDS_OPTIONS[2]: # constants
 				if inherited:
-					print("Printing class constants: %s" % script_name)
+					ctx.append_output("Printing class constants: %s" % script_name, true)
 					members = UClassDetail.class_get_all_constants(script)
 				else:
-					print("Printing script constants: %s" % script_name)
+					ctx.append_output("Printing script constants: %s" % script_name, true)
 					members = UClassDetail.script_get_all_constants(script)
 			elif command == LIST_COMMANDS_OPTIONS[3]: # properties
 				if inherited:
-					print("Printing class properties: %s" % script_name)
+					ctx.append_output("Printing class properties: %s" % script_name, true)
 					members = UClassDetail.class_get_all_properties(script)
 				else:
-					print("Printing script properties: %s" % script_name)
+					ctx.append_output("Printing script properties: %s" % script_name, true)
 					members = UClassDetail.script_get_all_properties(script)
 			elif command == LIST_COMMANDS_OPTIONS[4]: # enums
 				if inherited:
-					print("Printing class enums: %s" % script_name)
+					ctx.append_output("Printing class enums: %s" % script_name, true)
 					members = UClassDetail.class_get_all_enums(script)
 				else:
-					print("Cannot get script enums, no API in ClassDB. Use '--inherited' option.")
+					ctx.append_error("Cannot get script enums, no API in ClassDB. Use '--inherited' option.")
 					#members = UClassDetail.sc(script)
 					pass
 			
 			if members.is_empty():
-				pr.append("\tNone in script.", Colors.VAR_RED).display()
+				pr.append("\tNone in script.", Colors.VAR_RED)
+				ctx.append_output_with_pr(pr)
 			else:
 				if print_lines or print_data:
 					for m in members.keys():
-						pr.append("%s" % m, Colors.ACCENT_MUTE).display()
+						pr.append("%s" % m, Colors.ACCENT_MUTE)
+						ctx.append_output_with_pr(pr)
 						if print_data:
 							var data = members.get(m)
 							if data == null:
-								pr.append("\tNo data.").display()
+								pr.append("\tNo data.")
+								ctx.append_output_with_pr(pr)
 							else:
 								for key in data.keys():
-									pr.append("\t%s - %s" % [key, data[key]], Colors.GRAY).display()
+									pr.append("\t%s - %s" % [key, data[key]], Colors.GRAY)
+									ctx.append_output_with_pr(pr)
 				else:
-					pr.append("\t" + "  ".join(members.keys()), Colors.ACCENT_MUTE).display()
+					pr.append("\t" + "  ".join(members.keys()), Colors.ACCENT_MUTE)
+					ctx.append_output_with_pr(pr)
+				
 			if i < flags_size - 1:
-				print("") # print blank line between sections
+				ctx.append_output_rich("") # print blank line between sections
 			continue

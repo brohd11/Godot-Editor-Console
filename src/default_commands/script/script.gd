@@ -1,6 +1,6 @@
 extends EditorConsoleSingleton.CommandBase
 
-const UString = UtilsRemote.UString
+
 const UClassDetail = UtilsRemote.UClassDetail
 
 const ScriptUtil = preload("res://addons/editor_console/src/default_commands/script/script_util.gd")
@@ -9,12 +9,13 @@ const Call = preload("res://addons/editor_console/src/default_commands/script/ca
 const List = preload("res://addons/editor_console/src/default_commands/script/list/list.gd")
 const Args = preload("res://addons/editor_console/src/default_commands/script/args/args.gd")
 
-const Infer = preload("res://addons/editor_console/src/default_commands/script/infer/infer.gd")
+const Format = preload("res://addons/editor_console/src/default_commands/script/format/format.gd")
 
 const _HELP = \
 "Execute command on current script."
 
 var script_access_path:String
+var text_flag:=false
 
 static func get_command_name() -> String:
 	return "script"
@@ -26,9 +27,18 @@ static func get_self_command_data() -> Dictionary:
 
 func _get_commands():
 	var options = {}
-	Options.add_command_script_to_dict(Infer, options)
+	Options.add_command_script_to_dict(Format, options)
 	options.merge(get_commands_static())
 	return options
+
+func _get_flags() -> Dictionary:
+	var options = Options.new()
+	options.add_option("--text")
+	return options.get_options()
+
+func _process_flag(flag:String):
+	if flag == "--text":
+		text_flag = true
 
 func _consume_self(ctx:CompletionContext) -> ExitCode:
 	script_access_path = _consume_token(ctx)
@@ -38,7 +48,9 @@ func _consume_self(ctx:CompletionContext) -> ExitCode:
 func _get_completions(ctx:CompletionContext):
 	var options = Options.new()
 	if script_access_path == "script" and not ctx.input_text.left(ctx.caret_col).ends_with(script_access_path):
-		return get_commands(true)
+		var commands = get_commands(true)
+		commands.merge(get_flags(true))
+		return commands
 	options.merge(get_completion_static(self, ctx, script_access_path))
 	return options.get_options()
 
@@ -67,3 +79,11 @@ static func get_commands_static():
 	for command in [Call, List, Args]:
 		opt.add_command_script(command)
 	return opt.get_options()
+
+func _execute(ctx:CompletionContext):
+	if text_flag:
+		var current_editor = ScriptEditorRef.get_current_code_edit()
+		ctx.output = current_editor.text
+		return ExitCode.OK
+	
+	_get_help_for_token(get_command_name())

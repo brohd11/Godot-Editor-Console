@@ -1,7 +1,11 @@
 const PRINT_DEBUG = false
 
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
-const Pr = UtilsRemote.UString.PrintRich
+const UString = UtilsRemote.UString
+const Pr = UString.PrintRich
+
+
+const USort = preload("uid://dtrbpu04wxss0") #! resolve ALibRuntime.Utils.USort
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 const ConsoleTokenizer = UtilsLocal.ConsoleTokenizer
@@ -20,13 +24,16 @@ enum ExitCode {
 	HELP,
 }
 
-var consumed_tokens = []
-var positional_args = []
+var _ctx_obj:CompletionContext
+
+var consumed_tokens:Array[String] = []
+var positional_args:Array[String] = []
 var positional_arg_index = -1
 
-func _initialize():
+func _initialize(ctx:CompletionContext):
 	positional_args = []
 	consumed_tokens = []
+	_ctx_obj = ctx
 
 static func get_command_name() -> String:
 	return _UNAMED
@@ -34,7 +41,8 @@ static func get_command_name() -> String:
 func __get_name__():
 	var nm = get_command_name()
 	if nm == _UNAMED:
-		print("Unamed Command in -> ", get_script().resource_path.get_file())
+		_ctx_obj.append_output_rich("Unamed Command in -> " + get_script().resource_path.get_file())
+		#print("Unamed Command in -> ", get_script().resource_path.get_file())
 	return nm
 
 static func get_self_command_data() -> Dictionary:
@@ -42,14 +50,16 @@ static func get_self_command_data() -> Dictionary:
 
 #! keys i-Options.add_option;
 static func _command_data(params:={}):
-	return params
+	#return params
+	return Options.process_option_dict(params)
 
 func __get_self_command_data__() -> Dictionary:
 	var params = get_self_command_data()
 	if params.has(_UNAMED):
-		print("Command doesn't have self_option_data defined -> ", get_script().resource_path.get_file())
+		_ctx_obj.append_output_rich("Command doesn't have self_option_data defined -> " + get_script().resource_path.get_file())
+		#print("Command doesn't have self_option_data defined -> ", get_script().resource_path.get_file())
 		return {}
-	if params.has("name"):
+	if params.has(&"option_name"):
 		return params
 	var name = get_command_name()
 	var processed = Options.get_single_option_dict(name, params)
@@ -58,7 +68,7 @@ func __get_self_command_data__() -> Dictionary:
 
 
 func _route(ctx:CompletionContext): # shared by both passes
-	_initialize()
+	_initialize(ctx)
 	if PRINT_DEBUG:
 		print("UNCONSUMED BEFORE::", ctx.unconsumed_tokens)
 	
@@ -115,7 +125,9 @@ func _route(ctx:CompletionContext): # shared by both passes
 				break
 				#return null # unrecognized; caller decides how to report
 			elif token != ctx.token_before_cursor:# or ctx.char_before_cursor == " ": # if you are past the current or char is ' ', do nothing?
-				selected = ExitCode.FAIL
+				# meant to stop a completion if you are not at the end of the line
+				# this may need some tweaking so that token before cursor is the token under cursor?
+				#selected = ExitCode.FAIL
 				break
 			else:
 				break
@@ -125,12 +137,22 @@ func _route(ctx:CompletionContext): # shared by both passes
 	
 	for j in range(consumed):
 		_consume_token(ctx)
+	
+	var unwrap_setting = _unwrap_quotes()
 	for j in range(positional_count):
 		var pos_arg = _consume_token(ctx)
+		print(":", ctx.char_before_cursor, ":", ctx.token_before_cursor, ":", pos_arg, ":")
+		if unwrap_setting > 0 and pos_arg.length() > 1:
+			if UString.is_string_or_string_name(pos_arg):
+				var quote_char = pos_arg[0]
+				if unwrap_setting == 2 or quote_char == '"':
+					pos_arg = UString.unquote(pos_arg)
+		
 		positional_args.append(pos_arg)
 		if ctx.token_before_cursor == pos_arg:
 			positional_arg_index = j
-			if ctx.char_before_cursor == " ":
+			
+			if ctx.char_before_cursor == " " and not ctx.token_before_cursor.ends_with(" "):
 				positional_arg_index += 1
 	
 	if PRINT_DEBUG:
@@ -139,9 +161,6 @@ func _route(ctx:CompletionContext): # shared by both passes
 
 func _consume_self(ctx:CompletionContext) -> ExitCode:
 	_consume_token(ctx)
-	#if ctx.unconsumed_tokens.is_empty(): # not sure about this..
-	#if ctx.tokens_empty_and_execute():
-		#return ExitCode.HELP
 	return ExitCode.OK
 
 func _consume_token(ctx:CompletionContext):
@@ -244,22 +263,23 @@ func _get_commands_in_dir(sort_priority:=true):
 			continue
 		var script = load(file_path)
 		Options.add_command_script_to_dict(script, options)
+	
 	if sort_priority:
-		options = ALibRuntime.Utils.USort.sort_dict_with_priority_key(options, &"priority")
-		
+		options = USort.sort_dict_with_priority_key(options, &"priority")
 	return options
 
 
 
 func _get_command(command:String):
-	print("Unrecognized command - get command: ", command)
+	_ctx_obj.append_error("Unrecognized command - get command: " + command)
+	#print("Unrecognized command - get command: ", command)
 	return
 
 func _get_help_for_token(token:String):
 	var split = _split_flag(token)
 	var option_data = _get_option_data(split, get_flags(), get_commands())
 	if option_data != null and option_data.has(&"help"):
-		print(option_data.get(&"help"))
+		_ctx_obj.append_output_rich(option_data.get(&"help"))
 		if split == get_command_name():
 			print_available_commands()
 	else:
@@ -267,20 +287,25 @@ func _get_help_for_token(token:String):
 
 
 func _get_help(what:String):
-	print("Unrecognized command - help base: ", what)
+	_ctx_obj.append_error("Unrecognized command - help base: " + what)
 
 func _correct_positional_count(target_size:int=-1):
 	if target_size == -1:
 		target_size = _get_target_positional_count()
 	if positional_args.size() != target_size:
-		print("Positional argument count incorrect: Expected %s, got %s" % [target_size, positional_args.size()])
+		_ctx_obj.append_error("Positional argument count incorrect: Expected %s, got %s" % [target_size, positional_args.size()])
+		_ctx_obj.append_error(str(positional_args))
 		return false
 	return true
 
 func _get_target_positional_count() -> int:
 	return get_self_command_data().get(&"positional_count", 0)
 
-static func _call_method(callable:Callable, args:Array, create_default_args:=false):
+## 0=No unwrap, 1=doubles, 2=both
+func _unwrap_quotes():
+	return 2
+
+static func _call_method(ctx:CompletionContext, callable:Callable, args:Array, create_default_args:=false):
 	# convert variables to $VAR
 	var tok = EditorConsoleSingleton.get_instance().tokenizer
 	for i in range(args.size()):
@@ -290,6 +315,7 @@ static func _call_method(callable:Callable, args:Array, create_default_args:=fal
 	var callable_arg_count = callable.get_argument_count()
 	if args.size() != callable_arg_count:
 		if not create_default_args:
+			ctx.append_error("Arg count mismatch: %s - expected %s, got %s" % [callable.get_method(), callable_arg_count, args.size()])
 			UtilsLocal.Print.error_arg_count(callable, args)
 			return
 		
@@ -301,6 +327,7 @@ static func _call_method(callable:Callable, args:Array, create_default_args:=fal
 	var method_name = callable.get_method()
 	var property_info = UtilsRemote.UClassDetail.get_member_info_by_path(script, method_name)
 	if not (property_info is Dictionary and property_info.has("args")):
+		ctx.append_error("Could not get method '%s' info in object: %s" % [method_name, obj])
 		ConsolePrint.error("Could not get method '%s' info in object: %s" % [method_name, obj])
 		return
 	var valid_args = true
@@ -322,9 +349,11 @@ static func _call_method(callable:Callable, args:Array, create_default_args:=fal
 						var converted = ConsoleTokenizer.Var.auto_convert(passed, type)
 						if converted != null:
 							args[i] = converted
+							ctx.append_output_rich("Arg '%s' conversion: %s %s -> %s %s" % [arg_data.get("name"), pass_str, passed, type_string(type), converted])
 							print("Arg '%s' conversion: %s %s -> %s %s" % [arg_data.get("name"), pass_str, passed, type_string(type), converted])
 							err = false
 					if err:
+						ctx.append_error("Arg '%s' type mismatch: %s passed, should be %s" % [arg_data.get("name"), pass_str, type_string(type)])
 						ConsolePrint.error("Arg '%s' type mismatch: %s passed, should be %s" % [arg_data.get("name"), pass_str, type_string(type)])
 						valid_args = false
 				continue
@@ -343,6 +372,17 @@ static func _call_method(callable:Callable, args:Array, create_default_args:=fal
 				new_args.append(variant)
 		
 		if args.size() + new_args.size() != callable_arg_count:
+			var err_pr = Pr.new()
+			err_pr.append("Could not create default args for method ", Colors.ERROR_RED).append("'%s'" % method_name)\
+			.append(" in object: ", Colors.ERROR_RED).append(obj)
+			ctx.append_error(err_pr.get_raw_string())
+			ctx.append_output_rich(err_pr.get_string(true))
+			
+			err_pr.append("Passed: ").append("%s" % [args], Colors.ACCENT_MUTE).append(" Created:").append("%s" % [new_args], Colors.ACCENT_MUTE)
+			ctx.append_error(err_pr.get_raw_string())
+			ctx.append_output_rich(err_pr.get_string(true))
+			
+			
 			Pr.new().append("Could not create default args for method ", Colors.ERROR_RED).append("'%s'" % method_name)\
 			.append(" in object: ", Colors.ERROR_RED).append(obj).display()
 			Pr.new().append("Passed: ").append("%s" % [args], Colors.ACCENT_MUTE).append(" Created:").append("%s" % [new_args], Colors.ACCENT_MUTE).display()
@@ -351,6 +391,7 @@ static func _call_method(callable:Callable, args:Array, create_default_args:=fal
 		args.append_array(new_args)
 	
 	if not valid_args:
+		ctx.append_error("Invalid arguments")
 		ConsolePrint.error("Invalid arguments.")
 		return
 	var result = callable.callv(args)
@@ -359,7 +400,9 @@ static func _call_method(callable:Callable, args:Array, create_default_args:=fal
 		if result is Object:
 			if result.get_class() in _RESULTS_TO_SKIP:
 				return
-		print(result)
+		ctx.append_output(result)
+		if ctx.print:
+			ctx.append_output_rich(result)
 
 
 # utils
@@ -375,7 +418,8 @@ func _add_variables_to_completions(dict:Dictionary):
 
 func print_available_commands():
 	var commands = get_commands()
+	commands.erase(Options.Keys.COMMAND_META)
 	if commands.size() > 0:
-		print("Available commands:")
+		_ctx_obj.append_output_rich("Available commands:")
 		for c in commands:
-			print("\t", c)
+			_ctx_obj.append_output_rich("\t" + c)

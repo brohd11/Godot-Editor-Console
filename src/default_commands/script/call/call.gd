@@ -20,8 +20,12 @@ static func get_self_command_data() -> Dictionary:
 
 func _get_flags():
 	var options = Options.new()
-	options.add_option("--private")
-	options.add_option("--default")
+	options.add_option("--private", {
+		&"help": "Display private members during autocompletion."
+	})
+	options.add_option("--default", {
+		&"help": "Create default value arguments when calling the GDScript method."
+	})
 	return options.get_options()
 
 func _process_flag(flag:String):
@@ -66,12 +70,12 @@ func _execute(ctx:CompletionContext):
 		print("Unrecognized method: ", method_name)
 		return 1
 	
-	call_method(script, method_name, ctx.arguments)
+	call_method(ctx, script, method_name)
 
 
-func call_method(script:Script, method_name:String, args:Array):
+func call_method(ctx:CompletionContext, script:Script, method_name:String):
 	if not script.has_method(method_name):
 		print("Static method '%s' not in script." % method_name)
 		return
 	var callable = script.get(method_name)
-	_call_method(callable, args, create_default)
+	_call_method(ctx, callable, ctx.arguments, create_default)

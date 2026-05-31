@@ -27,6 +27,22 @@ func _process_flag(flag:String):
 		set_flag = true
 
 
+func _get_completions(ctx:CompletionContext):
+	var scope_data = UtilsLocal.get_scope_data()
+	var options = Options.new()
+	var existing = []
+	if set_flag:
+		existing = scope_data.get(UtilsLocal.ScopeDataKeys.SETS, [])
+	else:
+		existing = scope_data.get(UtilsLocal.ScopeDataKeys.SCOPES, [])
+	
+	for e in existing:
+		options.add_option(e, {
+			&"help": "Existing scope/set: %s" % e
+		})
+	options.merge(get_flags(true))
+	return options.get_options()
+
 func _execute(_ctx:CompletionContext):
 	var scope_name = positional_args[0]
 	if set_flag:
