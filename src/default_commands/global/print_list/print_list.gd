@@ -1,6 +1,6 @@
 extends EditorConsoleSingleton.CommandBase
 
-const UString = UtilsRemote.UString
+
 const UClassDetail = UtilsRemote.UClassDetail
 
 const _PRINT_LIST_OPTIONS = ["--tool", "--abstract", "--name=", "--lang=", "--base="]
@@ -68,7 +68,7 @@ func _print_list(ctx:CompletionContext):
 	if target_base != "--":
 		base_check = TextCheck.new(target_base)
 	var did_print = false
-	ctx.append_output_rich("Printing global class list:")
+	ctx.append_output("Printing global class list:")
 	var pr = Pr.new()
 	var global_class_list = ProjectSettings.get_global_class_list()
 	for data:Dictionary in global_class_list:
@@ -94,19 +94,15 @@ func _print_list(ctx:CompletionContext):
 		
 		did_print = true
 		
-		ctx.append_output(name)
-		if ctx.print:
-			ctx.append_output_rich("")
-			ctx.append_output_rich(pr.append(name, UtilsRemote.EditorColors.get_syntax_color(UtilsRemote.EditorColors.SyntaxColor.USER_TYPE)).get_string(true))
+		
+		ctx.append_output("")
+		ctx.append_output(pr.append(name, UtilsRemote.EditorColors.get_syntax_color(UtilsRemote.EditorColors.SyntaxColor.USER_TYPE)).get_string(true))
 		
 		for key:String in data.keys():
-			ctx.append_output("\t" + str(key) + ": " + str(data[key]))
-			if ctx.print:
-				ctx.append_output_rich(pr.append("\t" + str(key), Colors.SCOPE).append(": ").append(str(data[key])).get_string(true))
-			#pr.append("\t" + str(key), Colors.SCOPE).append(": ").append(str(data[key])).display()
+			ctx.append_output(pr.append("\t" + str(key), Colors.SCOPE).append(": ").append(str(data[key])).get_string(true))
 	
-	if not did_print and ctx.print:
-		ctx.append_output_rich("No classes to show.")
+	if not did_print:
+		ctx.append_output("No classes to show.")
 
 
 class TextCheck:

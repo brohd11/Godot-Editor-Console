@@ -86,35 +86,35 @@ static func print_members(ctx:CompletionContext, script_name:String, flags:Array
 			var members = {}
 			if command == LIST_COMMANDS_OPTIONS[0]: # methods
 				if inherited:
-					ctx.append_output("Printing class methods: %s" % script_name, true)
+					ctx.append_output("Printing class methods: %s" % script_name)
 					members = UClassDetail.class_get_all_methods(script)
 				else:
-					ctx.append_output("Printing script methods: %s" % script_name, true)
+					ctx.append_output("Printing script methods: %s" % script_name)
 					members = UClassDetail.script_get_all_methods(script)
 			elif command == LIST_COMMANDS_OPTIONS[1]: # signals
 				if inherited:
-					ctx.append_output("Printing class signals: %s" % script_name, true)
+					ctx.append_output("Printing class signals: %s" % script_name)
 					members = UClassDetail.class_get_all_signals(script)
 				else:
-					ctx.append_output("Printing script signals: %s" % script_name, true)
+					ctx.append_output("Printing script signals: %s" % script_name)
 					members = UClassDetail.script_get_all_signals(script)
 			elif command == LIST_COMMANDS_OPTIONS[2]: # constants
 				if inherited:
-					ctx.append_output("Printing class constants: %s" % script_name, true)
+					ctx.append_output("Printing class constants: %s" % script_name)
 					members = UClassDetail.class_get_all_constants(script)
 				else:
-					ctx.append_output("Printing script constants: %s" % script_name, true)
+					ctx.append_output("Printing script constants: %s" % script_name)
 					members = UClassDetail.script_get_all_constants(script)
 			elif command == LIST_COMMANDS_OPTIONS[3]: # properties
 				if inherited:
-					ctx.append_output("Printing class properties: %s" % script_name, true)
+					ctx.append_output("Printing class properties: %s" % script_name)
 					members = UClassDetail.class_get_all_properties(script)
 				else:
-					ctx.append_output("Printing script properties: %s" % script_name, true)
+					ctx.append_output("Printing script properties: %s" % script_name)
 					members = UClassDetail.script_get_all_properties(script)
 			elif command == LIST_COMMANDS_OPTIONS[4]: # enums
 				if inherited:
-					ctx.append_output("Printing class enums: %s" % script_name, true)
+					ctx.append_output("Printing class enums: %s" % script_name)
 					members = UClassDetail.class_get_all_enums(script)
 				else:
 					ctx.append_error("Cannot get script enums, no API in ClassDB. Use '--inherited' option.")
@@ -123,25 +123,25 @@ static func print_members(ctx:CompletionContext, script_name:String, flags:Array
 			
 			if members.is_empty():
 				pr.append("\tNone in script.", Colors.VAR_RED)
-				ctx.append_output_with_pr(pr)
+				ctx.append_output(pr.get_string(true))
 			else:
 				if print_lines or print_data:
 					for m in members.keys():
 						pr.append("%s" % m, Colors.ACCENT_MUTE)
-						ctx.append_output_with_pr(pr)
+						ctx.append_output(pr.get_string(true))
 						if print_data:
 							var data = members.get(m)
 							if data == null:
 								pr.append("\tNo data.")
-								ctx.append_output_with_pr(pr)
+								ctx.append_output(pr.get_string(true))
 							else:
 								for key in data.keys():
 									pr.append("\t%s - %s" % [key, data[key]], Colors.GRAY)
-									ctx.append_output_with_pr(pr)
+									ctx.append_output(pr.get_string(true))
 				else:
 					pr.append("\t" + "  ".join(members.keys()), Colors.ACCENT_MUTE)
-					ctx.append_output_with_pr(pr)
+					ctx.append_output(pr.get_string(true))
 				
 			if i < flags_size - 1:
-				ctx.append_output_rich("") # print blank line between sections
+				ctx.append_output("") # print blank line between sections
 			continue

@@ -36,7 +36,7 @@ func _process_flag(flag:String):
 
 func _get_completions(ctx:CompletionContext):
 	if ctx.in_arguments():
-		var dict = {}
+		var dict = {} # possibly add something to check arg types?
 		Options.add_show_variables_to_dict(dict)
 		return dict
 	

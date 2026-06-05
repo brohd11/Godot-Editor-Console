@@ -47,7 +47,11 @@ func _consume_self(ctx:CompletionContext) -> ExitCode:
 
 func _get_completions(ctx:CompletionContext):
 	var options = Options.new()
-	if script_access_path == "script" and not ctx.input_text.left(ctx.caret_col).ends_with(script_access_path):
+	var cursor_on_access = ctx.token_before_cursor == script_access_path and ctx.char_before_cursor != " "
+	print(ctx.token_before_cursor)
+	print(cursor_on_access, ":", ctx.char_before_cursor,":")
+	print(ctx.word_before_cursor)
+	if not cursor_on_access:
 		var commands = get_commands(true)
 		commands.merge(get_flags(true))
 		return commands
@@ -56,7 +60,8 @@ func _get_completions(ctx:CompletionContext):
 
 static func get_completion_static(command_obj, ctx:CompletionContext, target_access_path): # command_obj not used, should be ok to remove?
 	var options = Options.new()
-	var cursor_on_access = ctx.input_text.left(ctx.caret_col).ends_with(target_access_path)
+	var cursor_on_access = ctx.token_before_cursor == target_access_path and ctx.char_before_cursor != " "
+	
 	var target_script = ScriptUtil.get_script_from_ctx(ctx)
 	if not is_instance_valid(target_script):
 		if not cursor_on_access:
@@ -84,6 +89,7 @@ func _execute(ctx:CompletionContext):
 	if text_flag:
 		var current_editor = ScriptEditorRef.get_current_code_edit()
 		ctx.output = current_editor.text
+		print("SETTING OUT")
 		return ExitCode.OK
 	
 	_get_help_for_token(get_command_name())

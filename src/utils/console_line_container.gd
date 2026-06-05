@@ -128,81 +128,15 @@ class ConsoleLineEdit extends CodeEdit:
 			_clear_popup()
 			return
 		
-		var ctx = CompletionContext.new()
-		ctx.line_edit = self
-		ctx.completion_parse()
-		if ctx.token_before_cursor.begins_with("@"):
-			var options = Options.new()
-			var config = UtilsLocal.Config.get_merged_config()
-			var alias_data = config.get_section(UtilsLocal.Config.ALIAS)
-			for k in alias_data.keys():
-				var val = UtilsLocal.ConsoleTokenizer.clean_alias_token(alias_data[k])
-				options.add_option(k + " = [%s]" % val, {
-					&"insert": k
-				})
-			_build_popup(options.get_options())
-			return
-		#ctx = ctx.get_current_command_context_object()
+		var completions = EditorConsoleSingleton.get_completion_for_input(text, {
+			&"line_edit": self,
+		})
 		
-		var scope_names = scope_dict.keys()
-		var all_scope_names = combined_scope_dict.keys()
-		var global_classes = UClassDetail.get_all_global_class_paths()
-		var global_class_names = global_classes.keys()
-		var first_word:String = ""
-		if ctx.unconsumed_tokens.size() > 0:
-			first_word = ctx.unconsumed_tokens[0]
-		if first_word.find(".") > -1:
-			var front = UtilsRemote.UString.get_member_access_front(first_word)
-			if not (front in all_scope_names or front in global_class_names):
-				_clear_popup()
-				return
-			first_word = front
-		
-		var options = Options.new()
-		if not (first_word in all_scope_names or first_word in global_class_names):
-			for scope:String in scope_names:
-				options.add_option(scope)
-			_build_popup(options.get_options())
-			return
-		
-		if ctx.word_before_cursor == first_word:
+		if completions.is_empty():
 			_clear_popup()
 			return
-		
-		var command_script = null
-		if first_word in all_scope_names:
-			var scope_data = combined_scope_dict.get(first_word)
-			command_script = scope_data.get(UtilsLocal.ScopeDataKeys.SCRIPT)
-		elif first_word in global_class_names:
-			command_script = editor_console.get_scope_script("global")
-		if command_script != null:
-			if command_script is GDScript:
-				command_script = command_script.new()
-			#if UNode.has_static_method_compat("get_completion", command_script):
-				#var comp_data = command_script.get_completion(completion_context)
-			if UNode.has_static_method_compat("complete", command_script):
-				var comp_data = command_script.complete(ctx)
-				if comp_data != null:
-					if comp_data is Dictionary:
-						options.set_options(comp_data)
-					elif comp_data.has_method("get_options"):
-						comp_data = comp_data.get_options()
-					else:
-						print("Error getting completion in object: %s" % command_script, " -> ", comp_data)
-		
-		var command_meta = options.get_options().get(CommandKeys.COMMAND_META, {}) # should this be from the commands?
-		var show_variables = command_meta.get(CommandKeys.SHOW_VARIABLES, false)
-		#show_variables = true #ALERT
-		if ctx.input_text.find(Options.ARG_DELIMITER) > -1:
-			options.remove_option(Options.ARG_DELIMITER)
-			if show_variables:
-				var var_nms = variable_dict.keys()
-				if var_nms.size() > 0:
-					options.add_separator("Variables")
-				for nm in var_nms:
-					options.add_option(nm)
-		
-		_build_popup(options.get_options())
+		_build_popup(completions)
+		return
 	
 	
 	func _build_popup(item_dict:Dictionary):

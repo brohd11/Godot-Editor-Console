@@ -1,6 +1,5 @@
 extends EditorConsoleSingleton.CommandBase
 
-const UString = UtilsRemote.UString
 const UClassDetail = UtilsRemote.UClassDetail
 
 const CommandScript = preload("res://addons/editor_console/src/default_commands/script/script.gd")

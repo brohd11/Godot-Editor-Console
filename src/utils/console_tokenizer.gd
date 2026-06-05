@@ -1,4 +1,7 @@
 
+const PLUGIN_EXPORTED = false
+const PRINT_DEBUG = PLUGIN_EXPORTED or false
+
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 const Colors = UtilsLocal.Colors
 const Config = UtilsLocal.Config
@@ -65,87 +68,6 @@ func parse_command_string(input_string: String, expand:=false) -> Dictionary:
 	
 	return result
 
-#func _tokenize_string(text: String) -> Dictionary:
-	#var tokens = PackedStringArray()
-	#if text.is_empty():
-		#return {"tokens":tokens, "display":""}
-	#
-	#var config = Config.get_merged_config()
-	#var alias_data:Dictionary = config.get_section(Config.ALIAS)
-	#
-	#var pr = Pr.new()
-	#
-	#
-	#var matches = _token_regex.search_all(text)
-	#for _match in matches:
-		#var quote_char = ""
-		#var token = _match.get_string()
-		#if token == "":
-			#print("BLANK TOK")
-		##print(token)
-		## Check for and remove the surrounding quotes from the captured token
-		##if (token.begins_with("\"") and token.ends_with("\"")) or \
-			##(token.begins_with("'") and token.ends_with("'")):
-		#if (not token == '"' and token.begins_with("\"") and token.ends_with("\"")) or \
-			#(not token == "'" and token.begins_with("'") and token.ends_with("'")):
-			## This removes the first and last character (the quote)
-			#quote_char = token[0]
-			#
-			#if token[0] == '"':
-				#var unquoted = UString.unquote(token)
-				#var split = UString.string_safe_split(unquoted, " ")
-				#for tok in split:
-					#var expand = alias_data.get(tok)
-					#if expand == null:
-						#
-						#continue
-					#
-					#pass
-				#
-				#pass
-			#
-			#print("STRTOK:", token)
-			#
-			#if quote_char == "" and not editor_console.os_mode: # TEST if in os mode, preserve quotes so things aren't changed
-				#token = token.substr(1, token.length() - 2)
-				#print("UNSTRING:",token)
-			##token = UString.unescape(token)
-		#
-		#var var_token_check = token
-		#if token.begins_with("$"):
-			#var_token_check = _check_variable(token)
-			#if var_token_check != token:
-				#pr.append(" ").append(token, color_var_ok).append(" ").append(var_token_check, color_var_value)
-			#else:
-				#pr.append(" ").append(token, color_var_fail).append(" ").append("Could not get var", color_var_value)
-		#elif token in editor_console.scope_dict or token in editor_console.hidden_scope_dict:
-			#var token_str = "%s" % token
-			#if _match != matches[0]:
-				#token_str = " %s" % token
-			#pr.append(token_str, editor_console.Colors.SCOPE)
-		#elif UClassDetail.get_global_class_path(token) != "":
-			#pr.append(" %s" % token, EditorColors.get_syntax_color(EditorColors.SyntaxColor.ENGINE_TYPE))
-		#elif token.find("<") > -1:
-			#if editor_console:
-				#var_token_check = _check_variable(token)
-			#pr.append(" %s" % token)
-		#elif token.find("#") > -1:
-			#if editor_console:
-				#var_token_check = _check_variable(token)
-			#pr.append(" %s" % token)
-		#else:
-			#if quote_char != "":
-				#pr.append(" %s%s%s" % [quote_char, token, quote_char])
-			#else:
-				#pr.append(" %s" % token)
-		#
-		#tokens.push_back(var_token_check)
-	#
-	#return {
-		#"tokens": tokens,
-		#"display": pr.get_string().strip_edges(),
-	#}
-
 
 func _tokenize_string(text: String, expand:bool=false) -> Dictionary:
 	var tokens = PackedStringArray()
@@ -160,79 +82,37 @@ func _tokenize_string(text: String, expand:bool=false) -> Dictionary:
 	var expanded_tokens = []
 	var matches = _token_regex.search_all(text)
 	for _match in matches:
-		var quote_char = ""
 		var token = _match.get_string()
 		if token == "":
-			print("BLANK TOK")
-		#print(token)
-		# Check for and remove the surrounding quotes from the captured token
-		#if (token.begins_with("\"") and token.ends_with("\"")) or \
-			#(token.begins_with("'") and token.ends_with("'")):
-		if (not token == '"' and token.begins_with("\"") and token.ends_with("\"")) or \
-			(not token == "'" and token.begins_with("'") and token.ends_with("'")):
-			# This removes the first and last character (the quote)
-			#quote_char = token[0]
-			pass
-			
-			#if quote_char == "" and not editor_console.os_mode: # TEST if in os mode, preserve quotes so things aren't changed
-				#token = token.substr(1, token.length() - 2)
-				#print("UNSTRING:",token)
-			#token = UString.unescape(token)
+			if PRINT_DEBUG:
+				print("BLANK TOK")
+			continue
 		
 		var is_first = _match == matches[0]
 		var is_expanded = false
 		
 		if expand:
 			var expanded = _expand_token(token, alias_data)
-			
 			is_expanded = expanded[0] != token
-			print(token,":EXPANDED:", expanded, ":IS:", is_expanded)
-			for e in expanded:
-				var var_check = _get_token_color(e, pr, is_first, false)
+			if is_expanded:
+				pr.append("[", color_var_value)
+			
+			for i in range(expanded.size()):
+				var e = expanded[i]
+				var var_check = _get_token_color(e, pr, i > 0 or not is_expanded, false)
 				expanded_tokens.append(var_check)
 				is_first = false
+			
+			if is_expanded:
+				pr.append("]", color_var_value)
+				_get_token_color(token, pr, false, is_expanded)
 		
-		if not expand or is_expanded:
-			var var_token_check = _get_token_color(token, pr, is_first, is_expanded)
+		if not expand:
+			var var_token_check = _get_token_color(token, pr, not is_first, is_expanded)
 			tokens.push_back(var_token_check)
 		else:
 			tokens.push_back(_check_variable(token))
-		
-		
-		#var var_token_check = token
-		#if token.begins_with("$"):
-			#var_token_check = _check_variable(token)
-			#if var_token_check != token:
-				#pr.append(" ").append(token, color_var_ok).append(" ").append(var_token_check, color_var_value)
-			#else:
-				#pr.append(" ").append(token, color_var_fail).append(" ").append("Could not get var", color_var_value)
-		#elif token in editor_console.scope_dict or token in editor_console.hidden_scope_dict:
-			#var token_str = "%s" % token
-			#if _match != matches[0]:
-				#token_str = " %s" % token
-			#pr.append(token_str, editor_console.Colors.SCOPE)
-		#elif UClassDetail.get_global_class_path(token) != "":
-			#pr.append(" %s" % token, EditorColors.get_syntax_color(EditorColors.SyntaxColor.ENGINE_TYPE))
-		#elif token.find("<") > -1:
-			#if editor_console:
-				#var_token_check = _check_variable(token)
-			#pr.append(" %s" % token)
-		#elif token.find("#") > -1: # not sure what this is about? expression?
-			#if editor_console:
-				#var_token_check = _check_variable(token)
-			#pr.append(" %s" % token)
-		#elif not expanded_tokens.is_empty():
-			#pr.append(" %s" % " ".join(expanded_tokens)).append(" %s" % token, color_var_value)
-		#else:
-			#if quote_char != "":
-				#pr.append(" %s%s%s" % [quote_char, token, quote_char])
-			#else:
-				#pr.append(" %s" % token)
-		
-		
-		
-		
-		#tokens.push_back(var_token_check)
+	
 	
 	return {
 		"tokens": tokens,
@@ -241,50 +121,35 @@ func _tokenize_string(text: String, expand:bool=false) -> Dictionary:
 	}
 
 
-static func quote_token(token:String, quote_char:='"'):
-	if not token.contains(" ") or UString.is_string_or_string_name(token):
-		return token
-	return quote_char + token + quote_char
-
-func _get_token_color(token:String, pr:Pr, first_token:bool, is_expanded:bool):
+func _get_token_color(token:String, pr:Pr, leading_space:bool, is_expanded:bool):
 	var var_token_check = token
-	if token.begins_with("$"):
+	if leading_space:
+		pr.append(" ")
+	if is_expanded:
+		pr.append("%s" % token, color_var_value)
+	elif token.begins_with("$"):
 		var_token_check = _check_variable(token)
 		if var_token_check != token:
-			pr.append(" ").append(token, color_var_ok).append(" ").append(var_token_check, color_var_value)
+			pr.append(token, color_var_ok).append(" ").append(var_token_check, color_var_value)
 		else:
-			pr.append(" ").append(token, color_var_fail).append(" ").append("Could not get var", color_var_value)
+			pr.append(token, color_var_fail).append(" ").append("Could not get var", color_var_value)
 	elif token in editor_console.scope_dict or token in editor_console.hidden_scope_dict:
-		var token_str = "%s" % token
-		if not first_token:
-			token_str = " %s" % token
-		pr.append(token_str, editor_console.Colors.SCOPE)
+		pr.append(token, editor_console.Colors.SCOPE)
 	elif UClassDetail.get_global_class_path(token) != "":
-		pr.append(" %s" % token, EditorColors.get_syntax_color(EditorColors.SyntaxColor.ENGINE_TYPE))
+		pr.append("%s" % token, EditorColors.get_syntax_color(EditorColors.SyntaxColor.ENGINE_TYPE))
 	elif token.find("<") > -1:
 		if editor_console:
 			var_token_check = _check_variable(token)
-		pr.append(" %s" % token)
+		pr.append("%s" % token)
 	elif token.find("#") > -1: # not sure what this is about? expression?
 		if editor_console:
 			var_token_check = _check_variable(token)
-		pr.append(" %s" % token)
-	elif is_expanded:
-		pr.append(" %s" % token, color_var_value)
+		pr.append("%s" % token)
 	else:
-		#if quote_char != "":
-			#pr.append(" %s%s%s" % [quote_char, token, quote_char])
-		#else:
-		pr.append(" %s" % token)
+		pr.append("%s" % token)
 	
 	return var_token_check
 
-#static func shell_quote(s: String, quote_char:="'") -> String:
-	## Wrap in single quotes; turn any embedded ' into '\''
-	#if quote_char == "'":
-		#return "'" + s.replace("'", "'\\''") + "'"
-	#else:
-		#return '"' + s.replace('"', '"\\""') + '"'
 
 static func shell_quote(s: String, quote_char:="'") -> String:
 	# Wrap in single quotes; turn any embedded ' into '\''
@@ -322,7 +187,10 @@ func _expand_token(token, alias_data:Dictionary, seen_tokens:={}):
 		var requote = " ".join(expanded_tokens)
 		if not UString.is_string_or_string_name(requote):
 			requote = '"' + requote + '"'
-		print("REQUOTE:", requote)
+		
+		if PRINT_DEBUG:
+			print("REQUOTE:", requote)
+		
 		return [requote]
 	return expanded_tokens
 
@@ -344,15 +212,16 @@ func _check_variable(arg:String):
 	
 	var exp_idx = arg.find('{#')
 	if exp_idx > -1:
-		var exp = Expression.new()
+		var expr = Expression.new()
 		var arg_stripped = arg.replace("'","").replace('"',"").trim_prefix("{#").trim_suffix("}")
 		if arg_stripped.find("<") > -1:
 			
 			pass
-		var err = exp.parse(arg_stripped)
+		var err = expr.parse(arg_stripped)
 		if err == OK:
-			var result = exp.execute()
-			print(result)
+			var result = expr.execute()
+			if PRINT_DEBUG:
+				print(result)
 			var type = Var.check_type(arg)
 			if type:
 				result = Var.string_to_type(result, type)
@@ -388,7 +257,9 @@ class Var:
 	
 	static func auto_convert(arg:Variant, target_type:int):
 		var passed_type = typeof(arg)
-		print("Convert: ", arg, type_string(passed_type), " -> " ,type_string(target_type))
+		if PRINT_DEBUG:
+			print("Convert: ", arg, type_string(passed_type), " -> " ,type_string(target_type))
+		
 		if passed_type == TYPE_STRING: # string conversions
 			arg = arg as String
 			if target_type == TYPE_OBJECT:
@@ -425,7 +296,9 @@ class Var:
 				return array
 			else:
 				var converted = type_convert(arg, target_type)
-				print("CONVERTED::", converted)
+				if PRINT_DEBUG:
+					print("CONVERTED::", converted)
+				
 				return converted
 		
 		

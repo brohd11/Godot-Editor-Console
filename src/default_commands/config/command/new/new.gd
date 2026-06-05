@@ -32,43 +32,29 @@ func _process_flag(flag:String):
 		open_flag = true
 
 func _get_completions(_ctx:CompletionContext):
-	if positional_arg_index <= 0: # and positional_args.size() == 1:
-		var path = ""
-		if positional_args.size() > 0:
-			path = positional_args[0]
-		return EditorConsoleSingleton.get_completion_for_input(path, true, self)
-		
-		var first = path.get_slice(" ", 0)
-		var console = EditorConsoleSingleton.get_instance()
-		var scope_script = console.get_scope_script(first)
-		if not is_instance_valid(scope_script):
-			var options = Options.new()
-			for s in console.scope_dict.keys():
-				options.add_option(s)
-			
-			options.merge(get_flags(true))
-			return options.get_options()
-		var ins = scope_script.new()
-		var new_ctx = CompletionContext.new(path)
-		new_ctx.parse()
-		var completion = ins.complete(new_ctx)
-		for option in completion.keys():
-			var data = completion[option]
-			if not data.has(&"get_command"):
-				completion.erase(option)
-		return completion
+	if positional_args.size() > 0 and positional_arg_index <= 0:
+		print("IDX::", positional_args[0])
+		if UString.is_string_or_string_name(positional_args[0]):
+			return EditorConsoleSingleton.get_completion_for_input(positional_args[0], {
+				&"show_flags": false,
+				&"require_quotes": true,
+			})
+	return get_flags(true)
 
+func _unwrap_quotes():
+	return 0
 
 func _execute(_ctx:CompletionContext):
 	
-	var new_command_name:String = positional_args[1]
+	var new_command_name:String = UString.unquote(positional_args[1])
 	if new_command_name.get_extension() != "":
 		new_command_name = new_command_name.get_basename()
 	if not new_command_name.is_valid_filename():
 		print("Not a valid file name: ", new_command_name)
 		return
 	
-	var command_path:String = positional_args[0].strip_edges()
+	var command_path:String = positional_args[0]
+	command_path = UString.unquote(command_path).strip_edges()
 	var target_command_dir:String
 	if command_path.is_absolute_path():
 		target_command_dir = command_path
@@ -115,7 +101,7 @@ func _execute(_ctx:CompletionContext):
 
 
 func _get_new_command_dir():
-	var command_path:String = positional_args[0].strip_edges()
+	var command_path:String = UString.unquote(positional_args[0]).strip_edges()
 	var console = EditorConsoleSingleton.get_instance()
 	
 	var path_parts = [command_path]

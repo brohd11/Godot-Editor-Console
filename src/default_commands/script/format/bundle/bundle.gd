@@ -1,7 +1,7 @@
 extends EditorConsoleSingleton.CommandBase
 
 const UFile = UtilsRemote.UFile
-const UString = UtilsRemote.UString
+
 const GDScriptParse = UString.GDScriptParse
 
 static func get_command_name() -> String:

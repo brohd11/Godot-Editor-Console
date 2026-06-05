@@ -1,0 +1,3 @@
+scene edited get_nodes --type=Label
+os grep Obj
+scene edited select

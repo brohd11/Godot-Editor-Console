@@ -15,7 +15,7 @@ static func get_self_command_data():
 
 func _get_completions(ctx:CompletionContext):
 	if positional_args.size() == 1:
-		return EditorConsoleSingleton.get_completion_for_input(positional_args[0], false)
+		return EditorConsoleSingleton.get_completion_for_input(positional_args[0])
 	return {}
 
 
@@ -27,5 +27,5 @@ func _execute(ctx:CompletionContext):
 	var new_ctx = CompletionContext.new(command)
 	new_ctx.print = false
 	new_ctx.add_to_hist = false
-	new_ctx.parse()
+	#new_ctx.execute_parse() # handled inside should be
 	EditorConsoleSingleton.get_instance().parse_input(new_ctx)

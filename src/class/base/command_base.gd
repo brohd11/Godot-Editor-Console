@@ -41,7 +41,7 @@ static func get_command_name() -> String:
 func __get_name__():
 	var nm = get_command_name()
 	if nm == _UNAMED:
-		_ctx_obj.append_output_rich("Unamed Command in -> " + get_script().resource_path.get_file())
+		_ctx_obj.append_output("Unamed Command in -> " + get_script().resource_path.get_file())
 		#print("Unamed Command in -> ", get_script().resource_path.get_file())
 	return nm
 
@@ -56,7 +56,7 @@ static func _command_data(params:={}):
 func __get_self_command_data__() -> Dictionary:
 	var params = get_self_command_data()
 	if params.has(_UNAMED):
-		_ctx_obj.append_output_rich("Command doesn't have self_option_data defined -> " + get_script().resource_path.get_file())
+		_ctx_obj.append_output("Command doesn't have self_option_data defined -> " + get_script().resource_path.get_file())
 		#print("Command doesn't have self_option_data defined -> ", get_script().resource_path.get_file())
 		return {}
 	if params.has(&"option_name"):
@@ -141,7 +141,19 @@ func _route(ctx:CompletionContext): # shared by both passes
 	var unwrap_setting = _unwrap_quotes()
 	for j in range(positional_count):
 		var pos_arg = _consume_token(ctx)
-		print(":", ctx.char_before_cursor, ":", ctx.token_before_cursor, ":", pos_arg, ":")
+		var tok_b_curs = ctx.token_before_cursor
+		
+		if PRINT_DEBUG:
+			print(":", ctx.char_before_cursor, ":", tok_b_curs.length(), ":", tok_b_curs, ":", pos_arg.length(), ":", pos_arg, ":")
+		
+		
+		
+		if tok_b_curs.replace(" ", "") == pos_arg.replace(" ", ""):
+			positional_arg_index = j
+			
+			if ctx.char_before_cursor == " " and not UString.is_string_or_string_name(tok_b_curs) and not tok_b_curs.ends_with(" "):
+				positional_arg_index += 1
+		
 		if unwrap_setting > 0 and pos_arg.length() > 1:
 			if UString.is_string_or_string_name(pos_arg):
 				var quote_char = pos_arg[0]
@@ -149,11 +161,6 @@ func _route(ctx:CompletionContext): # shared by both passes
 					pos_arg = UString.unquote(pos_arg)
 		
 		positional_args.append(pos_arg)
-		if ctx.token_before_cursor == pos_arg:
-			positional_arg_index = j
-			
-			if ctx.char_before_cursor == " " and not ctx.token_before_cursor.ends_with(" "):
-				positional_arg_index += 1
 	
 	if PRINT_DEBUG:
 		print("UNCONSUMED AFTER::", ctx.unconsumed_tokens)
@@ -211,10 +218,14 @@ func get_flags(hide_consumed:=false) -> Dictionary:
 	var options = _get_flags()
 	if not hide_consumed:
 		return options
-	for c in options.keys():
+	#for c in options.keys():
+		#var split = _split_flag(c)
+		#if split in consumed_tokens:
+			#options.erase(c)
+	for c in consumed_tokens:
 		var split = _split_flag(c)
-		if split in consumed_tokens:
-			options.erase(c)
+		if options.has(split):
+			options.erase(split)
 	return options
 
 
@@ -225,6 +236,11 @@ func _split_flag(token:String):
 	if not token.contains("="):
 		return token
 	return token.substr(0, token.find("=") + 1)
+
+func _get_flag_value(token:String):
+	if not token.contains("="):
+		return ""
+	return token.substr(token.find("=") + 1)
 
 #! keys i-Options.add_option;
 func _get_option_data(token:String, flags:Dictionary, commands:Dictionary):
@@ -279,7 +295,7 @@ func _get_help_for_token(token:String):
 	var split = _split_flag(token)
 	var option_data = _get_option_data(split, get_flags(), get_commands())
 	if option_data != null and option_data.has(&"help"):
-		_ctx_obj.append_output_rich(option_data.get(&"help"))
+		_ctx_obj.append_output(option_data.get(&"help"))
 		if split == get_command_name():
 			print_available_commands()
 	else:
@@ -294,7 +310,7 @@ func _correct_positional_count(target_size:int=-1):
 		target_size = _get_target_positional_count()
 	if positional_args.size() != target_size:
 		_ctx_obj.append_error("Positional argument count incorrect: Expected %s, got %s" % [target_size, positional_args.size()])
-		_ctx_obj.append_error(str(positional_args))
+		_ctx_obj.append_error("Atguments: " + str(positional_args))
 		return false
 	return true
 
@@ -349,7 +365,7 @@ static func _call_method(ctx:CompletionContext, callable:Callable, args:Array, c
 						var converted = ConsoleTokenizer.Var.auto_convert(passed, type)
 						if converted != null:
 							args[i] = converted
-							ctx.append_output_rich("Arg '%s' conversion: %s %s -> %s %s" % [arg_data.get("name"), pass_str, passed, type_string(type), converted])
+							ctx.append_output("Arg '%s' conversion: %s %s -> %s %s" % [arg_data.get("name"), pass_str, passed, type_string(type), converted])
 							print("Arg '%s' conversion: %s %s -> %s %s" % [arg_data.get("name"), pass_str, passed, type_string(type), converted])
 							err = false
 					if err:
@@ -376,11 +392,11 @@ static func _call_method(ctx:CompletionContext, callable:Callable, args:Array, c
 			err_pr.append("Could not create default args for method ", Colors.ERROR_RED).append("'%s'" % method_name)\
 			.append(" in object: ", Colors.ERROR_RED).append(obj)
 			ctx.append_error(err_pr.get_raw_string())
-			ctx.append_output_rich(err_pr.get_string(true))
+			ctx.append_output(err_pr.get_string(true))
 			
 			err_pr.append("Passed: ").append("%s" % [args], Colors.ACCENT_MUTE).append(" Created:").append("%s" % [new_args], Colors.ACCENT_MUTE)
 			ctx.append_error(err_pr.get_raw_string())
-			ctx.append_output_rich(err_pr.get_string(true))
+			ctx.append_output(err_pr.get_string(true))
 			
 			
 			Pr.new().append("Could not create default args for method ", Colors.ERROR_RED).append("'%s'" % method_name)\
@@ -401,8 +417,6 @@ static func _call_method(ctx:CompletionContext, callable:Callable, args:Array, c
 			if result.get_class() in _RESULTS_TO_SKIP:
 				return
 		ctx.append_output(result)
-		if ctx.print:
-			ctx.append_output_rich(result)
 
 
 # utils
@@ -420,6 +434,17 @@ func print_available_commands():
 	var commands = get_commands()
 	commands.erase(Options.Keys.COMMAND_META)
 	if commands.size() > 0:
-		_ctx_obj.append_output_rich("Available commands:")
+		_ctx_obj.append_output("Available commands:")
 		for c in commands:
-			_ctx_obj.append_output_rich("\t" + c)
+			_ctx_obj.append_output("\t" + c)
+
+func _get_config(type:int=0):
+	if type == 0:
+		return UtilsLocal.Config.get_merged_config()
+	elif type == 1:
+		return UtilsLocal.Config.get_global_config()
+	elif type == 2:
+		return UtilsLocal.Config.get_project_config()
+	else:
+		printerr("Unrecognized config type: %s; 0=Merged, 1=Global, 2=Project\nReturning merged data.")
+		return UtilsLocal.Config.get_merged_config()

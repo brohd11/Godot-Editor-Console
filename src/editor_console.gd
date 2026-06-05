@@ -13,21 +13,16 @@ const Pr = UString.PrintRich
 
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
-
+const Config = UtilsLocal.Config
 const ScopeDataKeys = UtilsLocal.ScopeDataKeys
-const GDSHKeys = UtilsLocal.GDSHKeys
 const Colors = UtilsLocal.Colors
 
 const ConsoleCommandSetBase = UtilsLocal.ConsoleCommandSetBase
 const CommandBase = UtilsLocal.CommandBase
 const CompletionContext = UtilsLocal.CompletionContext
 
-
-
 const ScriptEditorContext = preload("res://addons/editor_console/src/editor_plugins/script_editor.gd")
 
-
-const GDCONF = "user://addons/editor_console/gdsh.cfg"
 
 #region Old plugin.gd vars
 
@@ -105,6 +100,13 @@ func _ready() -> void:
 func _ready_deferred():
 	tokenizer = UtilsLocal.ConsoleTokenizer.new()
 	_load_default_commands()
+	EditorNodeRef.call_on_ready(_start_up_commands)
+
+func _start_up_commands():
+	var config = Config.get_merged_config()
+	var startup = config.get_section(Config.STARTUP, [])
+	for cmd in startup:
+		execute_command(cmd)
 
 static func get_singleton_name() -> String:
 	return "EditorConsoleSingleton"
@@ -416,14 +418,20 @@ func parse_input(ctx:CompletionContext, print_to_log:=true) -> void:
 	if ctx.expanded_command_statements.is_empty():
 		ctx.expand()
 	
-	if ctx.print and ctx.input_text.strip_edges() != "os":
+	ctx.execute_parse()
+	
+	if ctx.expanded_text.is_empty():
+		return
+	
+	if ctx.print and ctx.expanded_text.strip_edges() != "os":
+	#if print_to_log and ctx.expanded_text.strip_edges() != "os":
 		if not os_mode:
 			ctx.console_display_string = "%s %s" % [_get_console_label_string(), ctx.display_text]
 		else:
 			ctx.console_display_string = "%s %s" % [os_string, ctx.raw_text.strip_edges()]
 		
-		if print_to_log:
-			print_rich(ctx.console_display_string)
+		#if print_to_log:
+		print_rich(ctx.console_display_string)
 	
 	if ctx.expanded_command_statements.size() == 1 or os_mode:
 		ctx.execute_parse()
@@ -431,11 +439,12 @@ func parse_input(ctx:CompletionContext, print_to_log:=true) -> void:
 	else:
 		var working_ctx = null
 		if ctx.add_to_hist:
-			_add_to_history(ctx.input_text)
+			_add_to_history(ctx.raw_text)
 		
 		for i in range(ctx.expanded_command_statements.size()):
 			var cmd = ctx.expanded_command_statements[i].strip_edges()
 			var new_ctx = CompletionContext.new(cmd)
+			#print("CALLING:", cmd)
 			new_ctx.execute_parse()
 			new_ctx.chained_command = true
 			new_ctx.add_to_hist = false
@@ -443,27 +452,30 @@ func parse_input(ctx:CompletionContext, print_to_log:=true) -> void:
 			
 			if is_instance_valid(working_ctx):
 				new_ctx.input = working_ctx.output.strip_edges()
+			
 			_parse_input(new_ctx)
 			working_ctx = new_ctx
 		
 		ctx.output = working_ctx.output
-		ctx.output_rich = working_ctx.output_rich
 	
-	ctx.output_rich = ctx.output_rich.strip_edges(false, true).lstrip("\n")
-	if print_to_log:
+	ctx.output = ctx.output.strip_edges(false, true).lstrip("\n")
+	
+	#if print_to_log:
+	if ctx.print:
 		if ctx.error != "":
 			print(ctx.error.lstrip("\n"))
-		elif ctx.print and not ctx.output_rich.is_empty():
-			if ctx.output_rich.contains("[/color]"):
-				print_rich(ctx.output_rich)
+		elif not ctx.output.is_empty():
+		#elif print_to_log and not ctx.output.is_empty():
+			if ctx.output.contains("[/color]"):
+				print_rich(ctx.output)
 			else:
-				print(ctx.output_rich)
+				print(ctx.output)
 	
 	
 func _parse_input(ctx:CompletionContext) -> void:
 	working_variable_dict.clear()
 	current_command_index = -1
-	var terminal_input = ctx.input_text
+	var terminal_input = ctx.expanded_text
 	
 	terminal_input = terminal_input.strip_edges()
 	if terminal_input == "": return
@@ -472,7 +484,6 @@ func _parse_input(ctx:CompletionContext) -> void:
 		_add_to_history(ctx.raw_text)
 	
 	var tokens:Array = ctx.unconsumed_tokens
-	print("TOKENS:", tokens)
 	if tokens.find("--") > -1:
 		tokens.remove_at(tokens.rfind("--"))
 	
@@ -498,16 +509,10 @@ func _parse_input(ctx:CompletionContext) -> void:
 	if c_1.to_lower() == "help":
 		c_1 = c_1.to_lower()
 	
-	#if ctx.print:
-		#print_rich("%s %s" % [_get_console_label_string(), display_text])
-	
 	c_1 = UString.get_member_access_front(c_1)
 	var parse_scopes = _scope_parse(c_1, ctx)
 	if parse_scopes == Keys.NO_MATCHING_COMMAND:
 		_scope_parse("global", ctx)
-	
-	#if ctx.print and ctx.output_rich.is_empty():
-		#print_rich(ctx.output_rich)
 	
 	if scope_dict.is_empty():
 		ctx.append_error("Need to load command set.")
@@ -529,10 +534,7 @@ func _scope_parse(_name, ctx:CompletionContext):
 			script = ensure_fresh_script(script)
 			script = script.new()
 		
-		if script.has_method("parse"):
-			printerr("OLD VERSION PARSE: ", script)
-			result = script.parse(ctx)
-		elif script.has_method("execute"):
+		if script.has_method("execute"):
 			result = script.execute(ctx)
 		else:
 			ctx.append_error("Could not parse in object: %s" % scope)
@@ -578,8 +580,8 @@ func _console_gui_input(event: InputEvent) -> void:
 
 func _on_console_text_submitted(new_text:String) -> void:
 	var ctx = CompletionContext.new()
-	ctx.line_edit = console_line_edit
-	ctx.parse()
+	ctx.set_line_edit(console_line_edit)
+	#ctx.parse()
 	parse_input(ctx)
 
 	await console_line_edit.get_tree().process_frame
@@ -759,29 +761,139 @@ func _toggle_os_label_minimum_size() -> void:
 	else:
 		os_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 
-static func get_completion_for_input(input:String, only_commands:bool=true, current_command=null):
-	var first = input.get_slice(" ", 0)
-	var console = EditorConsoleSingleton.get_instance()
-	var scope_script = console.get_scope_script(first)
-	if not is_instance_valid(scope_script):
-		var options = CommandBase.Options.new()
-		for s in console.scope_dict.keys():
-			options.add_option(s)
+## ctx object can be passed as argument, it should have text set already.
+static func execute_command(text:String, ctx_obj:CompletionContext=null, input_ctx:CompletionContext=null):
+	var ctx = ctx_obj
+	if not is_instance_valid(ctx):
+		ctx = CompletionContext.new(text)
+		ctx.expand()
+		ctx.execute_parse()
+	
+	if is_instance_valid(input_ctx):
+		ctx.input = input_ctx.output
+		ctx.print = input_ctx.print
+		ctx.add_to_hist = input_ctx.add_to_hist
+ 
+	var instance = get_instance()
+	instance.parse_input(ctx)
+	return ctx
+
+static func run_gdsh(file_path:String):
+	var file_string = FileAccess.get_file_as_string(file_path)
+	var commands = file_string.split("\n", false)
+	
+	var working_ctx = CompletionContext.new()
+	working_ctx.print = false
+	working_ctx.add_to_hist = false
+	
+	for c in commands:
+		var out = EditorConsoleSingleton.execute_command(c, null, working_ctx)
+		working_ctx = out
+	
+
+
+
+#! keys require_quotes:bool current_command:CommandBase show_commands:bool show_flags:bool line_edit:CodeEdit
+#! keys inherited_ctx:CompletionContext
+static func get_completion_for_input(input:String, params:={}):
+	if params.get(&"require_quotes", false):
+		if not UString.is_string_or_string_name(input) or not input[0] == '"':
+			return {}
+	input = UString.unquote(input)
+	
+	var current_command = params.get(&"current_command")
+	var show_commands = params.get(&"show_commands", true)
+	var show_flags = params.get(&"show_flags", true)
+	
+	var ctx = CompletionContext.new(input)
+	if params.has(&"line_edit"):
+		ctx.line_edit = params.line_edit
+	
+	ctx.completion_parse()
+	
+	if params.has(&"inherited_ctx"):
+		var inh_ctx:CompletionContext = params.inherited_ctx
+		ctx.word_before_cursor = inh_ctx.word_before_cursor
+		ctx.char_before_cursor = inh_ctx.char_before_cursor
+	
+	
+	
+	var options = CommandBase.Options.new()
+	if ctx.token_before_cursor.begins_with("@"): # list aliases
+		var config = UtilsLocal.Config.get_merged_config()
+		var alias_data = config.get_section(UtilsLocal.Config.ALIAS)
+		for k in alias_data.keys():
+			var val = UtilsLocal.ConsoleTokenizer.clean_alias_token(alias_data[k])
+			options.add_option(k + " = [%s]" % val, {
+				&"insert": k
+			})
+		return options.get_options()
+	
+	var console = get_instance()
+	
+	var first_word:String = ""
+	if ctx.unconsumed_tokens.size() > 0:
+		first_word = ctx.unconsumed_tokens[0]
+	
+	if first_word.find(".") > -1:
+		var front = UtilsRemote.UString.get_member_access_front(first_word)
+		first_word = front
+	
+	var scope_script = console.get_scope_script(first_word)
+	if not is_instance_valid(scope_script) and UtilsRemote.UClassDetail.get_global_class_path(first_word) != "":
+		scope_script = console.get_scope_script("global")
+	
+	if not (is_instance_valid(scope_script)):
+		for scope:String in console.scope_dict.keys():
+			options.add_option(scope)
 		
-		if is_instance_valid(current_command):
+		if is_instance_valid(current_command): # this would be in the context of a quoted command, should only be on first word
 			options.merge(current_command.get_flags(true))
 		return options.get_options()
 	
-	var ins = scope_script.new()
-	var new_ctx = CompletionContext.new(input)
-	new_ctx.parse()
-	var completion = ins.complete(new_ctx)
+	#if ctx.word_before_cursor == first_word:
+		#return {} # whats this for? From original completion logic..
 	
-	for option in completion.keys():
-		var data = completion[option]
-		if only_commands and not data.has(&"get_command"):
-			completion.erase(option)
-	return completion
+	var ins = scope_script.new()
+	var completion = ins.complete(ctx)
+	if completion == null:
+		return {}
+	elif completion is Dictionary:
+		pass
+	elif completion.has_method("get_options"):
+		completion = completion.get_options()
+	else:
+		print("Unhandled completion result: ", completion)
+		return {}
+	
+	
+	options.set_options(completion)
+	
+	var command_meta = options.get_options().get(UtilsLocal.Options.Keys.COMMAND_META, {})
+	var show_variables = command_meta.get(UtilsLocal.Options.Keys.SHOW_VARIABLES, false)
+	#show_variables = true #ALERT
+	if ctx.argument_index > -1:
+		options.remove_option(UtilsLocal.Options.ARG_DELIMITER)
+		if show_variables:
+			var var_nms = console.variable_dict.keys()
+			if var_nms.size() > 0:
+				options.add_separator("Variables")
+			for nm in var_nms:
+				options.add_option(nm)
+		
+	
+	var options_dict = options.get_options()
+	for option in options_dict.keys():
+		var data = options_dict[option]
+		if data.has(&"get_command"):
+			if not show_commands:
+				options_dict.erase(option)
+		else:
+			if not show_flags:
+				options_dict.erase(option)
+	
+	return options_dict
+
 
 static func load_command(path:String) -> Resource:
 	if not UFile.path_in_res(path):

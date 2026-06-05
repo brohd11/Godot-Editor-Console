@@ -8,6 +8,9 @@ static func register_scopes():
 		"global":{
 			ScopeDataKeys.SCRIPT: load("res://addons/editor_console/src/default_commands/global/global.gd")
 		},
+		"scene":{
+			ScopeDataKeys.SCRIPT: load("res://addons/editor_console/src/default_commands/scene/scene.gd")
+		},
 		"config":{
 			ScopeDataKeys.SCRIPT: load("res://addons/editor_console/src/default_commands/config/config.gd")
 		},

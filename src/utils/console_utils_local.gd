@@ -103,6 +103,7 @@ class Config:
 	const PROJECT_PATH = "res://.addons/editor_console/config.yml"  #! ignore-remote
 	
 	const ALIAS = &"config.alias"
+	const STARTUP = &"config.startup"
 	const SCOPE = &"config.scope"
 	const COMMAND_DIRS = &"config.command_dirs"
 	const GLOBAL_CLASSES = &"config.global_classes"
@@ -113,7 +114,7 @@ class Config:
 	var data:Dictionary
 	
 	#! arg_location section:Config
-	func get_section(section:StringName, default:={}) -> Variant:
+	func get_section(section:StringName, default={}) -> Variant:
 		return data.get_or_add(section, default)
 	
 	func write():
@@ -154,6 +155,8 @@ class Config:
 		var content = FileAccess.get_file_as_string(path)
 		var parser = YAMLParser.new()
 		var parse_data:Variant = parser.parse(content)
+		if parse_data == null:
+			return {}
 		return parse_data
 	
 	static func _write_config(new_data:Dictionary, path:String, reload:=true):
