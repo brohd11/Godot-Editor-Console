@@ -105,6 +105,7 @@ class Config:
 	const ALIAS = &"config.alias"
 	const STARTUP = &"config.startup"
 	const SCOPE = &"config.scope"
+	const SCOPE_SET = &"config.scope_set"
 	const COMMAND_DIRS = &"config.command_dirs"
 	const GLOBAL_CLASSES = &"config.global_classes"
 	
@@ -124,7 +125,12 @@ class Config:
 		if not is_instance_valid(_merged_config):
 			load_config()
 		return _merged_config
-		
+	
+	static func get_target_config(project:bool=false) -> Config:
+		if project:
+			return get_project_config()
+		else:
+			return get_global_config()
 	
 	static func get_global_config() -> Config:
 		var cfg:Config = new()

@@ -134,10 +134,14 @@ static func print_members(ctx:CompletionContext, script_name:String, flags:Array
 							if data == null:
 								pr.append("\tNo data.")
 								ctx.append_output(pr.get_string(true))
-							else:
+							elif data is String:
+								ctx.append_output("\t" + data)
+							elif data is Dictionary:
 								for key in data.keys():
 									pr.append("\t%s - %s" % [key, data[key]], Colors.GRAY)
 									ctx.append_output(pr.get_string(true))
+							else:
+								ctx.append_output("\t" + str(data))
 				else:
 					pr.append("\t" + "  ".join(members.keys()), Colors.ACCENT_MUTE)
 					ctx.append_output(pr.get_string(true))

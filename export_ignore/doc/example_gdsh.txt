@@ -1,3 +1,7 @@
-scene edited get_nodes --type=Label
-os grep Obj
-scene edited select
+#!gdsh
+
+nodes=$(scene edited get_nodes --type=Label)
+echo "$nodes" | os grep Me | scene edited select # this is a comment
+echo "nodes selected:
+$nodes"
+source "/Users/brohd/main/test.sh"

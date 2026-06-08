@@ -24,6 +24,9 @@ const CompletionContext = UtilsLocal.CompletionContext
 const ScriptEditorContext = preload("res://addons/editor_console/src/editor_plugins/script_editor.gd")
 
 
+const Execution = preload("res://addons/editor_console/src/class/execution/execution.gd")
+
+
 #region Old plugin.gd vars
 
 
@@ -39,7 +42,7 @@ var show_filter:bool = true
 
 #endregion
 
-
+var _cache:= {}
 
 var settings_helper:UtilsRemote.SettingHelperEditor
 var _console_replace_filter:bool=false
@@ -96,6 +99,7 @@ func _init(plugin:EditorPlugin) -> void:
 func _ready() -> void:
 	EditorNodeRef.call_on_ready(_add_console_line_edit)
 	_ready_deferred.call_deferred()
+	EditorInterface.get_resource_filesystem().filesystem_changed.connect(_on_filesystem_changed)
 
 func _ready_deferred():
 	tokenizer = UtilsLocal.ConsoleTokenizer.new()
@@ -105,8 +109,17 @@ func _ready_deferred():
 func _start_up_commands():
 	var config = Config.get_merged_config()
 	var startup = config.get_section(Config.STARTUP, [])
+	var input_ctx = CompletionContext.new()
+	input_ctx.add_to_hist = false
+	input_ctx.print = false
 	for cmd in startup:
-		execute_command(cmd)
+		execute_command(cmd, null, input_ctx)
+
+func _on_filesystem_changed():
+	if _cache == null:
+		_cache = {}
+	_cache.erase("files")
+	_cache.erase("dirs")
 
 static func get_singleton_name() -> String:
 	return "EditorConsoleSingleton"
@@ -175,8 +188,9 @@ func _load_default_commands():
 	_get_scope_set_data(UtilsLocal.DefaultCommands)
 	scope_dict.merge(_temp_scope_dict, true)
 	
-	var scope_data = UtilsLocal.get_scope_data()
-	var scopes = scope_data.get(ScopeDataKeys.SCOPES, {})
+	var config = Config.get_merged_config()
+	
+	var scopes = config.get_section(Config.SCOPE, {})
 	for scope in scopes.keys():
 		var data = scopes.get(scope)
 		var script_path = data.get(ScopeDataKeys.SCRIPT)
@@ -186,7 +200,7 @@ func _load_default_commands():
 		var script = load(script_path)
 		scope_dict[scope] = {ScopeDataKeys.SCRIPT: script}
 	
-	var sets = scope_data.get(ScopeDataKeys.SETS, [])
+	var sets = config.get_section(Config.SCOPE_SET, [])
 	for script_path in sets:
 		_get_scope_set_data(script_path)
 	
@@ -211,55 +225,58 @@ func set_var_highlighter():
 	console_line_edit.variable_dict = variable_dict
 	console_line_edit.editor_console = self
 
-static func register_persistent_scope(scope_name:String, script_path:String):
+static func register_persistent_scope(scope_name:String, script_path:String, project:bool=false):
 	if not _instance_valid_err(): return
 	if not FileAccess.file_exists(script_path):
 		print("Could not load script: %s" % script_path)
 		return
-	var scope_data = UtilsLocal.get_scope_data()
-	var scopes = scope_data.get(ScopeDataKeys.SCOPES, {})
-	if scope_name in scopes.keys():
+	
+	var target_config = Config.get_target_config(project)
+	var scopes = target_config.get_section(Config.SCOPE, {})
+	
+	if scopes.has(scope_name) or get_instance().scope_dict.has(scope_name):
 		print("Scope already registered: %s" % scope_name)
 		return
 	scopes[scope_name] = {ScopeDataKeys.SCRIPT: script_path}
-	scope_data[ScopeDataKeys.SCOPES] = scopes
-	UtilsLocal.save_scope_data(scope_data)
+	target_config.write()
 	get_instance()._load_default_commands()
 
-static func remove_persistent_scope(scope_name):
+
+static func remove_persistent_scope(scope_name, project:bool=false):
 	if not _instance_valid_err(): return
-	var scope_data = UtilsLocal.get_scope_data()
-	var scopes = scope_data.get(ScopeDataKeys.SCOPES, {})
 	
-	if not scope_name in scopes.keys():
+	var target_config = Config.get_target_config(project)
+	var scopes = target_config.get_section(Config.SCOPE, {})
+	
+	if not scopes.has(scope_name):
 		print("Scope not registered: %s" % scope_name)
 		return
 	
 	scopes.erase(scope_name)
-	scope_data[ScopeDataKeys.SCOPES] = scopes
-	UtilsLocal.save_scope_data(scope_data)
+	target_config.write()
 	get_instance()._load_default_commands()
 
-static func register_persistent_scope_set(script_path:String):
+static func register_persistent_scope_set(script_path:String, project:bool=false):
 	if not _instance_valid_err(): return
 	if not FileAccess.file_exists(script_path):
 		print("Could not load script: %s" % script_path)
 		return
-	var scope_data = UtilsLocal.get_scope_data()
-	var sets = scope_data.get(ScopeDataKeys.SETS, [])
+	
+	var target_config = Config.get_target_config(project)
+	var sets = target_config.get_section(Config.SCOPE_SET, [])
 	if script_path in sets:
 		print("Script already registered as set: %s" % script_path)
 		return
 	
 	sets.append(script_path)
-	scope_data[ScopeDataKeys.SETS] = sets
-	UtilsLocal.save_scope_data(scope_data)
+	target_config.write()
 	get_instance()._load_default_commands()
 
-static func remove_persistent_scope_set(script_path:String) -> void:
+static func remove_persistent_scope_set(script_path:String, project:bool=false) -> void:
 	if not _instance_valid_err(): return
-	var scope_data = UtilsLocal.get_scope_data()
-	var sets = scope_data.get(ScopeDataKeys.SETS, [])
+	
+	var target_config = Config.get_target_config(project)
+	var sets = target_config.get_section(Config.SCOPE_SET, [])
 	if not script_path in sets:
 		print("Script set not registered: %s" % script_path)
 		return
@@ -267,33 +284,33 @@ static func remove_persistent_scope_set(script_path:String) -> void:
 	var idx = sets.find(script_path)
 	sets.remove_at(idx)
 	
-	scope_data[ScopeDataKeys.SETS] = sets
-	UtilsLocal.save_scope_data(scope_data)
+	target_config.write()
 	get_instance()._load_default_commands()
 
-static func register_command_dir(dir_path:String):
+static func register_command_dir(dir_path:String, project:bool=false):
 	if not _instance_valid_err(): return
 	if not dir_path.get_extension() == "":
 		print("Directory path has extension: ", dir_path)
 		return
 	if not dir_path.ends_with("/"):
 		dir_path += "/"
-	var scope_data = UtilsLocal.get_scope_data()
-	var dirs = scope_data.get(ScopeDataKeys.COMMAND_DIRS, [])
+	
+	var target_config = Config.get_target_config(project)
+	var dirs = target_config.get_section(Config.COMMAND_DIRS, [])
 	if dir_path in dirs:
 		print("Script already registered as set: %s" % dir_path)
 		return
 	
 	dirs.append(dir_path)
-	scope_data[ScopeDataKeys.COMMAND_DIRS] = dirs
-	UtilsLocal.save_scope_data(scope_data)
+	target_config.write()
 	get_instance()._load_default_commands()
 	pass
 
-static func remove_command_dir(dir_path:String):
+static func remove_command_dir(dir_path:String, project:bool=false):
 	if not _instance_valid_err(): return
-	var scope_data = UtilsLocal.get_scope_data()
-	var dirs = scope_data.get(ScopeDataKeys.COMMAND_DIRS, [])
+	
+	var target_config = Config.get_target_config(project)
+	var dirs = target_config.get_section(Config.COMMAND_DIRS, [])
 	if not dir_path in dirs:
 		print("Script set not registered: %s" % dir_path)
 		return
@@ -301,8 +318,7 @@ static func remove_command_dir(dir_path:String):
 	var idx = dirs.find(dir_path)
 	dirs.remove_at(idx)
 	
-	scope_data[ScopeDataKeys.COMMAND_DIRS] = dirs
-	UtilsLocal.save_scope_data(scope_data)
+	target_config.write()
 	get_instance()._load_default_commands()
 	pass
 
@@ -413,8 +429,78 @@ func _set_console_text(text:String) -> void:
 	await console_line_edit.get_tree().process_frame
 	console_line_edit.set_caret_column(text.length())
 
+#! keys print:bool add_to_hist:bool main_ctx:CompletionContext
 ## Command order - clear, os, help, command_dict, finally check global
-func parse_input(ctx:CompletionContext, print_to_log:=true) -> void:
+func parse_input_text(input_text:String, params:={}) -> void:
+	
+	var main_ctx = params.get(&"main_ctx")
+	if not is_instance_valid(main_ctx):
+		var gdrc = get_gdrc()
+		
+		main_ctx = CompletionContext.new(input_text)
+		main_ctx.variables = gdrc.variables.duplicate()
+		main_ctx.functions = gdrc.functions.duplicate()
+	
+	var print_to_log = params.get(&"print", false)
+	var add_to_hist = params.get(&"add_to_hist", false)
+	
+	var expand_data = CompletionContext.expand_commands(input_text, main_ctx.variables)
+	var expanded_commands = expand_data.commands
+	
+	if expanded_commands.size() == 1 and expanded_commands[0] == "":
+		return
+	
+	if print_to_log and input_text.strip_edges() != "os":
+	#if print_to_log and ctx.expanded_text.strip_edges() != "os":
+		var display = ""
+		if not os_mode:
+			display = "%s %s" % [_get_console_label_string(), expand_data.display]
+		else:
+			display = "%s %s" % [os_string, input_text.strip_edges()]
+		
+		print_rich(display)
+	
+	if add_to_hist:
+		_add_to_history(input_text)
+	
+	
+	
+	if expanded_commands.size() == 1 or os_mode:
+		main_ctx.execute_parse()
+		_parse_input(main_ctx)
+	else:
+		var working_ctx = null
+		
+		
+		for i in range(expanded_commands.size()):
+			var cmd = expanded_commands[i].strip_edges()
+			var new_ctx = CompletionContext.new_ctx(cmd, main_ctx)
+			new_ctx.execute_parse()
+			
+			if is_instance_valid(working_ctx):
+				new_ctx.input = working_ctx.output.strip_edges()
+			
+			_parse_input(new_ctx)
+			working_ctx = new_ctx
+		
+		main_ctx.output = working_ctx.output
+	
+	main_ctx.output = main_ctx.output.strip_edges(false, true).lstrip("\n")
+	
+	if print_to_log:
+		if main_ctx.error != "":
+			print(main_ctx.error.lstrip("\n"))
+		elif not main_ctx.output.is_empty():
+		#elif print_to_log and not main_ctx.output.is_empty():
+			if main_ctx.output.contains("[/color]"):
+				print_rich(main_ctx.output)
+			else:
+				print(main_ctx.output)
+
+
+## Command order - clear, os, help, command_dict, finally check global
+func parse_input(ctx:CompletionContext) -> void:
+	
 	if ctx.expanded_command_statements.is_empty():
 		ctx.expand()
 	
@@ -432,6 +518,7 @@ func parse_input(ctx:CompletionContext, print_to_log:=true) -> void:
 		
 		#if print_to_log:
 		print_rich(ctx.console_display_string)
+	
 	
 	if ctx.expanded_command_statements.size() == 1 or os_mode:
 		ctx.execute_parse()
@@ -470,8 +557,8 @@ func parse_input(ctx:CompletionContext, print_to_log:=true) -> void:
 				print_rich(ctx.output)
 			else:
 				print(ctx.output)
-	
-	
+
+
 func _parse_input(ctx:CompletionContext) -> void:
 	working_variable_dict.clear()
 	current_command_index = -1
@@ -509,10 +596,13 @@ func _parse_input(ctx:CompletionContext) -> void:
 	if c_1.to_lower() == "help":
 		c_1 = c_1.to_lower()
 	
-	c_1 = UString.get_member_access_front(c_1)
-	var parse_scopes = _scope_parse(c_1, ctx)
-	if parse_scopes == Keys.NO_MATCHING_COMMAND:
-		_scope_parse("global", ctx)
+	if ctx.functions.has(c_1):
+		_scope_parse("__function__", ctx)
+	else:
+		c_1 = UString.get_member_access_front(c_1)
+		var parse_scopes = _scope_parse(c_1, ctx)
+		if parse_scopes == Keys.NO_MATCHING_COMMAND:
+			_scope_parse("global", ctx)
 	
 	if scope_dict.is_empty():
 		ctx.append_error("Need to load command set.")
@@ -579,10 +669,25 @@ func _console_gui_input(event: InputEvent) -> void:
 
 
 func _on_console_text_submitted(new_text:String) -> void:
-	var ctx = CompletionContext.new()
-	ctx.set_line_edit(console_line_edit)
+	#var ctx = CompletionContext.new()
+	#ctx.set_line_edit(console_line_edit)
+	#ctx.add_to_hist = true
+	#ctx.print = true
+	#var gdrc = _read_gdrc()
+	#ctx.variables = gdrc.variables
+	#ctx.functions = gdrc.functions
 	#ctx.parse()
-	parse_input(ctx)
+	#parse_input(ctx)
+	Execution.execute_command(new_text, {
+		&"print": true,
+		&"add_to_hist": true,
+		
+	})
+	#parse_input_text(new_text, {
+		#&"print": true,
+		#&"add_to_hist": true,
+		#
+	#})
 
 	await console_line_edit.get_tree().process_frame
 	console_line_edit.clear()
@@ -763,6 +868,7 @@ func _toggle_os_label_minimum_size() -> void:
 
 ## ctx object can be passed as argument, it should have text set already.
 static func execute_command(text:String, ctx_obj:CompletionContext=null, input_ctx:CompletionContext=null):
+	
 	var ctx = ctx_obj
 	if not is_instance_valid(ctx):
 		ctx = CompletionContext.new(text)
@@ -778,20 +884,67 @@ static func execute_command(text:String, ctx_obj:CompletionContext=null, input_c
 	instance.parse_input(ctx)
 	return ctx
 
-static func run_gdsh(file_path:String):
-	var file_string = FileAccess.get_file_as_string(file_path)
-	var commands = file_string.split("\n", false)
+
+#! keys i-parse_input_text; ctx_obj:CompletionContext parent_ctx:CompletionContext input_ctx:CompletionContext
+## ctx object can be passed as argument, it should have text set already.
+static func execute_command_new(text:String, params:={}):
+	var ctx = params.get(&"ctx_obj")
+	var parent_ctx = params.get(&"parent_ctx")
+	var input_ctx = params.get(&"input_ctx")
+	if not is_instance_valid(ctx):
+		ctx = CompletionContext.new_ctx(text, parent_ctx)
+		ctx.expand()
+		ctx.execute_parse()
 	
-	var working_ctx = CompletionContext.new()
-	working_ctx.print = false
-	working_ctx.add_to_hist = false
+	if is_instance_valid(input_ctx):
+		ctx.input = input_ctx.output
+ 
+	var instance = get_instance()
+	instance.parse_input_text(ctx)
+	return ctx
+
+static func run_gdsh(file_path:String, main_ctx:CompletionContext=null):
+	if not is_instance_valid(main_ctx):
+		main_ctx = get_main_ctx()
 	
-	for c in commands:
-		var out = EditorConsoleSingleton.execute_command(c, null, working_ctx)
-		working_ctx = out
+	Execution.source_file(file_path, main_ctx)
 	
+	#var file_string = FileAccess.get_file_as_string(file_path)
+	#if not file_string.begins_with("#!gdsh"):
+		#main_ctx.append_error("Not a gdsh file: " + file_path)
+		#return main_ctx
+	#
+	#Execution.execute_command_multiline(file_string, main_ctx)
+	
+	return main_ctx
 
 
+
+func get_gdrc():
+	var main_ctx = CompletionContext.new()
+	var home_gdrc = UtilsLocal.ConsoleOS.get_os_home_dir().path_join(".gdrc")
+	if FileAccess.file_exists(home_gdrc):
+		Execution.source_file(home_gdrc, main_ctx)
+	
+	var project_gdrc = "res://.gdrc"
+	if FileAccess.file_exists(project_gdrc):
+		Execution.source_file(project_gdrc, main_ctx)
+	
+	
+	#^ caching? maybe not needed..
+	#var cache_mod_time = _cache.get(file_path, -1)
+	#var current_mod_time = FileAccess.get_modified_time(file_path)
+	#if cache_mod_time == current_mod_time:
+		#return
+	#_cache[file_path] = current_mod_time
+	
+	
+	return main_ctx
+
+static func get_main_ctx():
+	#var ctx = CompletionContext.new()
+	var gdrc = get_instance().get_gdrc()
+	return gdrc
 
 #! keys require_quotes:bool current_command:CommandBase show_commands:bool show_flags:bool line_edit:CodeEdit
 #! keys inherited_ctx:CompletionContext
@@ -806,6 +959,10 @@ static func get_completion_for_input(input:String, params:={}):
 	var show_flags = params.get(&"show_flags", true)
 	
 	var ctx = CompletionContext.new(input)
+	var gdrc = get_instance().get_gdrc()
+	ctx.variables = gdrc.variables
+	ctx.functions = gdrc.functions
+	
 	if params.has(&"line_edit"):
 		ctx.line_edit = params.line_edit
 	
@@ -844,8 +1001,16 @@ static func get_completion_for_input(input:String, params:={}):
 		scope_script = console.get_scope_script("global")
 	
 	if not (is_instance_valid(scope_script)):
+		if ctx.functions.has(first_word):
+			return {} # would need some way to get completion from function
+		
 		for scope:String in console.scope_dict.keys():
 			options.add_option(scope)
+		
+		for f in ctx.functions.keys():
+			options.add_option(f + "[func]", {
+				&"insert": f
+			})
 		
 		if is_instance_valid(current_command): # this would be in the context of a quoted command, should only be on first word
 			options.merge(current_command.get_flags(true))
@@ -903,6 +1068,24 @@ static func load_command(path:String) -> Resource:
 
 static func ensure_fresh_script(script:GDScript) -> Resource:
 	return UtilsRemote.UResource.ensure_fresh_load(script)
+
+static func get_file_paths():
+	return get_instance()._get_cached("files")
+
+static func get_dir_paths():
+	return get_instance()._get_cached("dirs")
+
+func _get_cached(key:String):
+	if _cache == null:
+		_cache = {}
+	if _cache.has(key):
+		return _cache[key]
+	if key == "files":
+		_cache[key] = UFile.get_files("res://")
+	elif key == "dirs":
+		_cache[key] = UFile.scan_for_dirs("res://", false, false)
+	
+	return _cache.get(key)
 
 #endregion
 

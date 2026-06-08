@@ -33,7 +33,6 @@ func _process_flag(flag:String):
 
 func _get_completions(_ctx:CompletionContext):
 	if positional_args.size() > 0 and positional_arg_index <= 0:
-		print("IDX::", positional_args[0])
 		if UString.is_string_or_string_name(positional_args[0]):
 			return EditorConsoleSingleton.get_completion_for_input(positional_args[0], {
 				&"show_flags": false,

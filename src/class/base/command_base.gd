@@ -24,6 +24,12 @@ enum ExitCode {
 	HELP,
 }
 
+enum FlagType {
+	NONE,
+	FILE,
+	DIR
+}
+
 var _ctx_obj:CompletionContext
 
 var consumed_tokens:Array[String] = []
@@ -209,9 +215,15 @@ func complete(ctx:CompletionContext):
 func _get_completions(ctx:CompletionContext):
 	if not _positional_arg_index_valid():
 		return {}
+	
+	var current_flag_completions = _get_flag_type_completions(ctx)
+	if current_flag_completions != null:
+		return current_flag_completions
+	
 	var options = get_flags(true)
 	options.merge(get_commands(true))
 	return options
+
 
 
 func get_flags(hide_consumed:=false) -> Dictionary:
@@ -240,7 +252,9 @@ func _split_flag(token:String):
 func _get_flag_value(token:String):
 	if not token.contains("="):
 		return ""
-	return token.substr(token.find("=") + 1)
+	var val = token.substr(token.find("=") + 1)
+	val = UString.unquote(val)
+	return val
 
 #! keys i-Options.add_option;
 func _get_option_data(token:String, flags:Dictionary, commands:Dictionary):
@@ -416,7 +430,7 @@ static func _call_method(ctx:CompletionContext, callable:Callable, args:Array, c
 		if result is Object:
 			if result.get_class() in _RESULTS_TO_SKIP:
 				return
-		ctx.append_output(result)
+		ctx.append_output(str(result))
 
 
 # utils
@@ -429,6 +443,50 @@ func _positional_arg_index_valid():
 
 func _add_variables_to_completions(dict:Dictionary):
 	Options.add_show_variables_to_dict(dict)
+
+func _get_flag_type_completions(ctx:CompletionContext):
+	if not (ctx.token_before_cursor.contains("=") and ctx.char_before_cursor != " "):
+		return null
+	
+	var all_options = get_flags(false)
+	var flag_name = _split_flag(ctx.token_before_cursor)
+	var flag_data = all_options.get(flag_name)
+	if flag_data == null or not flag_data.has(&"flag_completion"):
+		return null
+	var flag_type_data = flag_data.get(&"flag_completion", {"type": FlagType.NONE})
+	var flag_type:FlagType = flag_type_data.get("type", FlagType.NONE)
+	if flag_type == FlagType.NONE:
+		return []
+	var target_dir = flag_type_data.get("dir", "res://")
+	var completions = []
+	if flag_type == FlagType.FILE:
+		
+		var extensions = flag_type_data.get("ext", [])
+		var files = EditorConsoleSingleton.get_file_paths()
+		if extensions.is_empty() and target_dir == "res://":
+			completions = files
+		else:
+			for f in files:
+				if f.get_extension() in extensions and f.begins_with(target_dir):
+					completions.append(f)
+		
+		
+	elif flag_type == FlagType.DIR:
+		var dirs = EditorConsoleSingleton.get_dir_paths()
+		if target_dir == "res://":
+			completions = dirs
+		else:
+			for d in dirs:
+				if d.begins(target_dir):
+					completions.append(d)
+	
+	
+	var flag_options = Options.new()
+	for c in completions:
+		flag_options.add_option(c, {
+			
+		})
+	return flag_options.get_options()
 
 func print_available_commands():
 	var commands = get_commands()

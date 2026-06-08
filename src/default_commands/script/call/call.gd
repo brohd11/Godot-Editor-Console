@@ -65,10 +65,14 @@ func _get_completions(ctx:CompletionContext):
 func _execute(ctx:CompletionContext):
 	var method_name = positional_args[0]
 	var script = ScriptUtil.get_script_from_ctx(ctx)
+	if not is_instance_valid(script):
+		ctx.append_error("Could not get script.")
+		return ExitCode.FAIL
+	
 	var methods = ScriptUtil.get_methods_from_ctx(ctx, show_private, true)
 	if not method_name in methods:
-		print("Unrecognized method: ", method_name)
-		return 1
+		ctx.append_error("Unrecognized method: " + method_name)
+		return ExitCode.FAIL
 	
 	call_method(ctx, script, method_name)
 

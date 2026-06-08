@@ -14,16 +14,27 @@ static func resolve_access_path(access_path:String):
 	var current_script = EditorInterface.get_script_editor().get_current_script()
 	if access_path == "script":
 		return current_script
-	var front = UString.get_member_access_front(access_path)
-	if front != "script":
-		var global_script = UClassDetail.get_global_class_script(front)
-		if global_script == null:
-			return
-		current_script = global_script
 	
-	if not access_path.contains("."):
-		return current_script
-	access_path = UString.trim_member_access_front(access_path)
+	if access_path.is_absolute_path():
+		var script_path_data = UString.get_script_path_and_suffix(access_path)
+		if script_path_data.is_empty():
+			return null
+		current_script = load(script_path_data[0])
+		if script_path_data[1] == "":
+			return current_script
+		access_path = script_path_data[1]
+		
+	else:
+		var front = UString.get_member_access_front(access_path)
+		if front != "script":
+			var global_script = UClassDetail.get_global_class_script(front)
+			if global_script == null:
+				return
+			current_script = global_script
+	
+		if not access_path.contains("."):
+			return current_script
+		access_path = UString.trim_member_access_front(access_path)
 	
 	var final_script = current_script
 	var parts = access_path.split(".", false)

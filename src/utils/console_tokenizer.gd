@@ -14,9 +14,11 @@ const EditorColors = UtilsRemote.EditorColors
 
 var editor_console:EditorConsoleSingleton
 
+var variables := {}
 
 
-var _token_regex:RegEx
+static var _token_regex:RegEx
+static var _variable_regex:RegEx
 
 var color_var_ok = "96f442"
 var color_var_fail = "cc000c"
@@ -33,6 +35,10 @@ func _initialize_regex():
 		var pattern = "\"(?:[^\"\\\\]|\\\\.)*\"|'[^']*'|(\\[^']*)|(\\{(?:[^{}]|(?2))*\\})|(\\((?:[^()]|(?3))*\\))|\\S+"
 		#var pattern = "\"(?:[^\"\\\\]|\\\\.)*\"|'[^']*'|(\\[(?:[^\\[\\]]|(?1))*\\])|(\\{(?:[^{}]|(?2))*\\})|(\\((?:[^()]|(?3))*\\))|\\S+"
 		_token_regex.compile(pattern)
+	
+	if not is_instance_valid(_variable_regex):
+		_variable_regex = RegEx.new()
+		_variable_regex.compile("\\$\\w+\\b")
 
 #! keys commands:PackedStringArray expanded:PackedStringArray args:PackedStringArray display:String
 func parse_command_string(input_string: String, expand:=false) -> Dictionary:
@@ -122,17 +128,53 @@ func _tokenize_string(text: String, expand:bool=false) -> Dictionary:
 
 
 func _get_token_color(token:String, pr:Pr, leading_space:bool, is_expanded:bool):
+	var is_string = UString.is_string_or_string_name(token)
+	var quote_char = ""
+	if is_string:
+		quote_char = token[0]
 	var var_token_check = token
+	
 	if leading_space:
 		pr.append(" ")
+	
+	if token.contains("$"):
+		var stripped_token = token
+		if UString.is_string_or_string_name(token):
+			stripped_token = UString.unquote(token)
+		#print("STRIPPED:", stripped_token)
+		
+		var matches = _variable_regex.search_all(stripped_token)
+		if is_string:
+			pr.append(quote_char)
+		
+		var new_string = ""
+		var last_end = 0
+		for i in range(matches.size()):
+			var m = matches[i]
+			var var_string = m.get_string()
+			var var_check = variables.get(var_string, var_string)
+			var left = stripped_token.substr(last_end, m.get_start() - last_end)
+			new_string += left + var_check
+			last_end = m.get_end()
+			if var_check:
+				pr.append(left).append("[", color_var_value).append(var_check).append("]", color_var_value).append(var_string, color_var_ok)
+			else:
+				pr.append(var_string)
+			
+			if i < matches.size() - 1:
+				pr.append(" ")
+		
+		new_string += stripped_token.substr(last_end)
+		
+		if is_string:
+			pr.append(quote_char)
+			new_string = quote_char + new_string + quote_char
+		
+		#print("RETURN:", token, " -> ", new_string)
+		return new_string
+	
 	if is_expanded:
 		pr.append("%s" % token, color_var_value)
-	elif token.begins_with("$"):
-		var_token_check = _check_variable(token)
-		if var_token_check != token:
-			pr.append(token, color_var_ok).append(" ").append(var_token_check, color_var_value)
-		else:
-			pr.append(token, color_var_fail).append(" ").append("Could not get var", color_var_value)
 	elif token in editor_console.scope_dict or token in editor_console.hidden_scope_dict:
 		pr.append(token, editor_console.Colors.SCOPE)
 	elif UClassDetail.get_global_class_path(token) != "":
@@ -173,9 +215,11 @@ func _expand_token(token, alias_data:Dictionary, seen_tokens:={}):
 	var expanded_tokens = []
 	var parts = [token]
 	if token.contains(" "):
-		parts = UString.string_safe_split(token, " ")
+		parts = UString.string_safe_split(token, " ", true)
 	
 	for tok in parts:
+		if tok == " ":
+			continue
 		var expand = alias_data.get(tok)
 		if expand == null:
 			expanded_tokens.append(tok)
@@ -197,23 +241,61 @@ func _expand_token(token, alias_data:Dictionary, seen_tokens:={}):
 static func clean_alias_token(token:String):
 	return token.trim_prefix("@literal")
 
-func _check_variable(arg:String):
-	if arg.begins_with("$"):
-		var variable_callable = editor_console.variable_dict.get(arg)
-		if variable_callable:
-			var variable = variable_callable.call()
-			if variable is String:
-				editor_console.working_variable_dict[variable] = variable
-				return variable
-			else:
-				editor_console.working_variable_dict[variable.to_string()] = variable
-				return variable.to_string()
+#func _check_variable(arg:String):
+	#if arg.begins_with("$"):
+		#var variable_callable = editor_console.variable_dict.get(arg)
+		#if variable_callable:
+			#var variable = variable_callable.call()
+			#if variable is String:
+				#editor_console.working_variable_dict[variable] = variable
+				#return variable
+			#else:
+				#editor_console.working_variable_dict[variable.to_string()] = variable
+				#return variable.to_string()
+	#
+	#
+	#var exp_idx = arg.find('{#')
+	#if exp_idx > -1:
+		#var expr = Expression.new()
+		#var arg_stripped = arg.replace("'","").replace('"',"").trim_prefix("{#").trim_suffix("}")
+		#if arg_stripped.find("<") > -1:
+			#
+			#pass
+		#var err = expr.parse(arg_stripped)
+		#if err == OK:
+			#var result = expr.execute()
+			#if PRINT_DEBUG:
+				#print(result)
+			#var type = Var.check_type(arg)
+			#if type:
+				#result = Var.string_to_type(result, type)
+			#editor_console.working_variable_dict[arg] = result
+			#return arg
+	#
+	#var type_str = Var.check_type(arg)
+	#if type_str:
+		#var variable = Var.string_to_type(arg, type_str)
+		#editor_console.working_variable_dict[arg] = variable
+		#return arg
+	#
+	#return arg
+
+func _check_variable(token:String):
+	# should be a while loop? to make sure variables set to other variables are checked?
+	if token.begins_with("$"):
+		var var_check = variables.get(token)
+		if var_check != null:
+			if var_check is String:
+				return var_check
+			return str(var_check)
+	
+	return token
 	
 	
-	var exp_idx = arg.find('{#')
+	var exp_idx = token.find('{#')
 	if exp_idx > -1:
 		var expr = Expression.new()
-		var arg_stripped = arg.replace("'","").replace('"',"").trim_prefix("{#").trim_suffix("}")
+		var arg_stripped = token.replace("'","").replace('"',"").trim_prefix("{#").trim_suffix("}")
 		if arg_stripped.find("<") > -1:
 			
 			pass
@@ -222,19 +304,19 @@ func _check_variable(arg:String):
 			var result = expr.execute()
 			if PRINT_DEBUG:
 				print(result)
-			var type = Var.check_type(arg)
+			var type = Var.check_type(token)
 			if type:
 				result = Var.string_to_type(result, type)
-			editor_console.working_variable_dict[arg] = result
-			return arg
+			editor_console.working_variable_dict[token] = result
+			return token
 	
-	var type_str = Var.check_type(arg)
+	var type_str = Var.check_type(token)
 	if type_str:
-		var variable = Var.string_to_type(arg, type_str)
-		editor_console.working_variable_dict[arg] = variable
-		return arg
+		var variable = Var.string_to_type(token, type_str)
+		editor_console.working_variable_dict[token] = variable
+		return token
 	
-	return arg
+	return token
 
 func get_arg_variables(args:Array):
 	var vars = []

@@ -16,7 +16,7 @@ const CommandKeys = Options.Keys
 
 const CompletionContext = UtilsLocal.CompletionContext
 
-const REPLACE_DELIMS = [" ", ".", "/", "'", '"']
+const REPLACE_DELIMS = [" ", ".", "/", "'", '"', "="]
 
 var console_panel:PanelContainer
 var console_hsplit:HBoxContainer#:HSplitContainer # this was an hsplit to allow the label to clip I think
@@ -392,8 +392,11 @@ class AutoCompletePopup extends ScrollContainer:
 	
 	func set_popup_position(new_pos:Vector2):
 		_position = new_pos
+		#_position = new_pos + Vector2(0, -size.y)
+		
 	
 	func offset_popup(offset_y:= -size.y):
+	#func offset_popup(offset_y:= -custom_minimum_size.y): # alternate method, if trying to minimize blinking
 		position = _position + Vector2(0, offset_y)
 	
 	func clear():

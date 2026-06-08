@@ -1,6 +1,5 @@
 extends EditorConsoleSingleton.CommandBase
 
-const Reg = preload("res://addons/editor_console/src/default_commands/config/scope/reg/reg.gd")
 
 static func get_command_name() -> String:
 	return "scope"

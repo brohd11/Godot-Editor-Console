@@ -5,6 +5,8 @@ const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 
+const FlagType = UtilsLocal.CommandBase.FlagType
+
 const ARG_DELIMITER = "--"
 
 
@@ -39,6 +41,8 @@ func remove_option(option_name:String):
 
 #! keys name:String help:String positional_count:int trailing_char:String icon:Variant
 #! keys get_command:Callable priority:int metadata:Dictionary arg_count:int insert:String
+#! keys flag_completion:Dictionary
+## Nested Dict: flag_completion - type, dir, ext
 func add_option(option_name:String, params:={}):
 	_option_dict[option_name] = get_single_option_dict(option_name, params)
 
@@ -48,11 +52,15 @@ static func get_single_option_dict(option_name:String, params:={}) -> Dictionary
 	return process_option_dict(params)
 
 #! keys i-add_option;
+
 static func process_option_dict(params:={}) -> Dictionary:
 	var data = {}
 	data.help = params.get(&"help", "No help defined for: %s" % params.get(&"option_name", "Unamed"))
 	data.positional_count = params.get(&"positional_count", 0)
 	data.priority = params.get(&"priority", 1000)
+	
+	if params.has(&"flag_completion"):
+		data.flag_completion = params.flag_completion
 	
 	if params.has(&"icon"):
 		if params.icon is String:

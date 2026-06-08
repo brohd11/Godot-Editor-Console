@@ -5,6 +5,9 @@ const UString = UtilsRemote.UString
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 const ConsoleLineEdit = UtilsLocal.ConsoleLineContainer.ConsoleLineEdit
+const ExitCode = UtilsLocal.CommandBase.ExitCode
+
+const CompletionContext = UtilsLocal.CompletionContext
 
 static var _arg_delim_regex:RegEx
 static var _clean_output_regex:RegEx
@@ -27,14 +30,20 @@ var expanded_command_statements:= []
 var unconsumed_tokens:= []
 var data := {}
 
+var root_ctx:CompletionContext
+var positional_args := []
+var variables := {}
+var functions := {}
+
 var input:String
 var output:String
 var error:String
+var exit_code:ExitCode = ExitCode.OK
 #
 
 # headless
-var print:= true
-var add_to_hist:=true
+var print:= false
+var add_to_hist:=false
 #
 var raw_text:String
 var caret_col:int
@@ -61,6 +70,16 @@ func _init(text:="") -> void:
 	
 	raw_text = text
 	caret_col = text.length()
+
+func set_positional_args(args:Array):
+	var arg_size = args.size()
+	for i in range(20):
+		var val = ""
+		if i < arg_size:
+			val = args[i]
+		variables["$" + str(i)] = val
+	
+	variables["$@"] = " ".join(args)
 
 func set_line_edit(_line_edit:CodeEdit):
 	line_edit = _line_edit
@@ -125,6 +144,7 @@ func completion_parse():
 	
 	
 	var tokenizer = UtilsLocal.ConsoleTokenizer.new()
+	tokenizer.variables = variables
 	var current_command = command_statements[current_command_statement_index]
 	if os_mode and not current_command.strip_edges().begins_with("os"):
 		current_command = "os " + current_command # add os so that the parser triggers, will be consumed by the os node
@@ -177,9 +197,24 @@ func completion_parse():
 	#print("FINAL: ", unconsumed_tokens)
 
 
+#! keys commands:Array display:String
+static func expand_commands(text:String, variable_dict:Dictionary):
+	var tokenizer = UtilsLocal.ConsoleTokenizer.new()
+	tokenizer.variables = variable_dict
+	var token_data = tokenizer.parse_command_string(text, true)
+	var all_expanded_text = " ".join(token_data.expanded)
+	# logical statements
+	var valid_expanded_command_statements = [all_expanded_text]
+	if all_expanded_text.contains("|"):
+		valid_expanded_command_statements = UString.string_safe_split(all_expanded_text, "|", true)
+	return {
+		&"commands": valid_expanded_command_statements,
+		&"display": token_data.display
+	}
 
 func expand():
 	var tokenizer = UtilsLocal.ConsoleTokenizer.new()
+	tokenizer.variables = variables
 	var token_data = tokenizer.parse_command_string(raw_text, true)
 	expanded_text = " ".join(token_data.expanded)
 	# logical statements
@@ -199,6 +234,7 @@ func execute_parse():
 		text_in = "os " + text_in # add os so that the parser triggers, will be consumed by the os node
 	
 	var tokenizer = UtilsLocal.ConsoleTokenizer.new()
+	tokenizer.variables = variables
 	var token_data = tokenizer.parse_command_string(text_in, true)
 	display_text = token_data.display
 	unconsumed_tokens = token_data.expanded
@@ -241,3 +277,17 @@ func clean_text(text:String):
 		_clean_output_regex = RegEx.new()
 		_clean_output_regex.compile("\\[color=[A-Za-z0-9]*]|\\[\\/color]")
 	return _clean_output_regex.sub(text, "", true)
+
+
+static func new_ctx(text:String, parent_ctx:CompletionContext=null):
+	var ctx = CompletionContext.new(text)
+	if is_instance_valid(parent_ctx):
+		ctx.variables = parent_ctx.variables.duplicate()
+		ctx.functions = parent_ctx.functions.duplicate()
+		ctx.input = parent_ctx.input # non piped inherit input
+		if is_instance_valid(parent_ctx.root_ctx):
+			ctx.root_ctx = parent_ctx.root_ctx
+		else:
+			ctx.root_ctx = parent_ctx
+	
+	return ctx
