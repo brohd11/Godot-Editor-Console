@@ -8,6 +8,7 @@ const Pr = UString.PrintRich
 const USort = preload("uid://dtrbpu04wxss0") #! resolve ALibRuntime.Utils.USort
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
+const Execution = UtilsLocal.Execution
 const ConsoleTokenizer = UtilsLocal.ConsoleTokenizer
 const CompletionContext = UtilsLocal.CompletionContext
 const ConsolePrint = UtilsLocal.Print
@@ -21,6 +22,7 @@ const _UNAMED = "UnamedCommand"
 enum ExitCode {
 	OK,
 	FAIL,
+	ERR,
 	HELP,
 }
 
@@ -29,6 +31,8 @@ enum FlagType {
 	FILE,
 	DIR
 }
+
+static var _positional_arg_count_regex:RegEx
 
 var _ctx_obj:CompletionContext
 
@@ -323,13 +327,42 @@ func _correct_positional_count(target_size:int=-1):
 	if target_size == -1:
 		target_size = _get_target_positional_count()
 	if positional_args.size() != target_size:
+		_ctx_obj.append_error("Err: " + get_command_name())
 		_ctx_obj.append_error("Positional argument count incorrect: Expected %s, got %s" % [target_size, positional_args.size()])
-		_ctx_obj.append_error("Atguments: " + str(positional_args))
+		_ctx_obj.append_error("Arguments: " + str(positional_args))
+		_ctx_obj.exit_code = ExitCode.FAIL
 		return false
 	return true
 
 func _get_target_positional_count() -> int:
-	return get_self_command_data().get(&"positional_count", 0)
+	var count = get_self_command_data().get(&"positional_count", 0)
+	if count is int:
+		return count
+	if count is String:
+		_initialize_regex()
+		var reg_match = _positional_arg_count_regex.search(count)
+		if is_instance_valid(reg_match):
+			var min_count = reg_match.get_string("min")
+			var max_count = reg_match.get_string("max")
+			if min_count == "":
+				min_count = 0
+			else:
+				min_count = min_count.to_int()
+			if max_count == "":
+				max_count = positional_args.size()
+			else:
+				max_count = max_count.to_int()
+			var arg_size = positional_args.size()
+			if arg_size >= min_count and arg_size <= max_count:
+				return arg_size
+			elif arg_size < min_count:
+				return min_count
+			elif arg_size > max_count:
+				return max_count
+			
+		
+		
+	return 0
 
 ## 0=No unwrap, 1=doubles, 2=both
 func _unwrap_quotes():
@@ -337,9 +370,10 @@ func _unwrap_quotes():
 
 static func _call_method(ctx:CompletionContext, callable:Callable, args:Array, create_default_args:=false):
 	# convert variables to $VAR
-	var tok = EditorConsoleSingleton.get_instance().tokenizer
+	var editor_console = EditorConsoleSingleton.get_instance()
 	for i in range(args.size()):
-		args[i] = tok.get_variable(args[i])
+		var arg_str = args[i]
+		args[i] = editor_console.working_variable_dict.get(arg_str, arg_str)
 	# end
 	
 	var callable_arg_count = callable.get_argument_count()
@@ -506,3 +540,8 @@ func _get_config(type:int=0):
 	else:
 		printerr("Unrecognized config type: %s; 0=Merged, 1=Global, 2=Project\nReturning merged data.")
 		return UtilsLocal.Config.get_merged_config()
+
+static func _initialize_regex():
+	if not is_instance_valid(_positional_arg_count_regex):
+		_positional_arg_count_regex = RegEx.new()
+		_positional_arg_count_regex.compile(r"(?=min:|max:)(?:min:\s*(?<min>[0-9]+))?(?:\s*,?\s*)?(?:max:\s*(?<max>[0-9]+))?")

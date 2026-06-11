@@ -25,7 +25,7 @@ func _execute(ctx:CompletionContext):
 	if not add_flag:
 		editor_selection.clear()
 	
-	var node_paths = ctx.input.split("\n", false)
+	var node_paths = ctx.stdin.split("\n", false)
 	if node_paths.is_empty():
 		ctx.append_error("No paths provided to select.")
 		return

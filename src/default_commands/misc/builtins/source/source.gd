@@ -2,7 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 
 const _HELP = \
-"This is a command created with the 'new' command, define help for this command!"
+"Run script in the current process."
 
 static func get_command_name():
 	return "source"
@@ -15,6 +15,10 @@ static func get_self_command_data():
 
 func _execute(ctx:CompletionContext):
 	var path = positional_args[0]
+	if not FileAccess.file_exists(path):
+		ctx.exit_code = ExitCode.FAIL
+		ctx.append_error("File doesn't exist, cannot source: " + path)
+		return
 	var source_history = ctx.data.get_or_add("source_history", {})
 	if source_history.has(path):
 		return

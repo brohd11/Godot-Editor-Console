@@ -2,7 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 
 const _HELP = \
-"echo, similar to standard shell command."
+"Echos arguments, similar to standard shell command."
 
 var function_name:String
 
@@ -27,4 +27,3 @@ func _execute(ctx:CompletionContext):
 			string += " "
 	
 	ctx.append_output(string)
-		

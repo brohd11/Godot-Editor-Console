@@ -3,17 +3,18 @@ extends SyntaxHighlighter
 var default_text_color = EditorInterface.get_editor_settings().get("text_editor/theme/highlighting/text_color")
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
+const ConsoleTokenizer = UtilsLocal.ConsoleTokenizer
 const Colors = UtilsLocal.Colors
 
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
-const Pr = UtilsRemote.UString.PrintRich
+const UString = UtilsRemote.UString
+const Pr = UString.PrintRich
 const UClassDetail = UtilsRemote.UClassDetail
 const EditorColors = UtilsRemote.EditorColors
 
 var global_names = []
 var var_names = []
 var scope_names = []
-#var hidden_scope_names = []
 
 var os_mode:bool
 
@@ -26,15 +27,29 @@ func _get_line_syntax_highlighting(line: int) -> Dictionary:
 	global_names = UClassDetail.get_all_global_class_paths().keys()
 	
 	var hl_info = {}
-	var scope_hl = check_keyword(line_text, scope_names, Colors.SCOPE, 0)
+	
+	var cmd = line_text # temp for testing
+	#var cmd_start = 0
+	#for cmd in command_statements:
+		#var cmd_start_index = line_text.find(cmd)
+		#cmd_start = cmd_start_index + 1
+		
+	var other_token_hl = check_keyword(cmd, ConsoleTokenizer.HL_TOKENS, Colors.SYMBOL)
+	hl_info.merge(other_token_hl)
+	
+	var scope_hl = check_keyword(cmd, scope_names, Colors.SCOPE)
 	hl_info.merge(scope_hl)
-	#var hidden_scope_hl = check_keyword(line_text, hidden_scope_names, scope_color)
+	
+	#var hidden_scope_hl = check_keyword(cmd, hidden_scope_names, scope_color)
 	#hl_info.merge(hidden_scope_hl)
-	var var_name_hl = check_keyword(line_text, var_names, Colors.VAR_GREEN)
+	
+	var var_name_hl = check_keyword(cmd, var_names, Colors.VAR_GREEN)
 	hl_info.merge(var_name_hl)
 	
-	var global_name_hl = check_keyword(line_text, global_names, EditorColors.get_syntax_color(EditorColors.SyntaxColor.ENGINE_TYPE))
+	var global_name_hl = check_keyword(cmd, global_names, EditorColors.get_syntax_color(EditorColors.SyntaxColor.ENGINE_TYPE))
 	hl_info.merge(global_name_hl)
+		
+		
 	
 	var hl_info_keys = hl_info.keys()
 	hl_info_keys.sort()

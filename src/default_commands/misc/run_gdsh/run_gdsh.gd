@@ -29,6 +29,6 @@ func _get_completions(ctx:CompletionContext):
 func _execute(ctx:CompletionContext):
 	var file_path = positional_args[0]
 	var out = EditorConsoleSingleton.run_gdsh(file_path)
-	ctx.output = out.output
-	ctx.error = out.error
+	ctx.stdout = out.stdout
+	ctx.stderr = out.stderr
 	ctx.exit_code = out.exit_code

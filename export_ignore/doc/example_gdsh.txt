@@ -1,7 +1,94 @@
 #!gdsh
 
-nodes=$(scene edited get_nodes --type=Label)
-echo "$nodes" | os grep Me | scene edited select # this is a comment
-echo "nodes selected:
+scope_test(){
+	GLOBAL=$1
+	local local="$2"
+	echo "result is:: $local"
+}
+
+get_nodes_test(){
+	echo "node1
+node2
+node3
+node4"
+}
+
+return_test(){
+	if "$#" == 1 {
+		echo returning 0
+		return 0
+	}
+	echo returning 1
+	return 1
+}
+
+# echo "$nodes"
+
+RES=$(scope_test "a global string!" "a local string!")
+echo $RES
+
+echo "GLOBAL search:: $GLOBAL"
+echo "LOCAL search:: $local"
+
+scope_test "a global string!" "a local string!"
+echo "GLOBAL search:: $GLOBAL"
+echo "LOCAL search:: $local"
+
+nodes=$(get_nodes_test)
+echo "$nodes" | os grep 2 | strip_edges ; echo "single line - end here"; echo "Nodes single line multi
+
 $nodes"
-source "/Users/brohd/main/test.sh"
+
+
+echo "Start Multiline - 
+nodes selected:
+$nodes
+End Multiline."
+
+
+if [ $local == "" ]{
+	echo "[if branch] - Local var not set! (as it shouldn't be...)"
+} elif [ $local == "Nope" ] {
+	echo "Got Nodes!"
+} else {
+	echo "GOT EM"
+}
+
+if [ "$GLOBAL" ==  "" ]{
+	echo "Local var not set!"
+} elif [ "$GLOBAL" == "a global string!" ] {
+	echo "[elif branch] - Global var is set! (as it should be...)"
+} else {
+	echo "GOT EM"
+}
+
+if [ "$nodes" == "" ]{
+	echo "No Nodes"
+} elif [ "$nodes" == "Nope" ] {
+	echo "Nope!"
+} else {
+	echo "[else branch] - Got Nodes!"
+}
+
+if [ "$(echo "subs yup")" == "subs yup" ] {
+	echo "Subs test worked"
+	if[ "$(get_nodes_test)" == "$nodes" ] {
+		echo "nested check worked!"
+	}else{
+		echo "nested didn't work"
+	}
+} else {
+	echo "Subs test didn't!"
+}
+
+if [ "test" == "e" ] || [ "test" == "test" ] {
+	echo "or test"
+}
+
+if return_test "arg" {
+	echo first return test passed
+	return_test
+	if [ $? -eq 1 ] {
+		echo "Return test passed both tests"
+	}
+}

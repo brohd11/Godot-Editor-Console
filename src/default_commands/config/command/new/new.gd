@@ -1,7 +1,10 @@
 extends EditorConsoleSingleton.CommandBase
 
+const HIDDEN_DIR = UtilsLocal.DefaultCommands.HIDDEN_DIR
+
 const _HELP = \
-"Create a new sub command for an existing command."
+"Create a new command.
+Usage: config command new <flags:--edit|--reg> <target_dir|command_parent> <new_command_name>"
 
 var register_flag:=false
 var open_flag:= false
@@ -101,6 +104,8 @@ func _execute(_ctx:CompletionContext):
 
 func _get_new_command_dir():
 	var command_path:String = UString.unquote(positional_args[0]).strip_edges()
+	if command_path == "hidden":
+		return HIDDEN_DIR
 	var console = EditorConsoleSingleton.get_instance()
 	
 	var path_parts = [command_path]

@@ -207,8 +207,8 @@ class ConsoleLineEdit extends CodeEdit:
 				continue
 			has_non_sep = true
 		return commands_dict
-	#^ Look at this stuff TODO
-	 
+	
+	#^ Look at this stuff TODO 
 	func _on_item_selected(id_text:String, metadata:Dictionary):
 		var text_to_add = metadata.get(CommandKeys.INSERT, id_text)
 		
@@ -235,6 +235,7 @@ class ConsoleLineEdit extends CodeEdit:
 			end_action()
 			_on_text_changed()
 			return
+		
 		_insert_text(text_to_add)
 	
 	func _insert_text(new_text):
@@ -290,20 +291,32 @@ class ConsoleLineEdit extends CodeEdit:
 					if event.keycode in to_pass:
 						gui_event_passthrough.emit(event)
 						accept_event()
+					if event.keycode == KEY_TAB:
+						_request_code_completion(true)
+						accept_event()
 				else:
-					var to_accept = [KEY_UP, KEY_DOWN, KEY_ESCAPE, KEY_ENTER]
+					var to_accept = [KEY_UP, KEY_DOWN, KEY_ESCAPE, KEY_ENTER, KEY_TAB]
 					if event.keycode == KEY_UP:
 						popup.previous_item()
 					elif event.keycode == KEY_DOWN:
 						popup.next_item()
 					elif event.keycode == KEY_ESCAPE:
 						_clear_popup()
-					elif event.keycode == KEY_ENTER:
+					elif event.keycode == KEY_TAB:
 						if popup_selected:
 							popup.activate_item()
 						else:
 							gui_event_passthrough.emit(event)
 							_clear_popup()
+					elif event.keycode == KEY_ENTER:
+						_clear_popup()
+						gui_event_passthrough.emit(event)
+						
+						#if popup_selected:
+							#popup.activate_item()
+						#else:
+							#gui_event_passthrough.emit(event)
+							#_clear_popup()
 					elif event.keycode == KEY_LEFT or event.keycode == KEY_RIGHT:
 						_clear_popup()
 					

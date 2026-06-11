@@ -53,8 +53,8 @@ func _process_flag(flag:String):
 
 func _consume_self(ctx:CompletionContext) -> ExitCode:
 	script_access_path = _consume_token(ctx)
-	if ctx.input != "":
-		script_access_path = ctx.input.strip_edges()
+	if ctx.stdin != "":
+		script_access_path = ctx.stdin.strip_edges()
 	
 	ctx.data["script"] = ScriptUtil.resolve_access_path(script_access_path)
 	return ExitCode.OK
@@ -116,11 +116,11 @@ func _execute(ctx:CompletionContext):
 	if text_flag:
 		if script_access_path == "script":
 			var current_editor = ScriptEditorRef.get_current_code_edit()
-			ctx.output = current_editor.text
+			ctx.stdout = current_editor.text
 		else:
 			var script = ScriptUtil.get_script_from_ctx(ctx)
 			if is_instance_valid(script):
-				ctx.output = script.source_code
+				ctx.stdout = script.source_code
 			else:
 				ctx.append_error("Could not get script: " + script_access_path)
 		return ExitCode.OK

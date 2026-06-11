@@ -5,6 +5,8 @@ const PRINT_DEBUG = PLUGIN_EXPORTED or false
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 const Colors = UtilsLocal.Colors
 const Config = UtilsLocal.Config
+const CompletionContext = UtilsLocal.CompletionContext
+const Execution = UtilsLocal.Execution
 
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 const UString = UtilsRemote.UString
@@ -12,9 +14,14 @@ const Pr = UtilsRemote.UString.PrintRich
 const UClassDetail = UtilsRemote.UClassDetail
 const EditorColors = UtilsRemote.EditorColors
 
+const HL_TOKENS = ["[", "]", "&&", "||", "==", "!=", "|"]
+const UNDEFINED = "%%%__UNDEFINED__"
+
 var editor_console:EditorConsoleSingleton
 
-var variables := {}
+var active_ctx:CompletionContext
+var execute:bool=false
+
 
 
 static var _token_regex:RegEx
@@ -24,68 +31,86 @@ var color_var_ok = "96f442"
 var color_var_fail = "cc000c"
 var color_var_value = "6d6d6d"
 
-func _init() -> void:
+func _init(_active_ctx:CompletionContext) -> void:
+	active_ctx = _active_ctx
 	_initialize_regex()
 	
 	editor_console = EditorConsoleSingleton.get_instance()
 
-func _initialize_regex():
+static func _initialize_regex():
 	if not is_instance_valid(_token_regex):
 		_token_regex = RegEx.new()
-		var pattern = "\"(?:[^\"\\\\]|\\\\.)*\"|'[^']*'|(\\[^']*)|(\\{(?:[^{}]|(?2))*\\})|(\\((?:[^()]|(?3))*\\))|\\S+"
-		#var pattern = "\"(?:[^\"\\\\]|\\\\.)*\"|'[^']*'|(\\[(?:[^\\[\\]]|(?1))*\\])|(\\{(?:[^{}]|(?2))*\\})|(\\((?:[^()]|(?3))*\\))|\\S+"
-		_token_regex.compile(pattern)
+		var sq     := "(?<sq>'[^']*')"
+		var dq     := "(?<dq>\"(?:\\\\.|(?&cs)|[^\"\\\\])*\")"
+		var cs     := "(?<cs>\\$\\((?:\\\\.|(?&dq)|(?&sq)|(?&cs)|(?&par)|[^()\"'\\\\])*\\))"
+		var par    := "(?<par>\\((?:\\\\.|(?&dq)|(?&sq)|(?&cs)|(?&par)|[^()\"'\\\\])*\\))"
+		var define := "(?(DEFINE)" + sq + dq + cs + par + ")"
+		var word   := "(?:(?&dq)|(?&sq)|(?&cs)|\\\\.|[^\\s\"'\\\\])+"
+
+		_token_regex = RegEx.new()
+		_token_regex.compile(define + word)
 	
-	if not is_instance_valid(_variable_regex):
+	if not is_instance_valid(_variable_regex) or true:
 		_variable_regex = RegEx.new()
-		_variable_regex.compile("\\$\\w+\\b")
+		#_variable_regex.compile("\\$[\\w+|?|@|#]\\b")
+		_variable_regex.compile("\\$(?:\\w+\\b|[?@#])")
+
 
 #! keys commands:PackedStringArray expanded:PackedStringArray args:PackedStringArray display:String
-func parse_command_string(input_string: String, expand:=false) -> Dictionary:
+func parse_command_string_completion(input_string: String, allow_expand:=true) -> Dictionary:
 	_initialize_regex()
 	var result := {
 		"commands": PackedStringArray(),
 		"expanded": PackedStringArray(),
 		"args": PackedStringArray(),
-		"display":"",
 	}
-	var command_str := input_string
-	var args_str := ""
-	var string_map = UString.get_string_map(input_string)
-	var delim = "-- "
-	var separator_pos = UString.string_safe_find(input_string, delim, 0, string_map)
-	if separator_pos != -1:
-		command_str = input_string.substr(0, separator_pos).strip_edges()
-		args_str = input_string.substr(separator_pos + delim.length()).strip_edges()
-	else:
-		# If no separator, the whole string is considered commands
-		command_str = input_string.strip_edges()
 	
-	var command_tok_data = _tokenize_string(command_str, expand)
-	var arg_tok_data = _tokenize_string(args_str)
-	result.commands = command_tok_data.tokens
-	result.expanded = command_tok_data.expanded
-	result.args = arg_tok_data.tokens
+	var split = split_args(input_string)
+	var command_str:String = split[0]
+	var args_str:String = split[1]
 	
-	if arg_tok_data.display != "":
-		result.display = "%s -- %s" % [command_tok_data.display, arg_tok_data.display]
-	else:
-		result.display = command_tok_data.display
+	var raw_command_data = _tokenize_string(command_str, false, false)
+	result.commands = raw_command_data.expanded
+	# allow expand will allow command substitution to run during autocomplete. This may be undesired
+	var expanded_command_tok_data = _tokenize_string(command_str, allow_expand)
+	result.expanded = expanded_command_tok_data.expanded
+	var arg_tok_data = _tokenize_string(args_str, false)
+	result.args = arg_tok_data.expanded
 	
 	return result
 
 
-func _tokenize_string(text: String, expand:bool=false) -> Dictionary:
-	var tokens = PackedStringArray()
+#! keys commands:PackedStringArray expanded:PackedStringArray args:PackedStringArray display:String
+func parse_command_string_execute(input_string: String, display:=false) -> Dictionary:
+	_initialize_regex()
+	var result := {
+		"expanded": PackedStringArray(),
+		"args": PackedStringArray(),
+		"display": ""
+	}
+	var split = split_args(input_string)
+	var command_str:String = split[0]
+	var args_str:String = split[1]
+	
+	var command_tok_data = _tokenize_string(command_str, true, display)
+	result.expanded = command_tok_data.expanded
+	var arg_tok_data = _tokenize_string(args_str, false, display)
+	result.args = arg_tok_data.expanded
+	
+	if display:
+		if arg_tok_data.display != "":
+			result.display = "%s -- %s" % [command_tok_data.display, arg_tok_data.display]
+		else:
+			result.display = command_tok_data.display
+		
+	return result
+
+func _tokenize_string(text: String, expand:bool=true, display:=false) -> Dictionary:
 	if text.is_empty():
-		return {"tokens":tokens, "expanded": PackedStringArray(), "display":""}
-	
-	var config = Config.get_merged_config()
-	var alias_data:Dictionary = config.get_section(Config.ALIAS)
-	
-	var pr = Pr.new()
+		return {"expanded": PackedStringArray(), "display": ""}
 	
 	var expanded_tokens = []
+	var display_string = ""
 	var matches = _token_regex.search_all(text)
 	for _match in matches:
 		var token = _match.get_string()
@@ -94,111 +119,118 @@ func _tokenize_string(text: String, expand:bool=false) -> Dictionary:
 				print("BLANK TOK")
 			continue
 		
-		var is_first = _match == matches[0]
-		var is_expanded = false
-		
-		if expand:
-			var expanded = _expand_token(token, alias_data)
-			is_expanded = expanded[0] != token
-			if is_expanded:
-				pr.append("[", color_var_value)
-			
-			for i in range(expanded.size()):
-				var e = expanded[i]
-				var var_check = _get_token_color(e, pr, i > 0 or not is_expanded, false)
-				expanded_tokens.append(var_check)
-				is_first = false
-			
-			if is_expanded:
-				pr.append("]", color_var_value)
-				_get_token_color(token, pr, false, is_expanded)
-		
+		# this seems to only be used by arguments, which are not having the old arg logic applied
+		# potentially also by autocomplete. If not wanting to run the command substitiuion
+		# perhaps a more granular setting could be used, to allow alias changes, but no commands to run.
 		if not expand:
-			var var_token_check = _get_token_color(token, pr, not is_first, is_expanded)
-			tokens.push_back(var_token_check)
-		else:
-			tokens.push_back(_check_variable(token))
+			var var_check = _check_variable(token, display)
+			expanded_tokens.append(var_check)
+			if display and var_check != token:
+				display_string += " " + wrap_variable(token, var_check)
+			continue
+		
+		var is_string = UString.is_string_or_string_name(token)
+		
+		# command substitution
+		if token.lstrip("\"'").begins_with("$("): # and token.trim_prefix("$").strip_edges().begins_with("("):
+			var stripped = UString.unquote(token)
+			var var_check = _check_variable(stripped, display)
+			if var_check == token:
+				expanded_tokens.append(token)
+				if display:
+					display_string += " " + _get_token_color(token)
+			else:
+				if is_string:
+					var qu = token[0]
+					expanded_tokens.append(qu + var_check + qu)
+					if display:
+						var tok_display = qu + var_check
+						tok_display += qu
+						display_string += " " + wrap_variable(token, tok_display)
+				else:
+					var split = UString.string_safe_split_multi(var_check, [" ", "\t", "\n"])
+					expanded_tokens.append_array(split)
+					if display:
+						var tok_display:= ""
+						for s in split:
+							tok_display += s
+							if tok_display.length() > 20:
+								break
+							tok_display += " "
+						
+						display_string += " " + wrap_variable(token, tok_display)
+			
+			continue
+		# end command substitution
+		
+		#print("Tokenize String:", token)
+		# expansion
+		
+		var expanded = [token]
+		if not is_string:
+			expanded = _expand_token(token, active_ctx.aliases)
+		
+		var expanded_display = ""
+		for e in expanded:
+			#print("EXPAND e:", e)
+			var var_check = _check_variable(e, display)
+			if not display:
+				expanded_tokens.append(var_check)
+			
+			if display:
+				var is_undef = var_check.contains(UNDEFINED)
+				if not is_undef:
+					expanded_tokens.append(var_check)
+					if var_check != e:
+						expanded_display += " " + wrap_variable(e, var_check)
+					else:
+						expanded_display += " " + _get_token_color(e)
+				
+				else:
+					expanded_tokens.append(e)
+					#print("VC::", var_check)
+					var inner = var_check.replace(UNDEFINED, wrap_color("undef", color_var_fail))
+					var undef = " " + wrap_variable(e, "__PLACEHOLDER__")
+					undef = undef.replace("__PLACEHOLDER__", inner)
+					expanded_display += " " + undef
+		
+		
+		if display:
+			expanded_display = expanded_display.strip_edges()
+			if (expanded.size() > 1 or expanded[0] != token):
+				display_string += wrap_variable(expanded_display, token)
+			else:
+				display_string += " " + expanded_display # _get_token_color(expanded_display)
+		# end expansion
 	
-	
+	#print("EXPANDED::", text, " -> ", expanded_tokens)
 	return {
-		"tokens": tokens,
 		"expanded": expanded_tokens,
-		"display": pr.get_string().strip_edges(),
+		"display": display_string.strip_edges()
 	}
 
 
-func _get_token_color(token:String, pr:Pr, leading_space:bool, is_expanded:bool):
+func _get_token_color(token:String):
+	
+	var var_token_check = UString.unquote(token)
 	var is_string = UString.is_string_or_string_name(token)
 	var quote_char = ""
 	if is_string:
 		quote_char = token[0]
-	var var_token_check = token
+		var_token_check = UString.unquote(token)
 	
-	if leading_space:
-		pr.append(" ")
+	if var_token_check in HL_TOKENS:
+		var_token_check = wrap_color(var_token_check, UtilsLocal.Colors.SYMBOL.to_html())
+	elif var_token_check in editor_console.scope_dict or var_token_check in editor_console.hidden_scope_dict:
+		var_token_check = wrap_color(var_token_check, UtilsLocal.Colors.SCOPE.to_html())
+	elif UClassDetail.get_global_class_path(var_token_check) != "":
+		var_token_check = wrap_color(var_token_check, EditorColors.get_syntax_color(EditorColors.SyntaxColor.ENGINE_TYPE).to_html())
 	
-	if token.contains("$"):
-		var stripped_token = token
-		if UString.is_string_or_string_name(token):
-			stripped_token = UString.unquote(token)
-		#print("STRIPPED:", stripped_token)
-		
-		var matches = _variable_regex.search_all(stripped_token)
-		if is_string:
-			pr.append(quote_char)
-		
-		var new_string = ""
-		var last_end = 0
-		for i in range(matches.size()):
-			var m = matches[i]
-			var var_string = m.get_string()
-			var var_check = variables.get(var_string, var_string)
-			var left = stripped_token.substr(last_end, m.get_start() - last_end)
-			new_string += left + var_check
-			last_end = m.get_end()
-			if var_check:
-				pr.append(left).append("[", color_var_value).append(var_check).append("]", color_var_value).append(var_string, color_var_ok)
-			else:
-				pr.append(var_string)
-			
-			if i < matches.size() - 1:
-				pr.append(" ")
-		
-		new_string += stripped_token.substr(last_end)
-		
-		if is_string:
-			pr.append(quote_char)
-			new_string = quote_char + new_string + quote_char
-		
-		#print("RETURN:", token, " -> ", new_string)
-		return new_string
 	
-	if is_expanded:
-		pr.append("%s" % token, color_var_value)
-	elif token in editor_console.scope_dict or token in editor_console.hidden_scope_dict:
-		pr.append(token, editor_console.Colors.SCOPE)
-	elif UClassDetail.get_global_class_path(token) != "":
-		pr.append("%s" % token, EditorColors.get_syntax_color(EditorColors.SyntaxColor.ENGINE_TYPE))
-	elif token.find("<") > -1:
-		if editor_console:
-			var_token_check = _check_variable(token)
-		pr.append("%s" % token)
-	elif token.find("#") > -1: # not sure what this is about? expression?
-		if editor_console:
-			var_token_check = _check_variable(token)
-		pr.append("%s" % token)
-	else:
-		pr.append("%s" % token)
+	if is_string:
+		var_token_check = quote_char + var_token_check + quote_char
 	
 	return var_token_check
-
-
-static func shell_quote(s: String, quote_char:="'") -> String:
-	# Wrap in single quotes; turn any embedded ' into '\''
-	if quote_char == "'":
-		return "'" + s.replace("'", "'\\''") + "'"
-	else:
-		return '"' + s.replace('"', '\\"') + '"'
 
 
 func _expand_token(token, alias_data:Dictionary, seen_tokens:={}):
@@ -238,8 +270,7 @@ func _expand_token(token, alias_data:Dictionary, seen_tokens:={}):
 		return [requote]
 	return expanded_tokens
 
-static func clean_alias_token(token:String):
-	return token.trim_prefix("@literal")
+
 
 #func _check_variable(arg:String):
 	#if arg.begins_with("$"):
@@ -280,59 +311,131 @@ static func clean_alias_token(token:String):
 	#
 	#return arg
 
-func _check_variable(token:String):
-	# should be a while loop? to make sure variables set to other variables are checked?
-	if token.begins_with("$"):
-		var var_check = variables.get(token)
-		if var_check != null:
-			if var_check is String:
-				return var_check
-			return str(var_check)
+func _check_variable(token:String, display:=false):
+	return check_variable(token, active_ctx, display)
+
+static func check_variable(token:String, active:CompletionContext, display:=false):
+	if not token.contains("$"):
+		return token
+	_initialize_regex()
+	#^r should this be unquoted here?
+	if token.begins_with("$("):
+		print("CHECK VAR: ", token)
+		if not is_instance_valid(active) or not active.execute:
+			return token  # don't want to execute when doing completions
+		
+		var stripped = token.trim_prefix("$(").trim_suffix(")")
+		var sub_shell_ctx:CompletionContext = Execution.execute_command(stripped, {
+			&"parent_ctx": active,
+			&"sub_shell": true
+		})
+		
+		return sub_shell_ctx.strip_output_newlines()
 	
-	return token
-	
-	
-	var exp_idx = token.find('{#')
-	if exp_idx > -1:
-		var expr = Expression.new()
-		var arg_stripped = token.replace("'","").replace('"',"").trim_prefix("{#").trim_suffix("}")
-		if arg_stripped.find("<") > -1:
-			
-			pass
-		var err = expr.parse(arg_stripped)
-		if err == OK:
-			var result = expr.execute()
-			if PRINT_DEBUG:
-				print(result)
-			var type = Var.check_type(token)
-			if type:
-				result = Var.string_to_type(result, type)
-			editor_console.working_variable_dict[token] = result
+	var is_string = UString.is_string_or_string_name(token)
+	var quote_char = ""
+	if is_string:
+		quote_char = token[0]
+		if quote_char == "'":
 			return token
 	
-	var type_str = Var.check_type(token)
-	if type_str:
-		var variable = Var.string_to_type(token, type_str)
-		editor_console.working_variable_dict[token] = variable
-		return token
-	
+	if token.contains("$"):
+		var stripped_token = token
+		if is_string:
+			stripped_token = UString.unquote(token)
+		
+		var matches = _variable_regex.search_all(stripped_token)
+		
+		var new_string = ""
+		var last_end = 0
+		for i in range(matches.size()):
+			var m = matches[i]
+			var var_string = m.get_string()
+			# in os mode, this can pass through env variables
+			# returning quotes as default, otherwise the value can dissapear
+			
+			
+			var var_check = ""
+			if var_string.trim_prefix("$").is_valid_int():
+				var index = var_string.trim_prefix("$").to_int()
+				if index == 0:
+					var_check = active.variables.get("$0")
+				else:
+					index -= 1
+					if index < active.positional_args.size():
+						var_check = active.positional_args[index]
+					else:
+						var_check = ""
+					
+			elif var_string in ["$?", "$#", "$@"]: #special handled chars
+				match var_string:
+					"$?": var_check = str(active.last_status)
+					"$#": var_check = str(active.positional_args.size())
+					"$@": var_check = " ".join(active.positional_args)
+			else:
+				var default_empty = "" if is_string else "''"
+				var default = var_string if active.os_mode else default_empty
+				if display: 
+					#default = var_string + UNDEFINED
+					default = UNDEFINED
+				var_check = active.variables.get(var_string, default)
+			
+			print(display, ":DISP:TOKEN:",var_string, " -> ", var_check)
+			if var_check != var_string and var_check.contains("$") and not var_check.contains(UNDEFINED):
+				print("RECUR CHEK;", var_string, " -> ", var_check)
+				var_check = check_variable(var_check, active)
+			
+			var left = stripped_token.substr(last_end, m.get_start() - last_end)
+			new_string += left + var_check
+			last_end = m.get_end()
+		
+		new_string += stripped_token.substr(last_end)
+		
+		if is_string:
+			new_string = quote_char + new_string + quote_char
+		
+		print("RETURN:", token, " -> ", new_string)
+		return new_string
 	return token
 
-func get_arg_variables(args:Array):
-	var vars = []
-	for arg in args:
-		vars.append(get_variable(arg))
-	return vars
 
-func get_variable(variable_string):
-	var variable = editor_console.working_variable_dict.get(variable_string)
-	if variable:
-		return variable
+static func wrap_color(string:String, color:String):
+	return "[color=%s]%s[/color]" % [color, string]
+
+func wrap_variable(var_name:String, value:String):
+	var template = "[color=%s][[/color]%s[color=%s]]%s[/color]"
+	return template % [color_var_value, shorten_var_string(value), color_var_value, shorten_var_string(var_name)]
+
+static func shorten_var_string(string:String):
+	if string.length() > 20:
+		string = string.left(20) + "..."
+	return string.replace("\n", " ").strip_edges()
+
+static func split_args(input_string:String) -> Array[String]:
+	var command_str := input_string
+	var args_str := ""
+	if input_string.find("-- ") == -1:
+		return [command_str, args_str]
+	var delim = "-- "
+	var separator_pos = UString.string_safe_find(input_string, delim, 0)
+	if separator_pos != -1:
+		command_str = input_string.substr(0, separator_pos).strip_edges()
+		args_str = input_string.substr(separator_pos + delim.length()).strip_edges()
 	else:
-		#printerr("Failed to get variable: %s" % variable_string)
-		return variable_string
+		# If no separator, the whole string is considered commands
+		command_str = input_string.strip_edges()
+	return [command_str, args_str]
 
 
+static func shell_quote(s: String, quote_char:="'") -> String:
+	# Wrap in single quotes; turn any embedded ' into '\''
+	if quote_char == "'":
+		return "'" + s.replace("'", "'\\''") + "'"
+	else:
+		return '"' + s.replace('"', '\\"') + '"'
+
+static func clean_alias_token(token:String):
+	return token.trim_prefix("@literal")
 
 class Var:
 	const NUM_TYPES = ["int", "float"]
@@ -433,3 +536,69 @@ class Var:
 		else:
 			printerr("Error getting argument: %s" % arg)
 			return arg
+
+
+# deprecation station
+
+func _get_token_color_old(token:String, pr:Pr, leading_space:bool, is_expanded:bool):
+	var is_string = UString.is_string_or_string_name(token)
+	var quote_char = ""
+	if is_string:
+		quote_char = token[0]
+	var var_token_check = token
+	
+	if leading_space:
+		pr.append(" ")
+	
+	if token.contains("$"):
+		var stripped_token = token
+		if UString.is_string_or_string_name(token):
+			stripped_token = UString.unquote(token)
+		#print("STRIPPED:", stripped_token)
+		
+		var matches = _variable_regex.search_all(stripped_token)
+		if is_string:
+			pr.append(quote_char)
+		
+		var new_string = ""
+		var last_end = 0
+		for i in range(matches.size()):
+			var m = matches[i]
+			var var_string = m.get_string()
+			var var_check = active_ctx.variables.get(var_string, var_string)
+			var left = stripped_token.substr(last_end, m.get_start() - last_end)
+			new_string += left + var_check
+			last_end = m.get_end()
+			if var_check:
+				pr.append(left).append("[", color_var_value).append(var_check).append("]", color_var_value).append(var_string, color_var_ok)
+			else:
+				pr.append(var_string)
+			
+			if i < matches.size() - 1:
+				pr.append(" ")
+		
+		new_string += stripped_token.substr(last_end)
+		
+		if is_string:
+			pr.append(quote_char)
+			new_string = quote_char + new_string + quote_char
+		
+		#print("RETURN:", token, " -> ", new_string)
+		return new_string
+	
+	if is_expanded:
+		pr.append("%s" % token, color_var_value)
+	elif token in editor_console.scope_dict or token in editor_console.hidden_scope_dict:
+		pr.append(token, UtilsLocal.Colors.SCOPE)
+	elif UClassDetail.get_global_class_path(token) != "":
+		pr.append("%s" % token, EditorColors.get_syntax_color(EditorColors.SyntaxColor.ENGINE_TYPE))
+	elif token.find("<") > -1:
+		var_token_check = _check_variable(token)
+		pr.append("%s" % token)
+	elif token.find("#") > -1: # not sure what this is about? expression?
+		var_token_check = _check_variable(token)
+		pr.append("%s" % token)
+	else:
+		pr.append("%s" % token)
+	
+	return var_token_check

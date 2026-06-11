@@ -23,9 +23,7 @@ func _execute(ctx:CompletionContext):
 	print(positional_arg_index)
 	print(positional_args)
 	return ExitCode.OK
-	var command = positional_args[0]
-	var new_ctx = CompletionContext.new(command)
-	new_ctx.print = false
-	new_ctx.add_to_hist = false
-	#new_ctx.execute_parse() # handled inside should be
-	EditorConsoleSingleton.get_instance().parse_input(new_ctx)
+	
+	EditorConsoleSingleton.Execution.execute_command(positional_args[0], {
+		&"parent_ctx": ctx
+	})

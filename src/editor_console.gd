@@ -20,11 +20,12 @@ const Colors = UtilsLocal.Colors
 const ConsoleCommandSetBase = UtilsLocal.ConsoleCommandSetBase
 const CommandBase = UtilsLocal.CommandBase
 const CompletionContext = UtilsLocal.CompletionContext
+const Execution = UtilsLocal.Execution
 
 const ScriptEditorContext = preload("res://addons/editor_console/src/editor_plugins/script_editor.gd")
 
 
-const Execution = preload("res://addons/editor_console/src/class/execution/execution.gd")
+
 
 
 #region Old plugin.gd vars
@@ -102,18 +103,18 @@ func _ready() -> void:
 	EditorInterface.get_resource_filesystem().filesystem_changed.connect(_on_filesystem_changed)
 
 func _ready_deferred():
-	tokenizer = UtilsLocal.ConsoleTokenizer.new()
+	#tokenizer = UtilsLocal.ConsoleTokenizer.new()
 	_load_default_commands()
 	EditorNodeRef.call_on_ready(_start_up_commands)
 
 func _start_up_commands():
 	var config = Config.get_merged_config()
 	var startup = config.get_section(Config.STARTUP, [])
-	var input_ctx = CompletionContext.new()
-	input_ctx.add_to_hist = false
-	input_ctx.print = false
-	for cmd in startup:
-		execute_command(cmd, null, input_ctx)
+	var cmds = "\n".join(startup).strip_edges()
+	if cmds.is_empty():
+		return
+	var main_ctx = get_main_ctx()
+	Execution.execute_command_multiline(cmds, main_ctx)
 
 func _on_filesystem_changed():
 	if _cache == null:
@@ -429,211 +430,8 @@ func _set_console_text(text:String) -> void:
 	await console_line_edit.get_tree().process_frame
 	console_line_edit.set_caret_column(text.length())
 
-#! keys print:bool add_to_hist:bool main_ctx:CompletionContext
-## Command order - clear, os, help, command_dict, finally check global
-func parse_input_text(input_text:String, params:={}) -> void:
-	
-	var main_ctx = params.get(&"main_ctx")
-	if not is_instance_valid(main_ctx):
-		var gdrc = get_gdrc()
-		
-		main_ctx = CompletionContext.new(input_text)
-		main_ctx.variables = gdrc.variables.duplicate()
-		main_ctx.functions = gdrc.functions.duplicate()
-	
-	var print_to_log = params.get(&"print", false)
-	var add_to_hist = params.get(&"add_to_hist", false)
-	
-	var expand_data = CompletionContext.expand_commands(input_text, main_ctx.variables)
-	var expanded_commands = expand_data.commands
-	
-	if expanded_commands.size() == 1 and expanded_commands[0] == "":
-		return
-	
-	if print_to_log and input_text.strip_edges() != "os":
-	#if print_to_log and ctx.expanded_text.strip_edges() != "os":
-		var display = ""
-		if not os_mode:
-			display = "%s %s" % [_get_console_label_string(), expand_data.display]
-		else:
-			display = "%s %s" % [os_string, input_text.strip_edges()]
-		
-		print_rich(display)
-	
-	if add_to_hist:
-		_add_to_history(input_text)
-	
-	
-	
-	if expanded_commands.size() == 1 or os_mode:
-		main_ctx.execute_parse()
-		_parse_input(main_ctx)
-	else:
-		var working_ctx = null
-		
-		
-		for i in range(expanded_commands.size()):
-			var cmd = expanded_commands[i].strip_edges()
-			var new_ctx = CompletionContext.new_ctx(cmd, main_ctx)
-			new_ctx.execute_parse()
-			
-			if is_instance_valid(working_ctx):
-				new_ctx.input = working_ctx.output.strip_edges()
-			
-			_parse_input(new_ctx)
-			working_ctx = new_ctx
-		
-		main_ctx.output = working_ctx.output
-	
-	main_ctx.output = main_ctx.output.strip_edges(false, true).lstrip("\n")
-	
-	if print_to_log:
-		if main_ctx.error != "":
-			print(main_ctx.error.lstrip("\n"))
-		elif not main_ctx.output.is_empty():
-		#elif print_to_log and not main_ctx.output.is_empty():
-			if main_ctx.output.contains("[/color]"):
-				print_rich(main_ctx.output)
-			else:
-				print(main_ctx.output)
 
-
-## Command order - clear, os, help, command_dict, finally check global
-func parse_input(ctx:CompletionContext) -> void:
-	
-	if ctx.expanded_command_statements.is_empty():
-		ctx.expand()
-	
-	ctx.execute_parse()
-	
-	if ctx.expanded_text.is_empty():
-		return
-	
-	if ctx.print and ctx.expanded_text.strip_edges() != "os":
-	#if print_to_log and ctx.expanded_text.strip_edges() != "os":
-		if not os_mode:
-			ctx.console_display_string = "%s %s" % [_get_console_label_string(), ctx.display_text]
-		else:
-			ctx.console_display_string = "%s %s" % [os_string, ctx.raw_text.strip_edges()]
-		
-		#if print_to_log:
-		print_rich(ctx.console_display_string)
-	
-	
-	if ctx.expanded_command_statements.size() == 1 or os_mode:
-		ctx.execute_parse()
-		_parse_input(ctx)
-	else:
-		var working_ctx = null
-		if ctx.add_to_hist:
-			_add_to_history(ctx.raw_text)
-		
-		for i in range(ctx.expanded_command_statements.size()):
-			var cmd = ctx.expanded_command_statements[i].strip_edges()
-			var new_ctx = CompletionContext.new(cmd)
-			#print("CALLING:", cmd)
-			new_ctx.execute_parse()
-			new_ctx.chained_command = true
-			new_ctx.add_to_hist = false
-			new_ctx.print = ctx.print and i == ctx.expanded_command_statements.size() - 1
-			
-			if is_instance_valid(working_ctx):
-				new_ctx.input = working_ctx.output.strip_edges()
-			
-			_parse_input(new_ctx)
-			working_ctx = new_ctx
-		
-		ctx.output = working_ctx.output
-	
-	ctx.output = ctx.output.strip_edges(false, true).lstrip("\n")
-	
-	#if print_to_log:
-	if ctx.print:
-		if ctx.error != "":
-			print(ctx.error.lstrip("\n"))
-		elif not ctx.output.is_empty():
-		#elif print_to_log and not ctx.output.is_empty():
-			if ctx.output.contains("[/color]"):
-				print_rich(ctx.output)
-			else:
-				print(ctx.output)
-
-
-func _parse_input(ctx:CompletionContext) -> void:
-	working_variable_dict.clear()
-	current_command_index = -1
-	var terminal_input = ctx.expanded_text
-	
-	terminal_input = terminal_input.strip_edges()
-	if terminal_input == "": return
-	
-	if ctx.add_to_hist:
-		_add_to_history(ctx.raw_text)
-	
-	var tokens:Array = ctx.unconsumed_tokens
-	if tokens.find("--") > -1:
-		tokens.remove_at(tokens.rfind("--"))
-	
-	if tokens.size() == 0:
-		return
-	
-	ctx.execute = true
-	
-	var c_1 = tokens[0]
-	if c_1 == "clear" or (os_mode and tokens.size() > 1 and tokens[1] == "clear"):
-		if os_mode: # clear reroutes in os mode, pop os from unconsumed
-			ctx.unconsumed_tokens.pop_front()
-		_scope_parse("clear", ctx)
-		return
-	
-	if terminal_input == "os":
-		toggle_os_mode()
-		return
-	if os_mode or terminal_input.begins_with("os"):
-		_scope_parse("os", ctx)
-		return
-	
-	if c_1.to_lower() == "help":
-		c_1 = c_1.to_lower()
-	
-	if ctx.functions.has(c_1):
-		_scope_parse("__function__", ctx)
-	else:
-		c_1 = UString.get_member_access_front(c_1)
-		var parse_scopes = _scope_parse(c_1, ctx)
-		if parse_scopes == Keys.NO_MATCHING_COMMAND:
-			_scope_parse("global", ctx)
-	
-	if scope_dict.is_empty():
-		ctx.append_error("Need to load command set.")
-
-
-func _scope_parse(_name, ctx:CompletionContext):
-	var scope = scope_dict.get(_name)
-	if scope == null:
-		scope = hidden_scope_dict.get(_name)
-	if scope == null:
-		return Keys.NO_MATCHING_COMMAND
-	var script = scope.get(ScopeDataKeys.SCRIPT)
-	var callable = scope.get(ScopeDataKeys.CALLABLE)
-	var result
-	if callable:
-		result = callable.call(ctx)
-	else:
-		if script is GDScript:
-			script = ensure_fresh_script(script)
-			script = script.new()
-		
-		if script.has_method("execute"):
-			result = script.execute(ctx)
-		else:
-			ctx.append_error("Could not parse in object: %s" % scope)
-	
-	#if result != null: # this is now CommandBase.ExitCode
-		#print(result)
-
-
-func _add_to_history(command:String):
+func add_to_history(command:String):
 	last_command = command
 	var history_prompt = command
 	if os_mode and history_prompt.begins_with("os"):
@@ -669,31 +467,122 @@ func _console_gui_input(event: InputEvent) -> void:
 
 
 func _on_console_text_submitted(new_text:String) -> void:
-	#var ctx = CompletionContext.new()
-	#ctx.set_line_edit(console_line_edit)
-	#ctx.add_to_hist = true
-	#ctx.print = true
-	#var gdrc = _read_gdrc()
-	#ctx.variables = gdrc.variables
-	#ctx.functions = gdrc.functions
-	#ctx.parse()
-	#parse_input(ctx)
-	Execution.execute_command(new_text, {
-		&"print": true,
-		&"add_to_hist": true,
-		
-	})
-	#parse_input_text(new_text, {
-		#&"print": true,
-		#&"add_to_hist": true,
-		#
-	#})
-
+	working_variable_dict.clear()
+	current_command_index = -1
+	
+	if new_text.strip_edges() == "os":
+		toggle_os_mode()
+	else:
+		var main_ctx = get_main_ctx()
+		execute_interactive(new_text, {
+			&"parent_ctx": main_ctx,
+			&"os_mode": os_mode,
+			&"print": true,
+			&"add_to_hist": true
+		})
+	
 	await console_line_edit.get_tree().process_frame
 	console_line_edit.clear()
 	
 	var console_text = get_console_text_box() as RichTextLabel
 	console_text.scroll_to_line(console_text.get_line_count())
+
+
+#! keys rich_text:RichTextLabel parent_ctx:CompletionContext print:bool add_to_hist:bool os_mode:bool
+static func execute_interactive(input_text:String, params:={}):
+	var console = EditorConsoleSingleton.get_instance()
+	var active_ctx = params.get(&"parent_ctx")
+	if not is_instance_valid(active_ctx):
+		var gdrc = console.get_gdrc()
+		active_ctx = CompletionContext.new_ctx(input_text, gdrc, true)
+	
+	var print_to_log = params.get(&"print", false)
+	var rich_text = params.get(&"rich_text") as RichTextLabel
+	var add_to_hist = params.get(&"add_to_hist", false)
+	if params.has(&"os_mode"):
+		active_ctx.os_mode = params.get(&"os_mode")
+	
+	var full_display = ""
+	var multi_line_commands = ""
+	var split_delim = UString.string_safe_split(input_text, ";")
+	
+	#var raw_split = "\n".join(split_delim)
+	#Execution.execute_command_multiline(raw_split, active_ctx)
+	
+	for i in range(split_delim.size()):
+		var line:String = split_delim[i]
+		var expand_data:Dictionary = Execution.expand_commands(line, active_ctx, true)
+		if active_ctx.exit_requested:
+			return # expand can return an error
+		
+		var expanded_condition_map:Dictionary = expand_data.condition_map
+		var expanded_commands:Array = expand_data.command_statements
+		if expanded_commands.size() == 1 and expanded_commands[0] == "":
+			continue
+		
+		
+		for cmd_i in expanded_condition_map.keys():
+			var data = expanded_condition_map[cmd_i]
+			var cmd_text = data.get("text")
+			var post = data.get("post")
+			var insert = " %s " % post if post != "" else " "
+			multi_line_commands += cmd_text + insert
+		
+		multi_line_commands += "\n"
+		
+		full_display += expand_data.display
+		if i < split_delim.size() - 1:
+			full_display += "; "
+	
+	multi_line_commands = multi_line_commands.strip_edges()
+	if multi_line_commands.is_empty():
+		return
+	
+	print("REBUILT::", multi_line_commands)
+	if print_to_log and input_text.strip_edges() != "os":
+		print("~~~")
+		var display = ""
+		if not active_ctx.os_mode:
+			display = "%s %s" % [console._get_console_label_string(), full_display]
+		else:
+			display = "%s %s" % [console.os_string, input_text.strip_edges()]
+		
+		if is_instance_valid(rich_text):
+			rich_text += display
+		else:
+			print_rich(display)
+		
+	
+	if add_to_hist:
+		console.add_to_history(input_text)
+	
+	Execution.execute_command_multiline(multi_line_commands, active_ctx)
+	
+	#var raw_split = "\n".join(split_delim)
+	#Execution.execute_command_multiline(raw_split, active_ctx)
+	
+	
+	active_ctx.strip_output_newlines()
+	active_ctx.strip_error_newlines()
+	
+	if print_to_log:
+		if active_ctx.stderr != "":
+			if is_instance_valid(rich_text):
+				rich_text += active_ctx.stderr
+			else:
+				print(active_ctx.stderr)
+			
+		elif not active_ctx.stdout.is_empty():
+		#elif print_to_log and not active_ctx.stdout.is_empty():
+			if is_instance_valid(rich_text):
+				rich_text += active_ctx.stdout
+			elif active_ctx.stdout.contains("[/color]"):
+				print_rich(active_ctx.stdout)
+			else:
+				print(active_ctx.stdout)
+		
+		print("~~~")
+
 
 func prev_command():
 	current_command_index -= 1
@@ -866,62 +755,26 @@ func _toggle_os_label_minimum_size() -> void:
 	else:
 		os_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 
-## ctx object can be passed as argument, it should have text set already.
-static func execute_command(text:String, ctx_obj:CompletionContext=null, input_ctx:CompletionContext=null):
-	
-	var ctx = ctx_obj
-	if not is_instance_valid(ctx):
-		ctx = CompletionContext.new(text)
-		ctx.expand()
-		ctx.execute_parse()
-	
-	if is_instance_valid(input_ctx):
-		ctx.input = input_ctx.output
-		ctx.print = input_ctx.print
-		ctx.add_to_hist = input_ctx.add_to_hist
- 
-	var instance = get_instance()
-	instance.parse_input(ctx)
-	return ctx
 
 
-#! keys i-parse_input_text; ctx_obj:CompletionContext parent_ctx:CompletionContext input_ctx:CompletionContext
-## ctx object can be passed as argument, it should have text set already.
-static func execute_command_new(text:String, params:={}):
-	var ctx = params.get(&"ctx_obj")
-	var parent_ctx = params.get(&"parent_ctx")
-	var input_ctx = params.get(&"input_ctx")
-	if not is_instance_valid(ctx):
-		ctx = CompletionContext.new_ctx(text, parent_ctx)
-		ctx.expand()
-		ctx.execute_parse()
-	
-	if is_instance_valid(input_ctx):
-		ctx.input = input_ctx.output
- 
-	var instance = get_instance()
-	instance.parse_input_text(ctx)
-	return ctx
 
 static func run_gdsh(file_path:String, main_ctx:CompletionContext=null):
 	if not is_instance_valid(main_ctx):
 		main_ctx = get_main_ctx()
 	
 	Execution.source_file(file_path, main_ctx)
-	
-	#var file_string = FileAccess.get_file_as_string(file_path)
-	#if not file_string.begins_with("#!gdsh"):
-		#main_ctx.append_error("Not a gdsh file: " + file_path)
-		#return main_ctx
-	#
-	#Execution.execute_command_multiline(file_string, main_ctx)
-	
 	return main_ctx
 
 
 
 func get_gdrc():
 	var main_ctx = CompletionContext.new()
+	main_ctx.title = "MainCTX"
+	main_ctx.execute = true
+	
+	var config = Config.get_merged_config()
+	main_ctx.aliases = config.get_section(Config.ALIAS, {}).duplicate()
+	
 	var home_gdrc = UtilsLocal.ConsoleOS.get_os_home_dir().path_join(".gdrc")
 	if FileAccess.file_exists(home_gdrc):
 		Execution.source_file(home_gdrc, main_ctx)
@@ -929,6 +782,16 @@ func get_gdrc():
 	var project_gdrc = "res://.gdrc"
 	if FileAccess.file_exists(project_gdrc):
 		Execution.source_file(project_gdrc, main_ctx)
+	
+	for var_name in variable_dict.keys():
+		var val = variable_dict[var_name]
+		if val is Callable:
+			val = val.call()
+		
+		main_ctx.variables[var_name] = str(val)
+	
+	main_ctx.scopes = scope_dict.duplicate()
+	main_ctx.scopes.merge(hidden_scope_dict.duplicate())
 	
 	
 	#^ caching? maybe not needed..
@@ -942,26 +805,31 @@ func get_gdrc():
 	return main_ctx
 
 static func get_main_ctx():
+	var ins = get_instance()
 	#var ctx = CompletionContext.new()
-	var gdrc = get_instance().get_gdrc()
+	var gdrc = ins.get_gdrc()
+	
 	return gdrc
 
 #! keys require_quotes:bool current_command:CommandBase show_commands:bool show_flags:bool line_edit:CodeEdit
 #! keys inherited_ctx:CompletionContext
-static func get_completion_for_input(input:String, params:={}):
+static func get_completion_for_input(input_text:String, params:={}):
 	if params.get(&"require_quotes", false):
-		if not UString.is_string_or_string_name(input) or not input[0] == '"':
-			return {}
-	input = UString.unquote(input)
+		if not UString.is_string_or_string_name(input_text) or not input_text[0] == '"':
+			return {} # single quotes not allowed, why?
+	
+	var console = get_instance()
+	
+	input_text = UString.unquote(input_text)
 	
 	var current_command = params.get(&"current_command")
 	var show_commands = params.get(&"show_commands", true)
 	var show_flags = params.get(&"show_flags", true)
 	
-	var ctx = CompletionContext.new(input)
-	var gdrc = get_instance().get_gdrc()
-	ctx.variables = gdrc.variables
-	ctx.functions = gdrc.functions
+	var main = get_main_ctx()
+	var ctx = CompletionContext.new_ctx(input_text, main)
+	ctx.os_mode = console.os_mode
+	
 	
 	if params.has(&"line_edit"):
 		ctx.line_edit = params.line_edit
@@ -973,20 +841,16 @@ static func get_completion_for_input(input:String, params:={}):
 		ctx.word_before_cursor = inh_ctx.word_before_cursor
 		ctx.char_before_cursor = inh_ctx.char_before_cursor
 	
-	
-	
 	var options = CommandBase.Options.new()
 	if ctx.token_before_cursor.begins_with("@"): # list aliases
-		var config = UtilsLocal.Config.get_merged_config()
-		var alias_data = config.get_section(UtilsLocal.Config.ALIAS)
-		for k in alias_data.keys():
-			var val = UtilsLocal.ConsoleTokenizer.clean_alias_token(alias_data[k])
+		for k in ctx.aliases.keys():
+			var val = UtilsLocal.ConsoleTokenizer.clean_alias_token(ctx.aliases[k])
 			options.add_option(k + " = [%s]" % val, {
 				&"insert": k
 			})
 		return options.get_options()
 	
-	var console = get_instance()
+	
 	
 	var first_word:String = ""
 	if ctx.unconsumed_tokens.size() > 0:
@@ -1041,6 +905,7 @@ static func get_completion_for_input(input:String, params:={}):
 		options.remove_option(UtilsLocal.Options.ARG_DELIMITER)
 		if show_variables:
 			var var_nms = console.variable_dict.keys()
+			#var var_nms = ctx.variables.keys() # this will needs some work!
 			if var_nms.size() > 0:
 				options.add_separator("Variables")
 			for nm in var_nms:

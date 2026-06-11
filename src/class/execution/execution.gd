@@ -8,220 +8,551 @@ const Pr = UString.PrintRich
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 #const Config = UtilsLocal.Config
-#const ScopeDataKeys = UtilsLocal.ScopeDataKeys
+const ScopeDataKeys = UtilsLocal.ScopeDataKeys
+const Keys = EditorConsoleSingleton.Keys
 #const Colors = UtilsLocal.Colors
 
 #const ConsoleCommandSetBase = UtilsLocal.ConsoleCommandSetBase
 #const CommandBase = UtilsLocal.CommandBase
+const ConsoleTokenizer = UtilsLocal.ConsoleTokenizer
 const CompletionContext = UtilsLocal.CompletionContext
 
 const TEST_PATH = "/Users/brohd/Library/Application Support/Godot/addons/editor_console/test.gdsh"
 static func run_test():
 	var string = FileAccess.get_file_as_string(TEST_PATH)
-	var input_ctx = CompletionContext.new()
-	execute_command_multiline(string, input_ctx)
+	var exe_ctx = CompletionContext.new()
+	execute_command_multiline(string, exe_ctx)
 	print("DONE")
-	print(input_ctx.output)
+	print(exe_ctx.stdout)
 
-enum ParseState { NORMAL, IN_FUNCTION, IN_CONDITIONAL }
+static var _func_def_regex:RegEx
+static var _conditional_regex:RegEx
 
-static func execute_command_multiline(string: String, parent_ctx: CompletionContext):
-	var parse_state := ParseState.NORMAL
-	var accumulated_lines: PackedStringArray = []
-	var block_name := ""        # func name or condition string
-	var brace_depth := 0
+enum ParseState { NORMAL, IN_FUNCTION, IN_CONDITIONAL, IN_MULTILINE_STRING }
 
+var state := ParseState.NORMAL
+var accumulated_lines: PackedStringArray = []
+var block_name := ""
+var brace_depth := 0
+var conditional_branches: Array = []
+var execution_ctx: CompletionContext
+var _is_function:bool = false
+
+
+
+static func execute_command_multiline(string: String, ctx: CompletionContext):
+	_initialize_regex()
+	var parser := new()
+	parser.execution_ctx = ctx
+	parser._is_function = ctx.data.get(UtilsLocal.Function.FUNCTION_KEY, false)
+	parser.run(string)
+	# not sure this distinction is really needed
+	#if not parser._is_function:
+	ctx.exit_code = ctx.last_status
+
+
+func run(string: String):
 	var lines := string.split("\n", false)
 	for i in range(lines.size()):
 		var line: String = lines[i]
-		line = UString.remove_comment(line).strip_edges()
+		line = UString.remove_comment(line, true).strip_edges()
 		if line.is_empty():
 			continue
+		var statements = [line]
+		if line.contains(";"):
+			statements = UString.string_safe_split(line, ";")
+		for s in statements:
+			
+			
+			match state:
+				ParseState.IN_FUNCTION:
+					_parse_in_function(s)
+				ParseState.IN_CONDITIONAL:
+					_parse_in_conditional(s)
+				ParseState.IN_MULTILINE_STRING:
+					_parse_in_multiline_string(s)
+				ParseState.NORMAL:
+					_parse_normal(s)
+			
+			if execution_ctx.exit_requested:
+				#print("EXITING:", s, ":EXIT:", execution_ctx.exit_code)
+				return
+			if _is_function and execution_ctx.data.get(UtilsLocal.Function.RETURN_KEY, -1) > -1:
+				execution_ctx.last_status = execution_ctx.data.get(UtilsLocal.Function.RETURN_KEY, -1)
+				#print("FUNC RETURN::", s)
+				return
 
-		match parse_state:
-			ParseState.IN_FUNCTION:
-				brace_depth += line.count("{") - line.count("}")
-				if brace_depth <= 0:
-					# closing } reached — store function, don't include this line
-					parent_ctx.functions[block_name] = "\n".join(accumulated_lines)
-					accumulated_lines.clear()
-					block_name = ""
-					parse_state = ParseState.NORMAL
-				else:
-					accumulated_lines.append(line)
 
-			ParseState.IN_CONDITIONAL:
-				brace_depth += line.count("{") - line.count("}")
-				if brace_depth <= 0:
-					# closing } — evaluate condition and run body if true
-					_handle_conditional(block_name, accumulated_lines, parent_ctx)
-					accumulated_lines.clear()
-					block_name = ""
-					parse_state = ParseState.NORMAL
-				else:
-					accumulated_lines.append(line)
+func reset_block():
+	accumulated_lines.clear()
+	block_name = ""
+	brace_depth = 0
 
-			ParseState.NORMAL:
-				# --- function def: my_func() { ---
-				if _is_function_def(line):
-					block_name = _extract_function_name(line)
-					brace_depth = 1
-					parse_state = ParseState.IN_FUNCTION
-					accumulated_lines.clear()
 
-				# --- conditional: if <condition> { ---
-				elif line.begins_with("if ") and line.ends_with("{"):
-					block_name = line.substr(3, line.length() - 4).strip_edges()
-					brace_depth = 1
-					parse_state = ParseState.IN_CONDITIONAL
-					accumulated_lines.clear()
+func reset_conditional():
+	conditional_branches.clear()
+	reset_block()
 
-				# --- variable assignment: NAME=value or NAME=$(cmd) ---
-				elif _is_assignment(line):
-					_handle_assignment(line, parent_ctx)
 
-				# --- fall through to command execution ---
-				else:
-					var sub_ctx = execute_command(line, {
-						&"parent_ctx": parent_ctx
-					})
-					print("EXECUTING:", line, " -> ", sub_ctx.output)
+# ---- state handlers ----
+
+func _parse_in_function(line: String):
+	if brace_depth == 1 and line.begins_with("}"):
+		execution_ctx.functions[block_name] = "\n".join(accumulated_lines)
+		reset_block()
+		state = ParseState.NORMAL
+	else:
+		brace_depth += _count_unquoted_braces(line)
+		accumulated_lines.append(line)
+
+
+func _parse_in_conditional(line: String):
+	if brace_depth == 1 and line.begins_with("}"):
+		var _match = _conditional_regex.search(line)
+		if not is_instance_valid(_match):
+			_handle_conditional()
+			reset_conditional()
+			state = ParseState.NORMAL
+			return
+		var type = _match.get_string("type")
+		var cond = _match.get_string("cond")
+		if type == "else":
+			conditional_branches.append(["", PackedStringArray()])
+		elif type == "elif":
+			conditional_branches.append([cond, PackedStringArray()])
+		
+		#if line == "} else {":
+			#conditional_branches.append(["", PackedStringArray()])
+		#elif line.begins_with("} elif ") and line.ends_with("{"):
+			#var cond := line.substr(7, line.length() - 8).strip_edges()
+			#conditional_branches.append([cond, PackedStringArray()])
+		#else:
+			#_handle_conditional()
+			#reset_conditional()
+			#state = ParseState.NORMAL
+	else:
+		brace_depth += _count_unquoted_braces(line)
+		conditional_branches[-1][1].append(line)
+
+
+func _parse_in_multiline_string(line: String):
+	accumulated_lines.append(line)
+	var full_line := "\n".join(accumulated_lines)
+	if _get_unclosed_quote(full_line).is_empty():
+		accumulated_lines.clear()
+		state = ParseState.NORMAL
+		_parse_normal(full_line)
+
+
+func _parse_normal(line: String):
 	
-				print("INPUT OUTPUT::",parent_ctx.output.strip_edges())
+	if not _get_unclosed_quote(line).is_empty():
+		accumulated_lines.clear()
+		accumulated_lines.append(line)
+		state = ParseState.IN_MULTILINE_STRING
+		return
+	
+	var func_match = _func_def_regex.search(line)
+	if func_match != null:
+		block_name = func_match.get_string(1)
+		brace_depth = 1
+		state = ParseState.IN_FUNCTION
+		accumulated_lines.clear()
+		return
+	
+	var cond_match = _conditional_regex.search(line)
+	if is_instance_valid(cond_match) and cond_match.get_string("type") == "if":
+		var cond := cond_match.get_string("cond")
+		brace_depth = 1
+		state = ParseState.IN_CONDITIONAL
+		conditional_branches.clear()
+		conditional_branches.append([cond, PackedStringArray()])
+	elif _is_assignment(line):
+		if line.begins_with("alias"):
+			_handle_alias_assignment(line)
+		else:
+			_handle_assignment(line)
+	else:
+		var _sub_ctx = execute_command(line, {
+			&"parent_ctx": execution_ctx
+		})
 
 
-# ---- detection helpers ----
+# ---- handlers ----
 
-static func _is_function_def(line: String) -> bool:
-	# matches: my_func() {   or   my_func(){
-	return line.ends_with("{") and "(" in line and ")" in line
+func _handle_assignment(line: String):
+	var eq_pos := line.find("=")
+	var var_name := line.substr(0, eq_pos).strip_edges()
+	var is_local = var_name.begins_with("local ")
+	if is_local:
+		var_name = var_name.trim_prefix("local ").strip_edges()
+	
+	var literal = false
+	var value := line.substr(eq_pos + 1).strip_edges()
+	if UString.is_string_or_string_name(value):
+		if value[0] == "'":
+			literal = true
+	
+	if not literal:
+		value = UString.unquote(value)
+		value = _substitute_vars(value) # handle recursed vars
+	
+	execution_ctx.variables["$" + var_name] = value
+	
+	if not is_local:
+		# non local will propagate up
+		# sub shell commands will not have parent set
+		var inherited = execution_ctx.get_inherited_ctxs()
+		for i_ctx in inherited:
+			i_ctx.variables["$" + var_name] = value
 
-static func _extract_function_name(line: String) -> String:
-	return line.substr(0, line.find("(")).strip_edges()
+func _handle_alias_assignment(line: String):
+	var eq_pos := line.find("=")
+	var var_name := line.substr(0, eq_pos).trim_prefix("alias").strip_edges()
+	var value := line.substr(eq_pos + 1).strip_edges()
+	
+	execution_ctx.aliases[var_name] = value
+	var inherited = execution_ctx.get_inherited_ctxs()
+	for i_ctx in inherited:
+		i_ctx.aliases[var_name] = value
+
+
+func _handle_conditional():
+	for branch in conditional_branches:
+		var condition: String = branch[0]
+		var body_lines: PackedStringArray = branch[1]
+		if condition.is_empty() or _evaluate_condition(condition):
+			var body := "\n".join(body_lines)
+			execute_command_multiline(body, execution_ctx)
+			return
+
+func _evaluate_condition(condition: String) -> bool:
+	#print("EVAL::", condition)
+	var ctx = execute_command(condition, {
+		&"parent_ctx": execution_ctx,
+	})
+	return ctx.last_status == CompletionContext.ExitCode.OK
+
+
+
+
+func _substitute_vars(string):
+	if UString.is_string_or_string_name(string):
+		if string[0] == "'":
+			return string
+	
+	var val = ConsoleTokenizer.check_variable(string, execution_ctx)
+	#print("SUBSTITUTE:", string, " -> ", val)
+	return val
+
+
+# ---- utility ----
+
+static func _count_unquoted_braces(line: String) -> int:
+	var depth_change := 0
+	var in_single := false
+	var in_double := false
+	var escaped := false
+	for idx in range(line.length()):
+		var ch := line[idx]
+		if escaped:
+			escaped = false
+			continue
+		if ch == "\\":
+			escaped = true
+			continue
+		if ch == "'" and not in_double:
+			in_single = not in_single
+		elif ch == "\"" and not in_single:
+			in_double = not in_double
+		elif not in_single and not in_double:
+			if ch == "{":
+				depth_change += 1
+			elif ch == "}":
+				depth_change -= 1
+	return depth_change
+
+
+static func _get_unclosed_quote(line: String) -> String:
+	var in_single := false
+	var in_double := false
+	var escaped := false
+	for idx in range(line.length()):
+		var ch := line[idx]
+		if escaped:
+			escaped = false
+			continue
+		if ch == "\\":
+			escaped = true
+			continue
+		if ch == "'" and not in_double:
+			in_single = not in_single
+		elif ch == "\"" and not in_single:
+			in_double = not in_double
+	if in_single:
+		return "'"
+	if in_double:
+		return "\""
+	return ""
+
 
 static func _is_assignment(line: String) -> bool:
 	if "=" not in line:
 		return false
 	var left := line.substr(0, line.find("=")).strip_edges()
-	# valid var name: letters, digits, underscore, no spaces
-	return left.is_valid_identifier()
+	left = left.trim_prefix("local ").strip_edges()
+	return left.is_valid_ascii_identifier() or left.begins_with("alias ")
 
+# ---- Single commands ----
 
-# ---- handlers ----
-
-static func _handle_assignment(line: String, ctx: CompletionContext):
-	var eq_pos := line.find("=")
-	var var_name := line.substr(0, eq_pos).strip_edges()
-	var value := line.substr(eq_pos + 1).strip_edges()
-
-	# command substitution: VAR=$(some_command)
-	if value.begins_with("$(") and value.ends_with(")"):
-		var inner_cmd := value.substr(2, value.length() - 3)
-		# recurse through your existing executor, capture stdout
-		
-		# pass parent to
-		var sub_ctx = execute_command(inner_cmd, {
-			&"parent_ctx": ctx,
-			&"write_to_parent": false, # so that the output is not captured
-		})
-		value = sub_ctx.output.strip_edges()
-		print("ASSIGNMENT VAL FUNC:", value)
-	else:
-		#print("ASSIGNMENT VAL SIMPLE:", value)
-		pass
-
-	# strip surrounding quotes if present
-	if (value.begins_with("\"") and value.ends_with("\"")) \
-		or (value.begins_with("'") and value.ends_with("'")):
-		value = value.substr(1, value.length() - 2)
+static func source_file(file_path:String, parent_ctx:CompletionContext=null, allow_sh:=false):
+	if not is_instance_valid(parent_ctx):
+		parent_ctx = EditorConsoleSingleton.get_main_ctx()
 	
-	value = _substitute_vars(value, ctx)
-
-	ctx.variables["$" + var_name] = value
-
-
-static func _handle_conditional(condition: String, body_lines: PackedStringArray, ctx: CompletionContext):
-	if _evaluate_condition(condition, ctx):
-		var body := "\n".join(body_lines)
-		print("IN COND:", ctx.output.strip_edges())
-		execute_command_multiline(body, ctx)
-		print("AFTER COND:", ctx.output.strip_edges())
-
-
-static func _evaluate_condition(condition: String, ctx: CompletionContext) -> bool:
-
-	# check for method call form: "value".begins_with("x")
-	# check for comparison: "left" == "right"  /  "left" != "right"
-	if " == " in condition:
-		var parts := condition.split(" == ", true, 1)
-		return _substitute_vars(parts[0].strip_edges(), ctx) == _substitute_vars(parts[1].strip_edges(), ctx)
-	elif " != " in condition:
-		var parts := condition.split(" != ", true, 1)
-		return _substitute_vars(parts[0].strip_edges(), ctx) != _substitute_vars(parts[1].strip_edges(), ctx)
-
-	# method call as boolean: "value".begins_with("v")
-	# parse and evaluate via String method dispatch
-	# ... expand as needed
-
-	return false
+	var file_string = FileAccess.get_file_as_string(file_path)
+	if file_string.begins_with("#!gdsh"):
+		execute_command_multiline(file_string, parent_ctx)
+		return parent_ctx
+	
+	if not allow_sh:
+		parent_ctx.append_error("Not a gdsh script: " + file_path)
+		return parent_ctx
+	
+	#^ this is more like a command inn function, not source
+	execute_command("os " + file_path, {
+		&"parent_ctx": parent_ctx,
+	})
+	
+	#print("SOURCE::", parent_ctx.stdout)
+	return parent_ctx
 
 
-static func _substitute_vars(string, ctx:CompletionContext):
-	if UString.is_string_or_string_name(string):
-		if string[0] == "'":
-			return string
-		string = UString.unquote(string)
-	return ctx.variables.get(string, string)
 
-
-static func get_single_command_ctx(string:String, parent_ctx:CompletionContext):
-	var ctx = CompletionContext.new(string)
-	ctx.print = false
-	ctx.add_to_hist = false
-	ctx.variables = parent_ctx.variables.duplicate()
-	ctx.functions = parent_ctx.functions.duplicate()
-	ctx.expand()
-	ctx.execute_parse()
-	return ctx
-
-
-#! keys i-EditorConsoleSingleton.parse_input_text; ctx_obj:CompletionContext parent_ctx:CompletionContext input_ctx:CompletionContext
-#! keys write_to_parent:bool
+#! keys parent_ctx:CompletionContext sub_shell:bool
 ## ctx object can be passed as argument, it should have text set already.
 static func execute_command(text:String, params:={}):
 	#var ctx = params.get(&"ctx_obj")
 	var parent_ctx = params.get(&"parent_ctx")
-	var input_ctx = params.get(&"input_ctx")
-	var write_to_parent = params.get(&"write_to_parent", true)
-	#if not is_instance_valid(ctx):
-	var ctx = CompletionContext.new_ctx(text, parent_ctx)
-	ctx.execute_parse()
+	var sub_shell = params.get(&"sub_shell", false)
 	
-	if is_instance_valid(input_ctx):
-		ctx.input = input_ctx.output
- 
-	var instance = EditorConsoleSingleton.get_instance()
+	if not is_instance_valid(parent_ctx):
+		parent_ctx = EditorConsoleSingleton.get_main_ctx()
 	
-	params[&"main_ctx"] = ctx
-	instance.parse_input_text(text, params)
-	if write_to_parent and is_instance_valid(parent_ctx):
-		print("CHILD::", ctx.output)
-		print("PARENT::", parent_ctx.output)
-		if not ctx.output.is_empty():
-			parent_ctx.append_output(ctx.output)
-	return ctx
+	var active_ctx = parent_ctx
+	if sub_shell:
+		active_ctx = CompletionContext.new_ctx("SubShell", parent_ctx, sub_shell)
+	
+	var expand_data = expand_commands(text, active_ctx)
+	if active_ctx.exit_requested:
+		return active_ctx
+	
+	var condition_map = expand_data.condition_map
+	var expanded_commands = expand_data.command_statements
+	if expanded_commands.size() == 1 and expanded_commands[0] == "":
+		return active_ctx
+	
+	if active_ctx.os_mode: # or expanded_commands.size() == 1:
+		var os_ctx = CompletionContext.new_ctx(text, active_ctx)
+		os_ctx.os_mode = true
+		os_ctx.execute_parse()
+		_parse_command(os_ctx)
+		active_ctx.append_output(os_ctx.stdout)
+	else:
+		var skip_current_block = false
+		var last_ctx = null
+		for cmd_i in condition_map.keys():
+			# should this be at the end? does it matter?
+			if active_ctx.exit_requested:
+				break
+			
+			var cmd_data = condition_map[cmd_i]
+			if skip_current_block:
+				if cmd_data.post == "||" and last_ctx.exit_code != 0:
+					skip_current_block = false
+				elif cmd_data.post == "&&" and last_ctx.exit_code == 0:
+					skip_current_block = false
+				continue
+			
+			var cmd_text:String = cmd_data.get("text")
+			var sub_shell_cmd = cmd_text.begins_with("(") and cmd_text.ends_with(")")
+			if sub_shell_cmd:
+				cmd_text = cmd_text.trim_prefix("(").trim_suffix(")").strip_edges()
+			
+			var current_ctx = CompletionContext.new_ctx(cmd_text, active_ctx, sub_shell_cmd)
+			current_ctx.execute_parse()
+			
+			if cmd_data.pre == "|" and is_instance_valid(last_ctx):
+				current_ctx.stdin = last_ctx.strip_output_newlines()
+			
+			#print("STDIN:", current_ctx.stdin)
+			_parse_command(current_ctx)
+			#print("STDOUT:", current_ctx.stdout)
+			
+			if cmd_data.post == "&&":
+				if current_ctx.exit_code != 0:
+					skip_current_block = true  # Failed! Skip the next block.
+			
+			elif cmd_data.post == "||":
+				if current_ctx.exit_code == 0:
+					skip_current_block = true  # Succeeded! Skip the next block.
+			
+			if cmd_data.post != "|":
+				active_ctx.append_output(current_ctx.stdout)
+				active_ctx.append_error(current_ctx.stderr)
+				active_ctx.last_status = current_ctx.exit_code
+			
+			# end of command
+			last_ctx = current_ctx
+	
+	
+	#active_ctx.strip_output_newlines()
+	
+	# returns parent or the subshell
+	return active_ctx
 
-static func source_file(file_path:String, main_ctx:CompletionContext=null):
-	if not is_instance_valid(main_ctx):
-		main_ctx = EditorConsoleSingleton.get_main_ctx()
+
+static func _parse_command(ctx:CompletionContext) -> void:
+	var tokens:Array = ctx.unconsumed_tokens
+	if tokens.find("--") > -1:
+		tokens.remove_at(tokens.rfind("--"))
 	
-	var file_string = FileAccess.get_file_as_string(file_path)
-	if file_string.begins_with("#!gdsh"):
-		execute_command_multiline(file_string, main_ctx)
-		return main_ctx
+	if tokens.is_empty():
+		return
+	var c_1 = tokens[0]
+	if c_1 == "clear" or (ctx.os_mode and tokens.size() > 1 and tokens[1] == "clear"):
+		if ctx.os_mode: # clear reroutes in os mode, pop os from unconsumed
+			ctx.unconsumed_tokens.pop_front()
+		_scope_parse("clear", ctx)
+		return
+	elif c_1.to_lower() == "help":
+		_scope_parse("help", ctx)
+		return
 	
-	execute_command("os " + file_path, {
-		&"parent_ctx": main_ctx
-	})
-	print("SOURCE::", main_ctx.output)
-	return main_ctx
+	if ctx.functions.has(c_1):
+		_scope_parse(UtilsLocal.Function.FUNCTION_KEY, ctx)
+	else:
+		c_1 = UString.get_member_access_front(c_1)
+		var parse_scopes = _scope_parse(c_1, ctx)
+		if parse_scopes == Keys.NO_MATCHING_COMMAND:
+			if c_1.is_absolute_path():
+				_scope_parse("__run_script__", ctx)
+			elif ctx.unconsumed_tokens.has("==") or ctx.unconsumed_tokens.has("!="):
+				ctx.unconsumed_tokens.push_front("[")
+				ctx.unconsumed_tokens.push_back("]")
+				_scope_parse("[", ctx)
+			else:
+				_scope_parse("global", ctx)
+	
+	if ctx.scopes.is_empty():
+		ctx.append_error("Need to load command set.")
+	
+	ctx.stdout = ctx.stdout.lstrip("\n").rstrip("\n")
+
+
+static func _scope_parse(_name:String, ctx:CompletionContext):
+	var scope = ctx.scopes.get(_name)
+	if scope == null:
+		return Keys.NO_MATCHING_COMMAND
+	var script = scope.get(ScopeDataKeys.SCRIPT)
+	if script is GDScript:
+		script = EditorConsoleSingleton.ensure_fresh_script(script)
+		script = script.new()
+	
+	if script.has_method("execute"):
+		script.execute(ctx) # no return, exit code and stdout are properties
+	else:
+		ctx.append_error("Could not parse in object: %s" % scope)
+	
+	return _name
+
+#! keys condition_map:Dictionary command_statements:Array display:String
+static func expand_commands(text:String, parent:CompletionContext, display:=false):
+	var tokenizer = ConsoleTokenizer.new(parent)
+	tokenizer.execute = true
+	var token_data = tokenizer.parse_command_string_execute(text, display)
+	var all_expanded_text = " ".join(token_data.expanded)
+	
+	#print(token_data.expanded)
+	if token_data.expanded.is_empty():
+		parent.exit_code = CompletionContext.ExitCode.FAIL
+		parent.exit_requested = true
+		return {}
+		
+	if token_data.expanded[token_data.expanded.size() - 1] in ["&&", "||", "|"]:
+		parent.append_error("Token ends on operator: " + token_data.expanded[token_data.expanded.size() - 1])
+		parent.exit_code = CompletionContext.ExitCode.FAIL
+		parent.exit_requested = true
+		return {}
+	# logical statements
+	var valid_expanded_command_statements = [all_expanded_text]
+	
+	
+	var all_exp_length = all_expanded_text.length()
+	var last_condition = ""
+	var condition_map = {}
+	if not (all_expanded_text.contains(" && ") or all_expanded_text.contains(" || ") or all_expanded_text.contains(" | ")):
+		condition_map[0] = {"text": all_expanded_text, "pre":"", "post":""}
+	else:
+		valid_expanded_command_statements.clear()
+		var string_map = UString.get_string_map(all_expanded_text)
+		var start = 0
+		var count = 0
+		while start < all_expanded_text.length():# and count < 10:
+			
+			var and_i = UString.string_safe_find(all_expanded_text, " && ", start, string_map)
+			var or_i = UString.string_safe_find(all_expanded_text, " || ", start, string_map)
+			var pipe_i = UString.string_safe_find(all_expanded_text, " | ", start, string_map)
+			
+			if and_i == -1 and or_i == -1 and pipe_i == -1:
+				var final_command = all_expanded_text.substr(start)
+				condition_map[count] = {
+					"text": final_command,
+					"pre": last_condition,
+					"post": ""
+				}
+				valid_expanded_command_statements.append(final_command)
+				break
+			
+			if and_i == -1: and_i =  all_exp_length
+			if or_i == -1: or_i =  all_exp_length
+			if pipe_i == -1: pipe_i = all_exp_length
+			
+			var cond_match = ""
+			match min(and_i, or_i, pipe_i):
+				and_i: cond_match = "&&"
+				or_i: cond_match = "||"
+				pipe_i: cond_match = "|"
+			
+			var idx = min(and_i, or_i, pipe_i)
+			var command = all_expanded_text.substr(start, idx - start)
+			#var next_cond = all_expanded_text.substr(idx, cond_match.length() + 1).strip_edges()
+			condition_map[count] = {
+				"text": command,
+				"pre": last_condition,
+				"post": cond_match
+			}
+			valid_expanded_command_statements.append(command)
+			last_condition = cond_match
+			start = idx + cond_match.length() + 2
+			
+			count += 1
+	
+	
+	return {
+		&"command_statements": valid_expanded_command_statements,
+		&"display": token_data.display,
+		&"condition_map": condition_map
+	}
+
+static func _initialize_regex():
+	if not is_instance_valid(_func_def_regex) or true:
+		_func_def_regex = RegEx.new()
+		_func_def_regex.compile(
+			r"^[ \t]*(\w+)\s*\(\s*\)\s*\{$"
+		)
+	
+	if not is_instance_valid(_conditional_regex):
+		_conditional_regex = RegEx.new()
+		_conditional_regex.compile(
+			r"^\s*(?:\}\s*)?(?<type>if|elif|else)\b(?<cond>[^{]*)\{"
+		)

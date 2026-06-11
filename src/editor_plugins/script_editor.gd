@@ -24,13 +24,18 @@ func _callback(script_editor:CodeEdit, path):
 			return
 		var member_data = _get_member_info(script_editor)
 		if member_data != null:
-			var member_path = member_data.path
-			var method_name = member_path
-			var call_string = "script call -- %s" % method_name
+			var member_path = ""
+			var method_name =  member_data.path
 			if member_path.find(".") > -1:
 				method_name = UString.get_member_access_back(member_path)
-				member_path = UString.trim_member_access_back(member_path)
-				call_string = "script.%s call -- %s" % [member_path, method_name]
+				member_path = "." + UString.trim_member_access_back(member_path)
+			var default_flag = ""
+			if method_name.begins_with("_"):
+				default_flag += " --private"
+			if member_data.info.get("args", []).size() > 0:
+				default_flag += " --default"
+				method_name += " -- "
+			var call_string = "script%s call%s %s" % [member_path, default_flag, method_name]
 			
 			ed_console.set_console_text(call_string)
 			if not ed_console.console_line_container.console_line_edit.visible:

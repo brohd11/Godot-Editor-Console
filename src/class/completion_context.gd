@@ -7,10 +7,14 @@ const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_
 const ConsoleLineEdit = UtilsLocal.ConsoleLineContainer.ConsoleLineEdit
 const ExitCode = UtilsLocal.CommandBase.ExitCode
 
+const ConsoleTokenizer = UtilsLocal.ConsoleTokenizer
+
 const CompletionContext = UtilsLocal.CompletionContext
 
 static var _arg_delim_regex:RegEx
 static var _clean_output_regex:RegEx
+
+var title:String
 
 var line_edit:ConsoleLineEdit
 
@@ -20,7 +24,6 @@ var console_display_string:String
 var command_statements:Array = []
 var current_command_statement_index:int = 0
 var current_command_caret:int
-var expanded_text:String # this is the text the console runs
 
 var chained_command:=false
 # common used
@@ -30,18 +33,24 @@ var expanded_command_statements:= []
 var unconsumed_tokens:= []
 var data := {}
 
-var root_ctx:CompletionContext
+var parent_ctx:CompletionContext
+
 var positional_args := []
 var variables := {}
 var functions := {}
+var aliases := {}
+var scopes := {}
 
-var input:String
-var output:String
-var error:String
-var exit_code:ExitCode = ExitCode.OK
-#
+var stdin:String
+var stdout:String
+var stderr:String
+var last_status:int = ExitCode.OK
+var exit_code:int = ExitCode.OK
+var exit_requested:=false
+
 
 # headless
+var os_mode:=false
 var print:= false
 var add_to_hist:=false
 #
@@ -51,15 +60,11 @@ var char_before_cursor:String
 var word_before_cursor:String
 var token_before_cursor:String
 
-
-
-
 var commands:Array
 var arguments:Array
 var display_text:String
 
 var argument_index:int = -1
-
 
 
 func _init(text:="") -> void:
@@ -68,18 +73,26 @@ func _init(text:="") -> void:
 		#_arg_delim_regex.compile("(--)(?:[ ]|$)")
 		_arg_delim_regex.compile("(-- )") # simple seems to be the best
 	
+	if text.is_empty():
+		title = "Un-Named Context"
+	else:
+		title = text
+	
 	raw_text = text
 	caret_col = text.length()
 
-func set_positional_args(args:Array):
-	var arg_size = args.size()
-	for i in range(20):
-		var val = ""
-		if i < arg_size:
-			val = args[i]
-		variables["$" + str(i)] = val
+func set_positional_args(path_or_name:String, args:Array):
+	variables["$0"] = path_or_name
+	positional_args = args
 	
-	variables["$@"] = " ".join(args)
+	#var arg_size = args.size()
+	#for i in range(1, 20):
+		#var val = ""
+		#if i < arg_size:
+			#val = args[i]
+		#variables["$" + str(i)] = val
+	#
+	#variables["$@"] = " ".join(args)
 
 func set_line_edit(_line_edit:CodeEdit):
 	line_edit = _line_edit
@@ -96,8 +109,8 @@ func set_line_edit(_line_edit:CodeEdit):
 
 
 func completion_parse():
-	var console = EditorConsoleSingleton.get_instance()
-	var os_mode = console.os_mode
+	#var console = EditorConsoleSingleton.get_instance()
+	#var os_mode = console.os_mode
 	
 	if is_instance_valid(line_edit):
 		raw_text = line_edit.text
@@ -122,11 +135,11 @@ func completion_parse():
 	var current_command_start = 0
 	var current_command_end = 0
 	command_statements = [raw_text]
-	if not raw_text.contains("|"): # set adjusted to caret, we can always work of adjusted
+	if not raw_text.contains(" | "): # set adjusted to caret, we can always work of adjusted
 		current_command_caret = caret_col
 	else:
 		var command_start = 0
-		command_statements = UString.string_safe_split(raw_text, "|", true)
+		command_statements = UString.string_safe_split(raw_text, " | ", true)
 		for i in range(command_statements.size()):
 			var cmd_str:String = command_statements[i]
 			var cmd_start = raw_text.find(cmd_str, command_start)
@@ -143,14 +156,15 @@ func completion_parse():
 	
 	
 	
-	var tokenizer = UtilsLocal.ConsoleTokenizer.new()
-	tokenizer.variables = variables
+	var tokenizer = ConsoleTokenizer.new(self)
+	tokenizer.active_ctx = parent_ctx
 	var current_command = command_statements[current_command_statement_index]
 	if os_mode and not current_command.strip_edges().begins_with("os"):
 		current_command = "os " + current_command # add os so that the parser triggers, will be consumed by the os node
 	
 	
-	var current_token_data = tokenizer.parse_command_string(current_command, true)
+	var current_token_data = tokenizer.parse_command_string_completion(current_command)
+
 	unconsumed_tokens = current_token_data.expanded #.duplicate()
 	if "|" in unconsumed_tokens:
 		unconsumed_tokens = unconsumed_tokens.slice(unconsumed_tokens.rfind("|"))
@@ -197,49 +211,18 @@ func completion_parse():
 	#print("FINAL: ", unconsumed_tokens)
 
 
-#! keys commands:Array display:String
-static func expand_commands(text:String, variable_dict:Dictionary):
-	var tokenizer = UtilsLocal.ConsoleTokenizer.new()
-	tokenizer.variables = variable_dict
-	var token_data = tokenizer.parse_command_string(text, true)
-	var all_expanded_text = " ".join(token_data.expanded)
-	# logical statements
-	var valid_expanded_command_statements = [all_expanded_text]
-	if all_expanded_text.contains("|"):
-		valid_expanded_command_statements = UString.string_safe_split(all_expanded_text, "|", true)
-	return {
-		&"commands": valid_expanded_command_statements,
-		&"display": token_data.display
-	}
-
-func expand():
-	var tokenizer = UtilsLocal.ConsoleTokenizer.new()
-	tokenizer.variables = variables
-	var token_data = tokenizer.parse_command_string(raw_text, true)
-	expanded_text = " ".join(token_data.expanded)
-	# logical statements
-	expanded_command_statements = [expanded_text]
-	if expanded_text.contains("|"):
-		expanded_command_statements = UString.string_safe_split(expanded_text, "|", true)
-
 func execute_parse():
-	if expanded_command_statements.is_empty():
-		expand()
-	
-	var console = EditorConsoleSingleton.get_instance()
-	var os_mode = console.os_mode
 	var text_in = raw_text
 	var stripped = text_in.strip_edges()
 	if os_mode and not stripped.is_empty() and not stripped.begins_with("os"):
 		text_in = "os " + text_in # add os so that the parser triggers, will be consumed by the os node
 	
-	var tokenizer = UtilsLocal.ConsoleTokenizer.new()
-	tokenizer.variables = variables
-	var token_data = tokenizer.parse_command_string(text_in, true)
-	display_text = token_data.display
+	var tokenizer = ConsoleTokenizer.new(self)
+	tokenizer.execute = true
+	var token_data = tokenizer.parse_command_string_execute(text_in)
 	unconsumed_tokens = token_data.expanded
 	arguments = token_data.args
-	execute = true # expanded text used for input, set in "expand"
+	execute = true
 
 func tokens_empty_and_execute() -> bool:
 	return unconsumed_tokens.is_empty() and execute
@@ -263,14 +246,17 @@ func get_current_command_context_object():
 	return ctx
 
 func append_output(line:String) -> void:
-	output += "\n" + line
+	if stdout.is_empty():
+		stdout = line
+	else:
+		stdout += "\n" + line
 
-func append_error(line:String) -> void:
-	error += "\n" + line
-
+func strip_output_newlines():
+	stdout = stdout.lstrip("\n").rstrip("\n")
+	return stdout
 
 func clean_output():
-	return clean_text(output)
+	return clean_text(stdout)
 
 func clean_text(text:String):
 	if not is_instance_valid(_clean_output_regex):
@@ -279,15 +265,50 @@ func clean_text(text:String):
 	return _clean_output_regex.sub(text, "", true)
 
 
-static func new_ctx(text:String, parent_ctx:CompletionContext=null):
+func append_error(line:String) -> void:
+	if stderr.is_empty():
+		stderr = line
+	else:
+		stderr += "\n" + line
+
+func strip_error_newlines():
+	stderr = stderr.lstrip("\n").rstrip("\n")
+	return stderr
+
+
+func get_root_ctx():
+	var inherited = get_inherited_ctxs()
+	if inherited.is_empty():
+		return self
+	return inherited.back()
+
+func get_inherited_ctxs():
+	var inherited = []
+	if not is_instance_valid(parent_ctx):
+		return inherited
+	var parent:CompletionContext = parent_ctx
+	while is_instance_valid(parent):
+		inherited.append(parent)
+		parent = parent.parent_ctx
+	
+	return inherited
+
+
+static func new_ctx(text:String, parent:CompletionContext=null, sub_shell:=false):
 	var ctx = CompletionContext.new(text)
-	if is_instance_valid(parent_ctx):
-		ctx.variables = parent_ctx.variables.duplicate()
-		ctx.functions = parent_ctx.functions.duplicate()
-		ctx.input = parent_ctx.input # non piped inherit input
-		if is_instance_valid(parent_ctx.root_ctx):
-			ctx.root_ctx = parent_ctx.root_ctx
-		else:
-			ctx.root_ctx = parent_ctx
+	if is_instance_valid(parent):
+		if not sub_shell: # so that function definitions do not populate up
+			ctx.parent_ctx = parent
+		
+		ctx.execute = parent.execute
+		ctx.os_mode = parent.os_mode # not sure that this is necessary?
+		
+		ctx.variables = parent.variables.duplicate()
+		ctx.functions = parent.functions.duplicate()
+		ctx.aliases = parent.aliases.duplicate()
+		ctx.scopes = parent.scopes.duplicate()
+		
+		 # non piped inherit stdin, this will be overwritten if piped
+		ctx.stdin = parent.stdin
 	
 	return ctx

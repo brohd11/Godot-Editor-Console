@@ -6,7 +6,7 @@ const Options = preload("res://addons/editor_console/src/class/base/command_opti
 
 
 const DefaultCommands = preload("res://addons/editor_console/src/default_commands/scope_set/default.gd")
-const ConsoleOS = preload("res://addons/editor_console/src/default_commands/misc/os/os.gd")
+const ConsoleOS = preload("res://addons/editor_console/src/default_commands/hidden/os/os.gd")
 
 
 const SyntaxHl = preload("res://addons/editor_console/src/utils/console_syntax.gd")
@@ -14,6 +14,8 @@ const SyntaxHl = preload("res://addons/editor_console/src/utils/console_syntax.g
 const ConsoleLineContainer = preload("res://addons/editor_console/src/utils/console_line_container.gd")
 const CompletionContext = preload("res://addons/editor_console/src/class/completion_context.gd")
 const ConsoleTokenizer = preload("res://addons/editor_console/src/utils/console_tokenizer.gd")
+const Execution = preload("res://addons/editor_console/src/class/execution/execution.gd")
+const Function = preload("res://addons/editor_console/src/default_commands/hidden/function/function.gd")
 
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 const Pr = UtilsRemote.UString.PrintRich
@@ -74,6 +76,7 @@ class Colors:
 	const VAR_GREY = Color(0.4275, 0.4275, 0.4275, 1.0)
 	
 	const SCOPE = Color.SKY_BLUE
+	const SYMBOL = Color(0.975, 0.703, 0.585, 1.0)
 	
 	const ACCENT_MUTE = Color(0.302, 0.5059, 0.6039, 1.0)
 	

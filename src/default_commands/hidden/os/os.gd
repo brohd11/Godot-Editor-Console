@@ -128,7 +128,8 @@ func _execute(ctx:CompletionContext):
 		trimmed_command = "os"
 	
 	var cwd_check = _check_dir_exists_shell(editor_console.os_cwd)
-	if cwd_check == "" or not editor_console.os_cwd.is_absolute_path():
+	#print("OS CWD CHECK:", editor_console.os_cwd, " -> ", cwd_check)
+	if cwd_check == "" or not DirAccess.dir_exists_absolute(cwd_check) or not editor_console.os_cwd.is_absolute_path():
 		ctx.append_output("Sanity check, resetting cwd.")
 		editor_console.os_cwd = ProjectSettings.globalize_path("res://")
 		return ExitCode.FAIL
@@ -162,19 +163,23 @@ static func _execute_wrapper(commands:Array, ctx:CompletionContext=null):
 	
 	var combined = ""
 	if ctx != null:
-		combined = ctx.raw_text.trim_prefix("os").strip_escapes()
+		combined = " ".join(commands)
+		
+		# using raw text will not allow gd side variables to work
+		#combined = ctx.raw_text.trim_prefix("os").strip_escapes()
 		#print("RAW:", combined)
 	else:
-		for i in range(commands.size()):
-			var tok = commands[i]
-			if tok.contains(" "):
-				var quote_char = "'"
-				if UtilsRemote.UString.is_string_or_string_name(tok):
-					quote_char = tok[0]
-					tok = UtilsRemote.UString.unquote(tok)
-				tok = ConsoleTokenizer.shell_quote(tok, quote_char)
-				commands[i] = tok
-			combined = " ".join(commands)
+		#for i in range(commands.size()):
+			#var tok = commands[i]
+			#if tok.contains(" "):
+				#var quote_char = "'"
+				#if UtilsRemote.UString.is_string_or_string_name(tok):
+					#quote_char = tok[0]
+					#tok = UtilsRemote.UString.unquote(tok)
+				#tok = ConsoleTokenizer.shell_quote(tok, quote_char)
+				#commands[i] = tok
+		
+		combined = " ".join(commands)
 	
 	
 	var os_name := OS.get_name()
@@ -187,9 +192,9 @@ static func _execute_wrapper(commands:Array, ctx:CompletionContext=null):
 		return ConsoleTokenizer.shell_quote(s)       # posix: single-quote
 
 	# stdin redirect
-	if ctx != null and ctx.input != "":
+	if ctx != null and ctx.stdin != "":
 		var stdin_abs := ProjectSettings.globalize_path("user://addons/editor_console/tmp/stdin.txt")
-		tmp_file(stdin_abs, ctx.input)
+		tmp_file(stdin_abs, ctx.stdin)
 		var stdin_q = q.call(stdin_abs)
 		if combined.contains("|"):
 			var feeder := "type %s | " if is_win else "cat %s | "
@@ -201,7 +206,7 @@ static func _execute_wrapper(commands:Array, ctx:CompletionContext=null):
 	var cwd_q = q.call(editor_console.os_cwd)
 	var ext := "bat" if is_win else "sh"
 	var tmp_args_abs := ProjectSettings.globalize_path(
-		"user://addons/editor_console/tmp/args2.%s" % ext)   # RAW path for the args array
+		"user://addons/editor_console/tmp/args.%s" % ext)   # RAW path for the args array
 
 	var shell_exe := ""
 	var args := []
@@ -237,7 +242,6 @@ static func _execute_wrapper(commands:Array, ctx:CompletionContext=null):
 	
 	
 	return output
-
 
 
 static func _emulated_command(commands:Array, ctx:CompletionContext) -> Array:
