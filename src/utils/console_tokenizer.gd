@@ -198,7 +198,7 @@ func _tokenize_string(text: String, expand:bool=true, display:=false) -> Diction
 		if display:
 			expanded_display = expanded_display.strip_edges()
 			if (expanded.size() > 1 or expanded[0] != token):
-				display_string += wrap_variable(expanded_display, token)
+				display_string += " " + wrap_variable(expanded_display, token)
 			else:
 				display_string += " " + expanded_display # _get_token_color(expanded_display)
 		# end expansion
@@ -325,6 +325,7 @@ static func check_variable(token:String, active:CompletionContext, display:=fals
 			return token  # don't want to execute when doing completions
 		
 		var stripped = token.trim_prefix("$(").trim_suffix(")")
+		stripped = check_variable(stripped, active, display) # check nested variables before sending
 		var sub_shell_ctx:CompletionContext = Execution.execute_command(stripped, {
 			&"parent_ctx": active,
 			&"sub_shell": true

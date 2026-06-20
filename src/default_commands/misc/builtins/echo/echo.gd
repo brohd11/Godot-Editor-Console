@@ -25,5 +25,7 @@ func _execute(ctx:CompletionContext):
 		string += p
 		if i < positional_args.size() - 1:
 			string += " "
-	
-	ctx.append_output(string)
+	if string.is_empty():
+		ctx.stdout += "\n"
+	else:
+		ctx.append_output(string)

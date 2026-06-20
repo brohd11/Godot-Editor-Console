@@ -14,6 +14,12 @@ const CompletionContext = UtilsLocal.CompletionContext
 static var _arg_delim_regex:RegEx
 static var _clean_output_regex:RegEx
 
+enum Propagate{
+	VARIABLES,
+	FUNCTIONS,
+	ALIASES,
+}
+
 var title:String
 
 var line_edit:ConsoleLineEdit
@@ -246,10 +252,9 @@ func get_current_command_context_object():
 	return ctx
 
 func append_output(line:String) -> void:
-	if stdout.is_empty():
-		stdout = line
-	else:
-		stdout += "\n" + line
+	if  line.is_empty():
+		return
+	stdout += line.trim_suffix("\n") + "\n"
 
 func strip_output_newlines():
 	stdout = stdout.lstrip("\n").rstrip("\n")
@@ -266,10 +271,9 @@ func clean_text(text:String):
 
 
 func append_error(line:String) -> void:
-	if stderr.is_empty():
-		stderr = line
-	else:
-		stderr += "\n" + line
+	if line.is_empty():
+		return
+	stderr += line.trim_suffix("\n") + "\n"
 
 func strip_error_newlines():
 	stderr = stderr.lstrip("\n").rstrip("\n")
@@ -312,3 +316,23 @@ static func new_ctx(text:String, parent:CompletionContext=null, sub_shell:=false
 		ctx.stdin = parent.stdin
 	
 	return ctx
+
+func write_to_parent(parent:CompletionContext):
+	parent.append_output(stdout.trim_suffix("\n"))
+	parent.append_error(stderr.trim_suffix("\n"))
+	exit_code = last_status
+	parent.last_status = exit_code
+
+func propogate(target:Propagate, key:String, value):
+	var inher = get_inherited_ctxs()
+	inher.append(self)
+	match target:
+		Propagate.VARIABLES: 
+			for inh:CompletionContext in inher: 
+				inh.variables[key] = value
+		Propagate.FUNCTIONS:
+			for inh:CompletionContext in inher: 
+				inh.functions[key] = value
+		Propagate.ALIASES:
+			for inh:CompletionContext in inher: 
+				inh.aliases[key] = value

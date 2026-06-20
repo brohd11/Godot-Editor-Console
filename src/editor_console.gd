@@ -110,6 +110,8 @@ func _ready_deferred():
 func _start_up_commands():
 	var config = Config.get_merged_config()
 	var startup = config.get_section(Config.STARTUP, [])
+	if startup.is_empty():
+		return
 	var cmds = "\n".join(startup).strip_edges()
 	if cmds.is_empty():
 		return
@@ -538,9 +540,7 @@ static func execute_interactive(input_text:String, params:={}):
 	if multi_line_commands.is_empty():
 		return
 	
-	print("REBUILT::", multi_line_commands)
 	if print_to_log and input_text.strip_edges() != "os":
-		print("~~~")
 		var display = ""
 		if not active_ctx.os_mode:
 			display = "%s %s" % [console._get_console_label_string(), full_display]
@@ -581,7 +581,6 @@ static func execute_interactive(input_text:String, params:={}):
 			else:
 				print(active_ctx.stdout)
 		
-		print("~~~")
 
 
 func prev_command():
@@ -772,6 +771,9 @@ func get_gdrc():
 	main_ctx.title = "MainCTX"
 	main_ctx.execute = true
 	
+	main_ctx.scopes = scope_dict.duplicate()
+	main_ctx.scopes.merge(hidden_scope_dict.duplicate())
+	
 	var config = Config.get_merged_config()
 	main_ctx.aliases = config.get_section(Config.ALIAS, {}).duplicate()
 	
@@ -790,8 +792,7 @@ func get_gdrc():
 		
 		main_ctx.variables[var_name] = str(val)
 	
-	main_ctx.scopes = scope_dict.duplicate()
-	main_ctx.scopes.merge(hidden_scope_dict.duplicate())
+	
 	
 	
 	#^ caching? maybe not needed..

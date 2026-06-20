@@ -17,6 +17,10 @@ const Keys = EditorConsoleSingleton.Keys
 const ConsoleTokenizer = UtilsLocal.ConsoleTokenizer
 const CompletionContext = UtilsLocal.CompletionContext
 
+const _IS_LOOP_KEY = "__is_loop__"
+const _LOOP_BREAK_KEY = "__loop_break__"
+const _LOOP_CONTINUE_KEY = "__loop_continue__"
+
 const TEST_PATH = "/Users/brohd/Library/Application Support/Godot/addons/editor_console/test.gdsh"
 static func run_test():
 	var string = FileAccess.get_file_as_string(TEST_PATH)
@@ -27,17 +31,22 @@ static func run_test():
 
 static var _func_def_regex:RegEx
 static var _conditional_regex:RegEx
+static var _for_loop_regex:RegEx
 
-enum ParseState { NORMAL, IN_FUNCTION, IN_CONDITIONAL, IN_MULTILINE_STRING }
+enum ParseState { NORMAL, IN_FUNCTION, IN_CONDITIONAL, IN_MULTILINE_STRING, IN_LOOP }
 
-var state := ParseState.NORMAL
+var state:= ParseState.NORMAL
 var accumulated_lines: PackedStringArray = []
-var block_name := ""
-var brace_depth := 0
+var block_name:String = ""
+var brace_depth:int = 0
 var conditional_branches: Array = []
+var loop_condition:String = ""
+
 var execution_ctx: CompletionContext
 var _is_function:bool = false
+var _is_loop:bool = false
 
+var _string_maps := {}
 
 
 static func execute_command_multiline(string: String, ctx: CompletionContext):
@@ -45,6 +54,7 @@ static func execute_command_multiline(string: String, ctx: CompletionContext):
 	var parser := new()
 	parser.execution_ctx = ctx
 	parser._is_function = ctx.data.get(UtilsLocal.Function.FUNCTION_KEY, false)
+	parser._is_loop = ctx.data.get(_IS_LOOP_KEY, false)
 	parser.run(string)
 	# not sure this distinction is really needed
 	#if not parser._is_function:
@@ -55,24 +65,28 @@ func run(string: String):
 	var lines := string.split("\n", false)
 	for i in range(lines.size()):
 		var line: String = lines[i]
-		line = UString.remove_comment(line, true).strip_edges()
-		if line.is_empty():
+		line = remove_comment(line, true).strip_edges()
+		if line.is_empty() or line.begins_with("#"):
 			continue
 		var statements = [line]
-		if line.contains(";"):
+		if state != ParseState.IN_MULTILINE_STRING and line.contains(";"):
 			statements = UString.string_safe_split(line, ";")
-		for s in statements:
-			
-			
+		for s:String in statements:
+			s = s.strip_edges()
 			match state:
 				ParseState.IN_FUNCTION:
 					_parse_in_function(s)
 				ParseState.IN_CONDITIONAL:
 					_parse_in_conditional(s)
+				ParseState.IN_LOOP:
+					_parse_in_loop(s)
 				ParseState.IN_MULTILINE_STRING:
 					_parse_in_multiline_string(s)
 				ParseState.NORMAL:
 					_parse_normal(s)
+				
+			
+			
 			
 			if execution_ctx.exit_requested:
 				#print("EXITING:", s, ":EXIT:", execution_ctx.exit_code)
@@ -81,6 +95,14 @@ func run(string: String):
 				execution_ctx.last_status = execution_ctx.data.get(UtilsLocal.Function.RETURN_KEY, -1)
 				#print("FUNC RETURN::", s)
 				return
+			if _is_loop:
+				if execution_ctx.data.get(_LOOP_CONTINUE_KEY, false):
+					print("CONTINUE:", s)
+					return
+				elif execution_ctx.data.get(_LOOP_BREAK_KEY, false):
+					return
+
+
 
 
 func reset_block():
@@ -93,12 +115,17 @@ func reset_conditional():
 	conditional_branches.clear()
 	reset_block()
 
+func reset_loop():
+	loop_condition = ""
+	reset_block()
+
 
 # ---- state handlers ----
 
 func _parse_in_function(line: String):
 	if brace_depth == 1 and line.begins_with("}"):
-		execution_ctx.functions[block_name] = "\n".join(accumulated_lines)
+		#execution_ctx.functions[block_name] = "\n".join(accumulated_lines)
+		execution_ctx.propogate(CompletionContext.Propagate.FUNCTIONS, block_name, "\n".join(accumulated_lines))
 		reset_block()
 		state = ParseState.NORMAL
 	else:
@@ -120,16 +147,6 @@ func _parse_in_conditional(line: String):
 			conditional_branches.append(["", PackedStringArray()])
 		elif type == "elif":
 			conditional_branches.append([cond, PackedStringArray()])
-		
-		#if line == "} else {":
-			#conditional_branches.append(["", PackedStringArray()])
-		#elif line.begins_with("} elif ") and line.ends_with("{"):
-			#var cond := line.substr(7, line.length() - 8).strip_edges()
-			#conditional_branches.append([cond, PackedStringArray()])
-		#else:
-			#_handle_conditional()
-			#reset_conditional()
-			#state = ParseState.NORMAL
 	else:
 		brace_depth += _count_unquoted_braces(line)
 		conditional_branches[-1][1].append(line)
@@ -143,6 +160,54 @@ func _parse_in_multiline_string(line: String):
 		state = ParseState.NORMAL
 		_parse_normal(full_line)
 
+func _parse_in_loop(line: String):
+	print("IN LOOP:", line)
+	if brace_depth == 1 and line.begins_with("}"):
+		# process the loop function
+		var loop_ctx = CompletionContext.new_ctx("Loop", execution_ctx)
+		loop_ctx.positional_args = execution_ctx.positional_args
+		loop_ctx.data[_IS_LOOP_KEY] = true
+		var loop = "\n".join(accumulated_lines)
+		
+		if loop_condition.begins_with("for"):
+			var for_match = _for_loop_regex.search(loop_condition)
+			var iterator = for_match.get_string("iter")
+			var collection = for_match.get_string("coll")
+			if iterator == "" or collection == "":
+				execution_ctx.append_error("For loop syntax error: " + line)
+				execution_ctx.exit_code = UtilsLocal.CommandBase.ExitCode.ERR
+				return
+			var coll_val = _substitute_vars(collection)
+			print(collection, " -> ", coll_val)
+			var coll_split = UString.string_safe_split_multi(coll_val, [" ", "\t", "\n"])
+			print(coll_split)
+			for item in coll_split:
+				loop_ctx.data.erase(_LOOP_CONTINUE_KEY)
+				loop_ctx.variables["$" + iterator] = item
+				execute_command_multiline(loop, loop_ctx)
+				print("LOOP BREAK:", loop_ctx.data)
+				if loop_ctx.data.get(_LOOP_BREAK_KEY, false):
+					break
+			
+		elif loop_condition.begins_with("while"):
+			var count = 0
+			var condition = loop_condition.trim_prefix("while").trim_suffix("{").strip_edges()
+			while _evaluate_condition(condition) and count < 100:
+				count += 1
+				loop_ctx.data.erase(_LOOP_CONTINUE_KEY)
+				execute_command_multiline(loop, loop_ctx)
+				if loop_ctx.data.get(_LOOP_BREAK_KEY, false):
+					break
+		
+		print("LOOP OUT---\n", loop_ctx.stdout, "\n---")
+		loop_ctx.write_to_parent(execution_ctx)
+		
+		reset_loop()
+		state = ParseState.NORMAL
+		pass
+	else:
+		brace_depth += _count_unquoted_braces(line)
+		accumulated_lines.append(line)
 
 func _parse_normal(line: String):
 	
@@ -158,6 +223,12 @@ func _parse_normal(line: String):
 		brace_depth = 1
 		state = ParseState.IN_FUNCTION
 		accumulated_lines.clear()
+		
+		var end_of_func = line.get_slice("{", 1).strip_edges()
+		if end_of_func == "}":
+			_parse_in_function(end_of_func)
+		elif end_of_func != "":
+			accumulated_lines.append(end_of_func)
 		return
 	
 	var cond_match = _conditional_regex.search(line)
@@ -172,6 +243,11 @@ func _parse_normal(line: String):
 			_handle_alias_assignment(line)
 		else:
 			_handle_assignment(line)
+	elif _is_in_loop(line):
+		brace_depth = 1
+		state = ParseState.IN_LOOP
+		accumulated_lines.clear()
+		loop_condition = line
 	else:
 		var _sub_ctx = execute_command(line, {
 			&"parent_ctx": execution_ctx
@@ -197,24 +273,19 @@ func _handle_assignment(line: String):
 		value = UString.unquote(value)
 		value = _substitute_vars(value) # handle recursed vars
 	
-	execution_ctx.variables["$" + var_name] = value
-	
-	if not is_local:
+	if is_local:
+		execution_ctx.variables["$" + var_name] = value
+	else:
 		# non local will propagate up
 		# sub shell commands will not have parent set
-		var inherited = execution_ctx.get_inherited_ctxs()
-		for i_ctx in inherited:
-			i_ctx.variables["$" + var_name] = value
+		execution_ctx.propogate(CompletionContext.Propagate.VARIABLES, "$" + var_name, value)
 
 func _handle_alias_assignment(line: String):
 	var eq_pos := line.find("=")
 	var var_name := line.substr(0, eq_pos).trim_prefix("alias").strip_edges()
 	var value := line.substr(eq_pos + 1).strip_edges()
 	
-	execution_ctx.aliases[var_name] = value
-	var inherited = execution_ctx.get_inherited_ctxs()
-	for i_ctx in inherited:
-		i_ctx.aliases[var_name] = value
+	execution_ctx.propogate(CompletionContext.Propagate.ALIASES, var_name, value)
 
 
 func _handle_conditional():
@@ -295,6 +366,16 @@ static func _get_unclosed_quote(line: String) -> String:
 		return "\""
 	return ""
 
+func remove_comment(text:String, string_safe:=false, string_map=null):
+	if not string_safe:
+		return text.get_slice(" #", 0)
+	else:
+		if string_map == null:
+			string_map = _get_string_map(text)
+		var comment_index = UString.string_safe_find(text, " #", 0, string_map)
+		if comment_index > -1:
+			text = text.substr(0, comment_index)
+	return text
 
 static func _is_assignment(line: String) -> bool:
 	if "=" not in line:
@@ -302,6 +383,19 @@ static func _is_assignment(line: String) -> bool:
 	var left := line.substr(0, line.find("=")).strip_edges()
 	left = left.trim_prefix("local ").strip_edges()
 	return left.is_valid_ascii_identifier() or left.begins_with("alias ")
+
+static func _is_in_loop(line:String) -> bool:
+	if not line.ends_with("{"):
+		return false
+	return line.begins_with("for ") or line.begins_with("while ")
+
+func _get_string_map(string:String):
+	if _string_maps.has(string):
+		return _string_maps[string]
+	var sm = UString.get_string_map(string)
+	_string_maps[string] = sm
+	return sm
+
 
 # ---- Single commands ----
 
@@ -331,7 +425,6 @@ static func source_file(file_path:String, parent_ctx:CompletionContext=null, all
 #! keys parent_ctx:CompletionContext sub_shell:bool
 ## ctx object can be passed as argument, it should have text set already.
 static func execute_command(text:String, params:={}):
-	#var ctx = params.get(&"ctx_obj")
 	var parent_ctx = params.get(&"parent_ctx")
 	var sub_shell = params.get(&"sub_shell", false)
 	
@@ -340,7 +433,7 @@ static func execute_command(text:String, params:={}):
 	
 	var active_ctx = parent_ctx
 	if sub_shell:
-		active_ctx = CompletionContext.new_ctx("SubShell", parent_ctx, sub_shell)
+		active_ctx = CompletionContext.new_ctx(text + "-SubShell", parent_ctx, sub_shell)
 	
 	var expand_data = expand_commands(text, active_ctx)
 	if active_ctx.exit_requested:
@@ -382,7 +475,7 @@ static func execute_command(text:String, params:={}):
 			current_ctx.execute_parse()
 			
 			if cmd_data.pre == "|" and is_instance_valid(last_ctx):
-				current_ctx.stdin = last_ctx.strip_output_newlines()
+				current_ctx.stdin = last_ctx.stdout
 			
 			#print("STDIN:", current_ctx.stdin)
 			_parse_command(current_ctx)
@@ -444,9 +537,11 @@ static func _parse_command(ctx:CompletionContext) -> void:
 				_scope_parse("global", ctx)
 	
 	if ctx.scopes.is_empty():
+		print(ctx.title)
 		ctx.append_error("Need to load command set.")
 	
-	ctx.stdout = ctx.stdout.lstrip("\n").rstrip("\n")
+	if ctx.stdout != "\n":
+		ctx.stdout = ctx.stdout.rstrip("\n")
 
 
 static func _scope_parse(_name:String, ctx:CompletionContext):
@@ -548,7 +643,7 @@ static func _initialize_regex():
 	if not is_instance_valid(_func_def_regex) or true:
 		_func_def_regex = RegEx.new()
 		_func_def_regex.compile(
-			r"^[ \t]*(\w+)\s*\(\s*\)\s*\{$"
+			r"^[ \t]*(\w+)\s*\(\s*\)\s*\{" #$"
 		)
 	
 	if not is_instance_valid(_conditional_regex):
@@ -556,3 +651,7 @@ static func _initialize_regex():
 		_conditional_regex.compile(
 			r"^\s*(?:\}\s*)?(?<type>if|elif|else)\b(?<cond>[^{]*)\{"
 		)
+	
+	if not is_instance_valid(_for_loop_regex) or true:
+		_for_loop_regex = RegEx.new()
+		_for_loop_regex.compile(r"^for\s+(?<iter>\w+)\s+in\s+(?<coll>[$A-Za-z0-9 ]*)\s*{")

@@ -33,4 +33,6 @@ func _execute(ctx:CompletionContext):
 		right_flag = true
 	#ctx.stdout = ctx.stdin.strip_edges(left_flag, right_flag)
 
-	ctx.append_output(ctx.stdin.strip_edges(left_flag, right_flag))
+	ctx.append_output(ctx.stdin.strip_edges(left_flag, false))
+	if right_flag:
+		ctx.stdout = ctx.stdout.strip_edges(false, true)

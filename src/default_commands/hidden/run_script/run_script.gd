@@ -24,11 +24,17 @@ func _execute(ctx:CompletionContext):
 		ctx.append_error("File doesn't exist: " + script_path)
 		ctx.exit_code = ExitCode.FAIL
 		return
+	var file_as_string = FileAccess.get_file_as_string(script_path)
+	if not file_as_string.strip_edges(true, false).begins_with("#!gdsh"):
+		ctx.append_error("File does not have #!gdsh tag: " + script_path)
+		ctx.exit_code = ExitCode.FAIL
+		return
 	
 	var sub_ctx = CompletionContext.new_ctx(script_path.get_file() + "-SubShell", ctx, true)
 	sub_ctx.set_positional_args(script_path, positional_args)
 	
-	var file_as_string = FileAccess.get_file_as_string(script_path)
+	
+	
 	Execution.execute_command_multiline(file_as_string, sub_ctx)
 	
 	ctx.append_output(sub_ctx.strip_output_newlines())
