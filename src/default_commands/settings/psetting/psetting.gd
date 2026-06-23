@@ -35,10 +35,6 @@ func _execute(ctx:CompletionContext):
 	ctx.append_output("%s = %s" % [name, str(converted)])
 
 func _convert_value(value_str:String, current):
-	if current != null:
-		var converted = ConsoleTokenizer.Var.auto_convert(value_str, typeof(current))
-		if converted != null:
-			return converted
 	var parsed = str_to_var(value_str)
 	if parsed != null:
 		return parsed

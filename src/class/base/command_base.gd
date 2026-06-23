@@ -75,8 +75,30 @@ func __get_self_command_data__() -> Dictionary:
 	var processed = Options.get_single_option_dict(name, params)
 	return processed
 
-func get_help_string():
-	return get_self_command_data().get(&"help")
+func get_help_string() -> String:
+	var help = get_self_command_data().get(&"help", "")
+	if help == "":
+		return ""
+	var commands = get_commands()
+	commands.erase(Options.Keys.COMMAND_META)
+	if commands.size() > 0:
+		help += "\nSubcommands:"
+		for c in commands.keys():
+			help += "\n  " + c
+			var c_help = commands[c].get(&"help")
+			if c_help != "":
+				help += ": " + c_help
+	
+	var flags = get_flags()
+	flags.erase(Options.Keys.COMMAND_META)
+	if flags.size() > 0:
+		help += "\nFlags:"
+		for f in flags.keys():
+			help += "\n  " + f
+			var f_help = flags[f].get(&"help")
+			if f_help != "":
+				help += ": " + f_help
+	return help
 
 
 func _route(ctx:CompletionContext): # shared by both passes
@@ -113,10 +135,14 @@ func _route(ctx:CompletionContext): # shared by both passes
 		var option_data = _get_option_data(token, flags, commands)
 		if PRINT_DEBUG:
 			print("DATA::", option_data)
-		if token in flags:
-			# if flag has a token to consume after, unhandled currently
-			_process_flag(full_token)
-			consumed += 1
+		if token.begins_with("--"):
+			if token in flags:
+				# if flag has a token to consume after, unhandled currently
+				_process_flag(full_token)
+				consumed += 1
+			else:
+				ctx.append_error("Unrecognized flag: " + token)
+				return ExitCode.ERR
 		elif token in commands:
 			if option_data.has(&"get_command"):
 				selected = option_data.get_command.call()
@@ -154,11 +180,17 @@ func _route(ctx:CompletionContext): # shared by both passes
 	for j in range(positional_count):
 		var pos_arg = _consume_token(ctx)
 		var tok_b_curs = ctx.token_before_cursor
-		
+		var is_string:bool = UString.is_string_or_string_name(pos_arg)
 		if PRINT_DEBUG:
 			print(":", ctx.char_before_cursor, ":", tok_b_curs.length(), ":", tok_b_curs, ":", pos_arg.length(), ":", pos_arg, ":")
 		
-		
+		if not is_string and pos_arg.begins_with("--"):
+			var split = _split_flag(pos_arg)
+			if not split in flags:
+				ctx.append_error("Unrecognized flag: " + split)
+				return ExitCode.ERR
+			_process_flag(split)  # check flags after the positionals
+			continue
 		
 		if tok_b_curs.replace(" ", "") == pos_arg.replace(" ", ""):
 			positional_arg_index = j
@@ -166,8 +198,9 @@ func _route(ctx:CompletionContext): # shared by both passes
 			if ctx.char_before_cursor == " " and not UString.is_string_or_string_name(tok_b_curs) and not tok_b_curs.ends_with(" "):
 				positional_arg_index += 1
 		
+		
 		if unwrap_setting > 0 and pos_arg.length() > 1:
-			if UString.is_string_or_string_name(pos_arg):
+			if is_string:
 				var quote_char = pos_arg[0]
 				if unwrap_setting == 2 or quote_char == '"':
 					pos_arg = UString.unquote(pos_arg)
@@ -315,7 +348,7 @@ func _get_help_for_token(token:String):
 	var split = _split_flag(token)
 	var option_data = _get_option_data(split, get_flags(), get_commands())
 	if option_data != null and option_data.has(&"help"):
-		_ctx_obj.append_output(option_data.get(&"help"))
+		_ctx_obj.append_output(get_help_string())
 		if split == get_command_name():
 			print_available_commands()
 	else:

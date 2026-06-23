@@ -23,7 +23,7 @@ func _execute(ctx:CompletionContext):
 	if not is_instance_valid(root):
 		ctx.append_error("No edited scene open.")
 		return ExitCode.FAIL
-
+	
 	var prop_name = positional_args[0]
 	var has_value = positional_args.size() > 1
 
@@ -31,23 +31,24 @@ func _execute(ctx:CompletionContext):
 	if nodes.is_empty():
 		ctx.append_error("No target nodes (pipe node paths via stdin or select nodes).")
 		return ExitCode.FAIL
-
+	
 	var prop_path := NodePath(prop_name)
 	for n:Node in nodes:
 		var node_path = str(root.get_path_to(n))
 		if has_value:
+			var base_instance_type:String = n.get_class()
+			# if not in the node, what to do? it sets it to null right now
 			var current = n.get_indexed(prop_path)
-			var converted = _convert_value(positional_args[1], current)
+			var t = typeof(current)
+			#prints(base_instance_type, current, t)
+			
+			var converted = ConsoleTokenizer.Var.auto_convert(positional_args[1], t, base_instance_type)
 			n.set_indexed(prop_path, converted)
-			ctx.append_output("%s.%s = %s" % [node_path, prop_name, str(converted)])
+			ctx.append_output("%s.%s = %s" % [node_path, prop_name, str(n.get_indexed(prop_path))])
 		else:
 			ctx.append_output("%s.%s = %s" % [node_path, prop_name, str(n.get_indexed(prop_path))])
 
 func _convert_value(value_str:String, current):
-	if current != null:
-		var converted = ConsoleTokenizer.Var.auto_convert(value_str, typeof(current))
-		if converted != null:
-			return converted
 	var parsed = str_to_var(value_str)
 	if parsed != null:
 		return parsed
