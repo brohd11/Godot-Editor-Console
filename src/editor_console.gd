@@ -969,49 +969,7 @@ class Keys:
 
 
 #region MCP
-
-## Run a console command line non-interactively and return captured output.
-## Reuses the exact line-submit path (execute_interactive), so ';', pipes, '&&'/'||',
-## gdsh functions and multiline all behave identically to typing in the console.
-static func run_command_capture(text:String) -> Dictionary:
-	var ctx = get_main_ctx()
-	execute_interactive(text, {
-		&"parent_ctx": ctx,
-		&"print": false,
-	})
-	return {
-		"stdout": ctx.stdout,
-		"stderr": ctx.stderr,
-		"exit_code": ctx.exit_code,
-	}
-
-
-## Start the loopback TCP bridge so an external client (Go MCP server / CLI) can run
-## commands against the live editor. Off by default; loopback only. Returns an Error code.
-static func start_bridge(port:int=9510, token:String="") -> int:
-	if not _instance_valid_err(): return FAILED
-	var ins = get_instance()
-	if not is_instance_valid(ins._bridge):
-		ins._bridge = ConsoleBridge.new()
-		ins._bridge.name = "ConsoleBridge"
-		ins.add_child(ins._bridge)
-	return ins._bridge.start(port, token)
-
-
-static func stop_bridge() -> void:
-	if not _instance_valid_err(): return
-	var ins = get_instance()
-	if is_instance_valid(ins._bridge):
-		ins._bridge.stop()
-		ins._bridge.queue_free()
-		ins._bridge = null
-
-
-static func bridge_status() -> Dictionary:
-	if not _instance_valid_err(): return {"listening": false, "port": 0}
-	var ins = get_instance()
-	if is_instance_valid(ins._bridge) and ins._bridge.is_listening():
-		return {"listening": true, "port": ins._bridge.get_port(), "token": ins._bridge.has_token()}
-	return {"listening": false, "port": 0, "token": false}
-
+# Bridge control + command capture live on ConsoleBridge now
+# (ConsoleBridge.start_bridge / stop_bridge / bridge_status / run_command_capture).
+# `_bridge` (the running listener) is still stored on this instance.
 #endregion

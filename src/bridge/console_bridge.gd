@@ -8,11 +8,59 @@ extends Node
 ##   request:  {"id": 1, "cmd": "dev tree | dev count", "token": "optional"}\n
 ##   response: {"id": 1, "stdout": "...", "stderr": "...", "exit_code": 0}\n
 ##
-## Bound to loopback only and started on demand (see EditorConsoleSingleton.start_bridge).
+## Bound to loopback only and started on demand (see ConsoleBridge.start_bridge).
 
 const _READ_CHUNK := 65536
 
 var _server: TCPServer
+
+#region External control (moved from EditorConsoleSingleton)
+
+## Run a console command line non-interactively and return captured output.
+## Reuses the exact line-submit path (execute_interactive), so ';', pipes, '&&'/'||',
+## gdsh functions and multiline all behave identically to typing in the console.
+static func run_command_capture(text:String) -> Dictionary:
+	var ctx = EditorConsoleSingleton.get_main_ctx()
+	EditorConsoleSingleton.execute_interactive(text, {
+		&"parent_ctx": ctx,
+		&"print": false,
+	})
+	return {
+		"stdout": ctx.stdout,
+		"stderr": ctx.stderr,
+		"exit_code": ctx.exit_code,
+	}
+
+
+## Start the loopback TCP bridge so an external client (Go MCP server / CLI) can run
+## commands against the live editor. Off by default; loopback only. Returns an Error code.
+static func start_bridge(port:int=9510, token:String="") -> int:
+	if not EditorConsoleSingleton._instance_valid_err(): return FAILED
+	var ins = EditorConsoleSingleton.get_instance()
+	if not is_instance_valid(ins._bridge):
+		ins._bridge = EditorConsoleSingleton.ConsoleBridge.new()
+		ins._bridge.name = "ConsoleBridge"
+		ins.add_child(ins._bridge)
+	return ins._bridge.start(port, token)
+
+
+static func stop_bridge() -> void:
+	if not EditorConsoleSingleton._instance_valid_err(): return
+	var ins = EditorConsoleSingleton.get_instance()
+	if is_instance_valid(ins._bridge):
+		ins._bridge.stop()
+		ins._bridge.queue_free()
+		ins._bridge = null
+
+
+static func bridge_status() -> Dictionary:
+	if not EditorConsoleSingleton._instance_valid_err(): return {"listening": false, "port": 0}
+	var ins = EditorConsoleSingleton.get_instance()
+	if is_instance_valid(ins._bridge) and ins._bridge.is_listening():
+		return {"listening": true, "port": ins._bridge.get_port(), "token": ins._bridge.has_token()}
+	return {"listening": false, "port": 0, "token": false}
+
+#endregion
 var _port: int = 0
 var _token: String = ""
 # each entry: { "peer": StreamPeerTCP, "buf": String }
@@ -103,7 +151,7 @@ func _handle_line(peer: StreamPeerTCP, line: String) -> void:
 		elif _token != "" and str(req.get("token", "")) != _token:
 			resp = {"id": id, "stdout": "", "stderr": "Unauthorized", "exit_code": 1}
 		else:
-			var out: Dictionary = EditorConsoleSingleton.run_command_capture(str(req.get("cmd", "")))
+			var out: Dictionary = run_command_capture(str(req.get("cmd", "")))
 			resp = {
 				"id": id,
 				"stdout": out.get("stdout", ""),
