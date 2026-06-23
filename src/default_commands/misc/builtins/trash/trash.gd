@@ -3,7 +3,7 @@ extends EditorConsoleSingleton.CommandBase
 const _HELP = \
 "Move files/directories to the OS trash (recoverable).
 Paths come from arguments and/or stdin (one per line).
-Usage: dev trash [res://path ...]"
+Usage: trash [res://path ...]"
 
 static func get_command_name() -> String:
 	return "trash"

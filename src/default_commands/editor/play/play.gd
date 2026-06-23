@@ -2,7 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "Run the project.
-Usage: dev play [--current] [--scene=res://path.tscn]
+Usage: play [--current] [--scene=res://path.tscn]
   (no flags)   run the main scene
   --current    run the currently edited scene
   --scene=     run a specific scene file"

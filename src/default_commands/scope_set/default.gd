@@ -10,8 +10,11 @@ static func register_scopes():
 		"res://addons/editor_console/src/default_commands/global/global.gd",
 		"res://addons/editor_console/src/default_commands/scene/scene.gd",
 		"res://addons/editor_console/src/default_commands/resource/resource.gd",
+		"res://addons/editor_console/src/default_commands/editor/editor.gd",
+		"res://addons/editor_console/src/default_commands/settings/settings.gd",
 		"res://addons/editor_console/src/default_commands/config/config.gd",
 		"res://addons/editor_console/src/default_commands/misc/misc.gd",
+		
 	]
 
 	var data = {}

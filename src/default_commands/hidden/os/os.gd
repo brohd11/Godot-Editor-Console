@@ -14,7 +14,7 @@ static func get_command_name() -> String:
 
 static func get_self_command_data() -> Dictionary:
 	return Options.get_single_option_dict(get_command_name(), {
-		&"help": ""
+		&"help": "All commands after the 'os' prefix are ran via OS.execute with stdin if piped."
 	})
 
 static func get_os_string():

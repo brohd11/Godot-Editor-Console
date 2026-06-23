@@ -3,7 +3,7 @@ extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "Reload the passed scripts resources
-Usage: dev reload_script <path> - Can also pass paths as stdin, will be split by newlines."
+Usage: reload_script <path> - Can also pass paths as stdin, will be split by newlines."
 
 static func get_command_name() -> String:
 	return "reload_script"

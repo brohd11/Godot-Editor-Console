@@ -3,7 +3,7 @@ extends EditorConsoleSingleton.CommandBase
 const _HELP = \
 "Open a scene, script or resource in the editor.
 Path is taken from the argument or from stdin.
-Usage: dev open [res://path] [--inspect]
+Usage: open [res://path] [--inspect]
   --inspect    also open the resource in the inspector"
 
 var inspect_flag := false

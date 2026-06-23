@@ -2,7 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "Stop the running project.
-Usage: dev stop"
+Usage: stop"
 
 static func get_command_name() -> String:
 	return "stop"

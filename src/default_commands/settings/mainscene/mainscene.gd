@@ -4,8 +4,8 @@ const _SETTING = "application/run/main_scene"
 
 const _HELP = \
 "Get or set the project's main scene.
-Usage: dev mainscene [res://scene.tscn]
-  (no arg)   print the current main scene path (pipe into 'dev open')
+Usage: mainscene [res://scene.tscn]
+  (no arg)   print the current main scene path (pipe into 'open')
   <path>     set it and save project.godot"
 
 static func get_command_name() -> String:

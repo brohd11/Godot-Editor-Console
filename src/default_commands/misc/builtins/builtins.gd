@@ -2,8 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 
 const _HELP = \
-"These are utility commands, some mimic bash and some are for performing simple commands.
-They can also be accessed without using the 'builtins' keyword."
+"Utility commands, all subcommands also accessible directly by name"
 
 static func get_command_name():
 	return "builtins"

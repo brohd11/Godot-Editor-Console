@@ -2,7 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "Create a directory (recursively) in the project.
-Usage: dev mkdir <res://dir>"
+Usage: mkdir <res://dir>"
 
 static func get_command_name() -> String:
 	return "mkdir"

@@ -3,7 +3,7 @@ extends EditorConsoleSingleton.CommandBase
 const _HELP = \
 "Move or rename a file/directory in the project.
 NOTE: this does not rewrite references to the moved resource.
-Usage: dev mv <res://src> <res://dest>"
+Usage: mv <res://src> <res://dest>"
 
 static func get_command_name() -> String:
 	return "mv"

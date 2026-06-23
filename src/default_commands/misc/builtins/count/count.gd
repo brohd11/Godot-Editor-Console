@@ -2,7 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "Count stdin lines (default), words, or characters.
-Usage: ... | dev count [--words] [--chars]"
+Usage: ... | count [--words] [--chars]"
 
 var words_flag := false
 var chars_flag := false

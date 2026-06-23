@@ -2,7 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "Reload the currently edited scene from disk, discarding unsaved changes.
-Usage: dev reload"
+Usage: reload"
 
 static func get_command_name() -> String:
 	return "reload"

@@ -3,7 +3,7 @@ extends EditorConsoleSingleton.CommandBase
 const _HELP = \
 "Reveal a path in the FileSystem dock.
 Path is taken from the argument or from stdin.
-Usage: dev reveal [res://path]"
+Usage: reveal [res://path]"
 
 static func get_command_name() -> String:
 	return "reveal"

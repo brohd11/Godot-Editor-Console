@@ -2,7 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "Get or set a project setting (ProjectSettings).
-Usage: dev psetting <name> [value]
+Usage: psetting <name> [value]
   (no value)   print the current value
   <value>      set it (converted to the setting's current type) and save project.godot"
 

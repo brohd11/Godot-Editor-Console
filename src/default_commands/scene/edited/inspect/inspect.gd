@@ -4,7 +4,7 @@ const _HELP = \
 "List the properties of a node or resource.
 Source is, in order: the argument or stdin (a node path like '.' / 'Path/To/Node',
 or a res:// resource path), else the editor selection, else the inspector object.
-Usage: dev inspect [target] [--methods]
+Usage: inspect [target] [--methods]
   --methods    also list the object's methods"
 
 var methods_flag := false
@@ -67,7 +67,7 @@ func _resolve_object(ctx:CompletionContext):
 
 	if path != "":
 		# A target string is a node path (resolved against the edited scene root,
-		# matching 'dev tree'/'dev prop'), falling back to a res:// resource path.
+		# matching 'tree'/'prop'), falling back to a res:// resource path.
 		var root = EditorInterface.get_edited_scene_root()
 		if is_instance_valid(root):
 			var node = root.get_node_or_null(path)

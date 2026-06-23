@@ -3,9 +3,9 @@ extends EditorConsoleSingleton.CommandBase
 const _HELP = \
 "Manage groups on nodes. Targets come from stdin (node paths) or the selection.
 Usage:
-  ... | dev group add <name>      add nodes to a group (persistent)
-  ... | dev group remove <name>   remove nodes from a group
-  ... | dev group list            list each node's groups"
+  ... | group add <name>      add nodes to a group (persistent)
+  ... | group remove <name>   remove nodes from a group
+  ... | group list            list each node's groups"
 
 static func get_command_name() -> String:
 	return "group"

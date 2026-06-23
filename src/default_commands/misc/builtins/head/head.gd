@@ -2,7 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "Output the first N lines of stdin (default 10).
-Usage: ... | dev head [n]"
+Usage: ... | head [n]"
 
 static func get_command_name() -> String:
 	return "head"

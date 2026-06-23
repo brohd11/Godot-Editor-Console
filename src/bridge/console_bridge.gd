@@ -5,7 +5,7 @@ extends Node
 ## client (e.g. the Go MCP server / CLI) and returns the captured output.
 ##
 ## Protocol: newline-delimited JSON over 127.0.0.1.
-##   request:  {"id": 1, "cmd": "dev tree | dev count", "token": "optional"}\n
+##   request:  {"id": 1, "cmd": "tree | count", "token": "optional"}\n
 ##   response: {"id": 1, "stdout": "...", "stderr": "...", "exit_code": 0}\n
 ##
 ## Bound to loopback only and started on demand (see ConsoleBridge.start_bridge).
@@ -166,6 +166,8 @@ func _handle_line(peer: StreamPeerTCP, line: String) -> void:
 
 #region list_commands - here to keep mcp logic together
 
+const TO_IGNORE = ["help"]
+
 static func build_mcp_command_list() -> String:
 	var ins = EditorConsoleSingleton.get_instance()
 	var list = {}
@@ -174,8 +176,17 @@ static func build_mcp_command_list() -> String:
 		var obj = scope.get("script")
 		_get_scope_commands(obj.new(), "", list)
 	
+	for scope_name in ins.hidden_scope_dict.keys():
+		var scope = ins.hidden_scope_dict[scope_name]
+		var obj = scope.get("script")
+		_get_scope_commands(obj.new(), "", list)
+	
 	var string = ""
 	for entry in list.keys():
+		if entry.begins_with("__") or entry in TO_IGNORE:
+			continue
+		if entry.begins_with("misc builtins"):
+			continue
 		string += entry + ": " + list[entry] + "\n"
 	
 	return string

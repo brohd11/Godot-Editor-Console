@@ -3,7 +3,7 @@ extends EditorConsoleSingleton.CommandBase
 const _HELP = \
 "Find project files by name (one path per line).
 Pattern matches the file name; use * and ? for globbing, otherwise it's a substring match.
-Usage: dev find <pattern> [--ext=tscn]"
+Usage: find <pattern> [--ext=tscn]"
 
 var ext_flag := ""
 

@@ -4,9 +4,9 @@ const _HELP = \
 "Control the external command bridge (loopback TCP listener for the Go MCP server / CLI).
 Off by default; binds 127.0.0.1 only.
 Usage:
-  dev bridge start [port] [token]   start listening (default port 9510)
-  dev bridge stop                   stop listening
-  dev bridge status                 show listening state
+  bridge start [port] [token]   start listening (default port 9510)
+  bridge stop                   stop listening
+  bridge status                 show listening state
 If a token is given, clients must send a matching token (GODOT_CONSOLE_TOKEN)."
 
 static func get_command_name() -> String:

@@ -3,7 +3,7 @@ extends EditorConsoleSingleton.CommandBase
 const _HELP = \
 "Print the contents of a text file to stdout.
 Path is taken from the argument or from stdin.
-Usage: dev cat [res://path]"
+Usage: cat [res://path]"
 
 static func get_command_name() -> String:
 	return "cat"

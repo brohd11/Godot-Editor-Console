@@ -3,7 +3,7 @@ extends EditorConsoleSingleton.CommandBase
 const _HELP = \
 "Delete nodes from the edited scene. Node paths come from stdin (one per line),
 or the current selection if stdin is empty.
-Usage: ... | dev delete"
+Usage: ... | delete"
 
 static func get_command_name() -> String:
 	return "delete"

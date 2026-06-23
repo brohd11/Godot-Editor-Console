@@ -3,8 +3,8 @@ extends EditorConsoleSingleton.CommandBase
 const _HELP = \
 "Convert between a resource path and its uid:// identifier.
 Usage:
-  dev uid <res://path>     print the uid:// for the file
-  dev uid <uid://...>      print the res:// path for the uid"
+  uid <res://path>     print the uid:// for the file
+  uid <uid://...>      print the res:// path for the uid"
 
 static func get_command_name() -> String:
 	return "uid"

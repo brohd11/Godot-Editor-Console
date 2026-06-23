@@ -1,7 +1,7 @@
 extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
-""
+"Manage EditorConsole commands"
 
 static func get_command_name() -> String:
 	return "command"

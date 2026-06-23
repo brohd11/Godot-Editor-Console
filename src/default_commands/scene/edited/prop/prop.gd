@@ -4,8 +4,8 @@ const _HELP = \
 "Get or set a property on nodes. Targets come from stdin (node paths, one per line);
 if stdin is empty the current editor selection is used.
 Usage:
-  ... | dev prop <name>              print the property for each node
-  ... | dev prop <name> <value>      set the property on each node
+  ... | prop <name>              print the property for each node
+  ... | prop <name> <value>      set the property on each node
 Value is converted to the property's current type (falls back to str_to_var).
 Nested paths are supported, e.g. 'position:x'."
 

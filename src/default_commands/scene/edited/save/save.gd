@@ -2,7 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "Save the currently edited scene.
-Usage: dev save [--as=res://path.tscn]
+Usage: save [--as=res://path.tscn]
   --as=    save the scene to a new path"
 
 var as_flag := ""

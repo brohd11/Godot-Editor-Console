@@ -2,7 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "Get or set an editor setting (EditorSettings).
-Usage: dev setting <name> [value]
+Usage: setting <name> [value]
   (no value)   print the current value
   <value>      set it (converted to the setting's current type)"
 

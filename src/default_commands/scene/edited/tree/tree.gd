@@ -4,8 +4,8 @@ const UNode = UtilsRemote.UNode
 
 const _HELP = \
 "Print the node tree of the edited scene.
-Default output is one node path per line (pipe into 'dev prop', 'dev delete', etc).
-Usage: dev tree [--pretty] [--type=ClassName] [--script=res://path.gd]
+Default output is one node path per line (pipe into 'prop', 'delete', etc).
+Usage: tree [--pretty] [--type=ClassName] [--script=res://path.gd]
   --pretty     indented, colored tree (display only, not for piping)
   --type=      only nodes of this class
   --script=    only nodes using this script"

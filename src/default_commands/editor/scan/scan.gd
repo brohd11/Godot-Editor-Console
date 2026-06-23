@@ -2,7 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "Rescan the project filesystem (picks up files added/removed outside the editor).
-Usage: dev scan"
+Usage: scan"
 
 static func get_command_name() -> String:
 	return "scan"

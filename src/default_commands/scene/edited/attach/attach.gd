@@ -2,7 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "Attach a script to nodes. Targets come from stdin (node paths) or the selection.
-Usage: ... | dev attach <res://script.gd>"
+Usage: ... | attach <res://script.gd>"
 
 static func get_command_name() -> String:
 	return "attach"

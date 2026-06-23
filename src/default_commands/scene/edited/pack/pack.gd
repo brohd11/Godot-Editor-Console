@@ -2,9 +2,9 @@ extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "Pack the edited scene (or a subtree) into a PackedScene file.
-Usage: dev pack <res://dest.tscn> [--from=node_path]
+Usage: pack <res://dest.tscn> [--from=node_path]
   --from=    pack this node and its descendants instead of the whole scene
-The destination path is written to stdout (pipe into 'dev open')."
+The destination path is written to stdout (pipe into 'open')."
 
 var from_flag := ""
 

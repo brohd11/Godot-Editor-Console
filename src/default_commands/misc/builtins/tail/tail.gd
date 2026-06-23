@@ -2,7 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "Output the last N lines of stdin (default 10).
-Usage: ... | dev tail [n]"
+Usage: ... | tail [n]"
 
 static func get_command_name() -> String:
 	return "tail"
