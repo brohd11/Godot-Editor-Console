@@ -489,9 +489,11 @@ static func execute_command(text:String, params:={}):
 				if current_ctx.exit_code == 0:
 					skip_current_block = true  # Succeeded! Skip the next block.
 			
+			# stderr never flows through a pipe, so always surface it (otherwise
+			# errors from non-final pipeline stages are silently dropped).
+			active_ctx.append_error(current_ctx.stderr)
 			if cmd_data.post != "|":
 				active_ctx.append_output(current_ctx.stdout)
-				active_ctx.append_error(current_ctx.stderr)
 				active_ctx.last_status = current_ctx.exit_code
 			
 			# end of command
