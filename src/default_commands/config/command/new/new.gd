@@ -106,6 +106,9 @@ func _get_new_command_dir():
 	var command_path:String = UString.unquote(positional_args[0]).strip_edges()
 	if command_path == "hidden":
 		return HIDDEN_DIR
+	elif command_path.begins_with("hidden/"):
+		command_path = command_path.trim_prefix("hidden/")
+		return HIDDEN_DIR.path_join(command_path)
 	var console = EditorConsoleSingleton.get_instance()
 	
 	var path_parts = [command_path]

@@ -161,3 +161,45 @@ func _handle_line(peer: StreamPeerTCP, line: String) -> void:
 
 	var payload := JSON.stringify(resp) + "\n"
 	peer.put_data(payload.to_utf8_buffer())
+
+
+
+#region list_commands - here to keep mcp logic together
+
+static func build_mcp_command_list() -> String:
+	var ins = EditorConsoleSingleton.get_instance()
+	var list = {}
+	for scope_name in ins.scope_dict.keys():
+		var scope = ins.scope_dict[scope_name]
+		var obj = scope.get("script")
+		_get_scope_commands(obj.new(), "", list)
+	
+	var string = ""
+	for entry in list.keys():
+		string += entry + ": " + list[entry] + "\n"
+	
+	return string
+
+static func _get_scope_commands(scope:EditorConsoleSingleton.CommandBase, current_path:String, list:Dictionary):
+	var path = current_path + " " + scope.get_command_name()
+	path = path.strip_edges()
+	var help = scope.get_help_string()
+	if help == null or help == "":
+		help = "Undocumented or namespace"
+	elif help.contains("\n"):
+		help = help.get_slice("\n", 0)
+	list[path] = help
+	
+	var subs = scope.get_commands()
+	for s in subs.keys():
+		var cmd_data = subs[s]
+		var get_cmd = cmd_data.get(&"get_command")
+		if get_cmd != null:
+			var cmd = get_cmd.call()
+			_get_scope_commands(cmd, path, list)
+		#else:
+			#var sub_p = path + " " + str(s)
+			#sub_p = sub_p.strip_edges()
+			#list[sub_p] = ""
+
+#endregion

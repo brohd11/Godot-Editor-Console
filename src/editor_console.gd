@@ -47,6 +47,7 @@ var show_filter:bool = true
 var _cache:= {}
 
 var _bridge:ConsoleBridge
+var _command_list_cache:String = ""
 
 var settings_helper:UtilsRemote.SettingHelperEditor
 var _console_replace_filter:bool=false
@@ -190,6 +191,8 @@ func _load_default_commands():
 	scope_dict.clear()
 	hidden_scope_dict.clear()
 	variable_dict.clear()
+	
+	_command_list_cache = ""
 	
 	_get_scope_set_data(UtilsLocal.DefaultCommands)
 	scope_dict.merge(_temp_scope_dict, true)
@@ -972,4 +975,11 @@ class Keys:
 # Bridge control + command capture live on ConsoleBridge now
 # (ConsoleBridge.start_bridge / stop_bridge / bridge_status / run_command_capture).
 # `_bridge` (the running listener) is still stored on this instance.
+
+## Build command list for MCP server. Result is cached until config is reloaded.
+func get_command_list() -> String:
+	if _command_list_cache == "":
+		_command_list_cache = ConsoleBridge.build_mcp_command_list()
+	return _command_list_cache
+
 #endregion

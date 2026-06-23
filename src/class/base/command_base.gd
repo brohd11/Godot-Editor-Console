@@ -75,6 +75,8 @@ func __get_self_command_data__() -> Dictionary:
 	var processed = Options.get_single_option_dict(name, params)
 	return processed
 
+func get_help_string():
+	return get_self_command_data().get(&"help")
 
 
 func _route(ctx:CompletionContext): # shared by both passes
@@ -313,7 +315,7 @@ func _get_help_for_token(token:String):
 	var split = _split_flag(token)
 	var option_data = _get_option_data(split, get_flags(), get_commands())
 	if option_data != null and option_data.has(&"help"):
-		_ctx_obj.append_error(option_data.get(&"help"))
+		_ctx_obj.append_output(option_data.get(&"help"))
 		if split == get_command_name():
 			print_available_commands()
 	else:
