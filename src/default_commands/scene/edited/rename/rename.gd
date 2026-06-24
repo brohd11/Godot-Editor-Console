@@ -36,8 +36,15 @@ func _execute(ctx:CompletionContext):
 		ctx.append_error("rename expects exactly one target node, got %s." % nodes.size())
 		return ExitCode.FAIL
 
+	
+
 	var new_name = positional_args[0]
 	var node:Node = nodes[0]
 	var old_name = node.name
-	node.name = new_name
+	
+	var a = ConsoleUndo.action("Rename node: %s" % old_name)
+	a.do_property(node, &"name", new_name)
+	a.undo_property(node, &"name", old_name)
+	a.commit()
+
 	ctx.append_output("Renamed '%s' -> '%s'" % [old_name, node.name])

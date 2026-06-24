@@ -33,11 +33,12 @@ func _execute(ctx:CompletionContext):
 		ctx.append_error("No target nodes (pipe node paths or select nodes).")
 		return ExitCode.FAIL
 
-	var count := 0
+	var a = ConsoleUndo.action("Attach %s to %s node(s)" % [script_path.get_file(), nodes.size()])
 	for n:Node in nodes:
-		n.set_script(script)
-		count += 1
-	ctx.append_output("Attached %s to %s node(s)." % [script_path.get_file(), count])
+		a.do_method(n, &"set_script", [script])
+		a.undo_method(n, &"set_script", [n.get_script()])
+	a.commit()
+	ctx.append_output("Attached %s to %s node(s)." % [script_path.get_file(), nodes.size()])
 
 func _resolve_nodes(ctx:CompletionContext, root:Node) -> Array:
 	var nodes := []

@@ -10,6 +10,7 @@ const USort = preload("uid://dtrbpu04wxss0") #! resolve ALibRuntime.Utils.USort
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 const Execution = UtilsLocal.Execution
 const ConsoleTokenizer = UtilsLocal.ConsoleTokenizer
+const ConsoleUndo = UtilsLocal.ConsoleUndo
 const CompletionContext = UtilsLocal.CompletionContext
 const ConsolePrint = UtilsLocal.Print
 const Colors = UtilsLocal.Colors

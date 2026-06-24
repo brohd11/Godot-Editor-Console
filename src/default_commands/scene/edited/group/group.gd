@@ -36,14 +36,19 @@ func _execute(ctx:CompletionContext):
 		return ExitCode.FAIL
 
 	var group_name = positional_args[1] if positional_args.size() > 1 else ""
+	var a = ConsoleUndo.action("%s group [%s]" % [action.capitalize(), group_name]) if action != "list" else null
 	for n:Node in nodes:
 		var node_path = str(root.get_path_to(n))
 		match action:
 			"add":
-				n.add_to_group(group_name, true)
+				if not n.is_in_group(group_name):
+					a.do_method(n, &"add_to_group", [group_name, true])
+					a.undo_method(n, &"remove_from_group", [group_name])
 				ctx.append_output("%s + [%s]" % [node_path, group_name])
 			"remove":
-				n.remove_from_group(group_name)
+				if n.is_in_group(group_name):
+					a.do_method(n, &"remove_from_group", [group_name])
+					a.undo_method(n, &"add_to_group", [group_name, true])
 				ctx.append_output("%s - [%s]" % [node_path, group_name])
 			"list":
 				var groups := []
@@ -51,6 +56,9 @@ func _execute(ctx:CompletionContext):
 					if not str(g).begins_with("_"):
 						groups.append(str(g))
 				ctx.append_output("%s: %s" % [node_path, ", ".join(groups)])
+
+	if a != null:
+		a.commit()
 
 func _resolve_nodes(ctx:CompletionContext, root:Node) -> Array:
 	var nodes := []

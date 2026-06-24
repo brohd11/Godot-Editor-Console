@@ -30,6 +30,7 @@ func _execute(ctx:CompletionContext):
 		ctx.append_error("No target nodes (pipe node paths or select nodes).")
 		return ExitCode.FAIL
 
+	var a = ConsoleUndo.action("Reparent under %s" % target.name)
 	var count := 0
 	for n:Node in nodes:
 		if n == root:
@@ -38,9 +39,16 @@ func _execute(ctx:CompletionContext):
 		if n == target or n.is_ancestor_of(target):
 			ctx.append_error("Cannot reparent '%s' into itself or its own descendant." % n.name)
 			continue
-		n.reparent(target, true)
-		n.set_owner(root)
+		var old_parent = n.get_parent()
+		var old_index = n.get_index()
+		var old_owner = n.owner
+		a.do_method(n, &"reparent", [target, true])
+		a.do_method(n, &"set_owner", [root])
+		a.undo_method(n, &"reparent", [old_parent, true])
+		a.undo_method(old_parent, &"move_child", [n, old_index])
+		a.undo_method(n, &"set_owner", [old_owner])
 		count += 1
+	a.commit()
 
 	ctx.append_output("Reparented %s node(s) under %s." % [count, target.name])
 

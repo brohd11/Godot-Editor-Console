@@ -42,6 +42,10 @@ var console_line_container:UtilsLocal.ConsoleLineContainer
 
 var show_filter:bool = true
 
+# When true, mutating scene commands register on the editor undo stack (Ctrl+Z).
+# When false they apply directly with no undo entry. Toggle via `config undo on|off`.
+var undo_tracking:bool = true
+
 #endregion
 
 var _cache:= {}
@@ -89,6 +93,7 @@ func _init(plugin:EditorPlugin) -> void:
 	
 	settings_helper = UtilsRemote.SettingHelperEditor.new()
 	settings_helper.subscribe_property(self, &"_console_replace_filter", EditorSet.CONSOLE_REPLACE_FILTER, false)
+	settings_helper.subscribe_property(self, &"undo_tracking", EditorSet.TRACK_UNDO_REDO, true)
 	settings_helper.initialize()
 	
 	os_user = UtilsLocal.ConsoleOS.get_os_string()
@@ -967,6 +972,7 @@ func _get_cached(key:String):
 
 class EditorSet:
 	const CONSOLE_REPLACE_FILTER = &"plugin/editor_console/active_console_replace_filter"
+	const TRACK_UNDO_REDO = &"plugin/editor_console/track_undo_redo"
 
 class Keys:
 	const NO_MATCHING_COMMAND = &"NO_MATCHING_COMMAND"

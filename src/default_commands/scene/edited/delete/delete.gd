@@ -38,14 +38,21 @@ func _execute(ctx:CompletionContext):
 		ctx.append_error("No target nodes to delete.")
 		return ExitCode.FAIL
 
+	var a = ConsoleUndo.action("Delete %s node(s)" % nodes.size())
 	var count := 0
 	for n:Node in nodes:
 		if n == root:
 			ctx.append_error("Refusing to delete the scene root.")
 			continue
-		n.set_owner(null)
-		n.get_parent().remove_child(n)
-		n.queue_free()
+		var parent = n.get_parent()
+		var index = n.get_index()
+		var owner_node = n.owner
+		a.do_method(parent, &"remove_child", [n])
+		a.undo_method(parent, &"add_child", [n])
+		a.undo_method(parent, &"move_child", [n, index])
+		a.undo_method(n, &"set_owner", [owner_node])
+		a.undo_reference(n)
 		count += 1
+	a.commit()
 
 	ctx.append_output("Deleted %s node(s)." % count)

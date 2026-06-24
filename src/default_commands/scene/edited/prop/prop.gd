@@ -33,20 +33,27 @@ func _execute(ctx:CompletionContext):
 		return ExitCode.FAIL
 	
 	var prop_path := NodePath(prop_name)
+
+	if not has_value:
+		for n:Node in nodes:
+			var node_path = str(root.get_path_to(n))
+			ctx.append_output("%s.%s = %s" % [node_path, prop_name, str(n.get_indexed(prop_path))])
+		return
+
+	var a = ConsoleUndo.action("Set %s on %s node(s)" % [prop_name, nodes.size()])
+	for n:Node in nodes:
+		var base_instance_type:String = n.get_class()
+		# if not in the node, what to do? it sets it to null right now
+		var current = n.get_indexed(prop_path)
+		var t = typeof(current)
+		var converted = ConsoleTokenizer.Var.auto_convert(positional_args[1], t, base_instance_type)
+		a.do_method(n, &"set_indexed", [prop_path, converted])
+		a.undo_method(n, &"set_indexed", [prop_path, current])
+	a.commit()
+
 	for n:Node in nodes:
 		var node_path = str(root.get_path_to(n))
-		if has_value:
-			var base_instance_type:String = n.get_class()
-			# if not in the node, what to do? it sets it to null right now
-			var current = n.get_indexed(prop_path)
-			var t = typeof(current)
-			#prints(base_instance_type, current, t)
-			
-			var converted = ConsoleTokenizer.Var.auto_convert(positional_args[1], t, base_instance_type)
-			n.set_indexed(prop_path, converted)
-			ctx.append_output("%s.%s = %s" % [node_path, prop_name, str(n.get_indexed(prop_path))])
-		else:
-			ctx.append_output("%s.%s = %s" % [node_path, prop_name, str(n.get_indexed(prop_path))])
+		ctx.append_output("%s.%s = %s" % [node_path, prop_name, str(n.get_indexed(prop_path))])
 
 func _convert_value(value_str:String, current):
 	var parsed = str_to_var(value_str)

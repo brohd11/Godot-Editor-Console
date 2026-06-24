@@ -52,8 +52,12 @@ func _execute(ctx:CompletionContext):
 	var selected = selection.get_selected_nodes()
 	var parent:Node = selected[0] if not selected.is_empty() else root
 
-	parent.add_child(node)
-	node.set_owner(root)
+	var a = ConsoleUndo.action("Add %s" % type)
+	a.do_method(parent, &"add_child", [node])
+	a.do_method(node, &"set_owner", [root])
+	a.do_reference(node)
+	a.undo_method(parent, &"remove_child", [node])
+	a.commit()
 
 	if select_flag:
 		selection.clear()

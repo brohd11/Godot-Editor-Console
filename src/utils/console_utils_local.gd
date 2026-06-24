@@ -13,6 +13,7 @@ const SyntaxHl = preload("res://addons/editor_console/src/utils/console_syntax.g
 
 const ConsoleLineContainer = preload("res://addons/editor_console/src/utils/console_line_container.gd")
 const CompletionContext = preload("res://addons/editor_console/src/class/completion_context.gd")
+const ConsoleUndo = preload("res://addons/editor_console/src/class/undo/console_undo.gd")
 const ConsoleTokenizer = preload("res://addons/editor_console/src/utils/console_tokenizer.gd")
 const Execution = preload("res://addons/editor_console/src/class/execution/execution.gd")
 const Function = preload("res://addons/editor_console/src/default_commands/hidden/function/function.gd")
