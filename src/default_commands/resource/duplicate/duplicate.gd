@@ -2,8 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "Duplicate a resource file to a new path.
-Usage: duplicate <res://src> <res://dest> [--subresources]
-  --subresources    deep-duplicate sub-resources too
+Usage: resource duplicate <res://src> <res://dest> [--subresources]
 The destination path is written to stdout (pipe into 'open')."
 
 var subresources_flag := false

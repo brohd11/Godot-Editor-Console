@@ -4,8 +4,7 @@ const _HELP = \
 "List the properties of a node or resource.
 Source is, in order: the argument or stdin (a node path like '.' / 'Path/To/Node',
 or a res:// resource path), else the editor selection, else the inspector object.
-Usage: inspect [target] [--methods]
-  --methods    also list the object's methods"
+Usage: scene edited inspect [target] [--methods]"
 
 var methods_flag := false
 

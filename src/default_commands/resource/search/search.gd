@@ -2,7 +2,8 @@ extends EditorConsoleSingleton.CommandBase
 
 
 const _HELP = \
-"This is a command created with the 'new' command, define help for this command!"
+"Find project files by name, or by file content with --content.
+Usage: resource search <term> [--content] [--dir=res://path]"
 
 const _READABLE_EXTS = ["gd", "gdshader", "tres", "tscn", "cs","md", "cfg", "ini", "txt"]
 
@@ -21,10 +22,10 @@ static func get_self_command_data():
 func _get_flags() -> Dictionary:
 	var options = Options.new()
 	options.add_option("--content", {
-		&"help": ""
+		&"help": "Match against file contents instead of file names."
 	})
 	options.add_option("--dir=", {
-		&"help": "",
+		&"help": "Restrict the search to this directory.",
 		&"trailing_char": "",
 		&"flag_completion": {"type": FlagType.DIR}
 	})

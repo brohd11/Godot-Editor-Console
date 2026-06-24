@@ -26,7 +26,7 @@ func _get_flags() -> Dictionary:
 		&"help": "--dir <flag> - register a directory that will be scanned for commands"
 	})
 	options.add_option("--project", {
-		&"help": ""
+		&"help": "De-register from the project override config instead of global."
 	})
 	return options.get_options()
 

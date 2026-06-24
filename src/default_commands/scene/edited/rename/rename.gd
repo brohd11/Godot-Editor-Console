@@ -2,7 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "Rename a node. The target node path comes from stdin (or the single selected node).
-Usage: ... | rename <new_name>"
+Usage: ... | scene edited rename <new_name>"
 
 static func get_command_name() -> String:
 	return "rename"

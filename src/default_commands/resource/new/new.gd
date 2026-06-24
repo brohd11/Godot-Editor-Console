@@ -2,8 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "Create a new resource of a given class and save it.
-Usage: new <ClassName> <res://dest.tres> [--script=res://x.gd]
-  --script=    attach a script to the new resource
+Usage: resource new <ClassName> <res://dest.tres> [--script=res://x.gd]
 The destination path is written to stdout (pipe into 'open')."
 
 var script_flag := ""

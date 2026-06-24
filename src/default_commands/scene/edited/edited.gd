@@ -18,7 +18,7 @@ static func get_self_command_data():
 func _get_flags() -> Dictionary:
 	var options = Options.new()
 	options.add_option("--tree", {
-		&"help": ""
+		&"help": "Output the edited scene's node paths (one per line)."
 	})
 	return options.get_options()
 

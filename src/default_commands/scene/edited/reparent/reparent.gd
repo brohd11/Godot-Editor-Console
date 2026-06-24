@@ -3,7 +3,7 @@ extends EditorConsoleSingleton.CommandBase
 const _HELP = \
 "Reparent nodes under a target node (keeps global transform).
 Targets come from stdin (node paths) or the selection.
-Usage: ... | reparent <target_node_path>"
+Usage: ... | scene edited reparent <target_node_path>"
 
 static func get_command_name() -> String:
 	return "reparent"

@@ -2,7 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "List the resource dependencies of a file (one path per line, pipeable).
-Usage: deps <res://path>"
+Usage: resource deps <res://path>"
 
 static func get_command_name() -> String:
 	return "deps"

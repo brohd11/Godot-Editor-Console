@@ -2,7 +2,8 @@ extends EditorConsoleSingleton.CommandBase
 
 
 const _HELP = \
-"This is a command created with the 'new' command, define help for this command!"
+"Run its argument as a console command (pass-through).
+Usage: passthru <command>"
 
 static func get_command_name():
 	return "passthru"

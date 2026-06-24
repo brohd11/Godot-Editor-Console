@@ -65,6 +65,9 @@ var _port: int = 0
 var _token: String = ""
 # each entry: { "peer": StreamPeerTCP, "buf": String }
 var _conns: Array = []
+# guards against re-entrant _process: a command can pump the main loop (e.g. save_scene's
+# progress bar) which re-enters this node's _process while we're mid-handle.
+var _handling: bool = false
 
 
 func start(port: int, token: String = "") -> int:
@@ -108,6 +111,8 @@ func has_token() -> bool:
 func _process(_delta: float) -> void:
 	if _server == null:
 		return
+	if _handling:
+		return # a command (e.g. save_scene) can pump the main loop and re-enter _process; don't recurse
 
 	while _server.is_connection_available():
 		var peer := _server.take_connection()
@@ -130,7 +135,10 @@ func _process(_delta: float) -> void:
 		var nl := (conn.buf as String).find("\n")
 		if nl != -1:
 			var line := (conn.buf as String).substr(0, nl)
+			conn.buf = (conn.buf as String).substr(nl + 1) # consume before handling so a re-entrant frame can't re-run it
+			_handling = true
 			_handle_line(peer, line)
+			_handling = false
 			peer.disconnect_from_host()
 			continue # one request per connection; drop after responding
 

@@ -2,7 +2,8 @@ extends EditorConsoleSingleton.CommandBase
 
 
 const _HELP = \
-"This is a command created with the 'new' command, define help for this command!"
+"Inspect and manipulate resource files.
+Usage: resource <subcommand>  |  resource --path=res://file"
 
 var path_flag:=""
 
@@ -23,7 +24,7 @@ func _get_commands() -> Dictionary:
 func _get_flags() -> Dictionary:
 	var options = Options.new()
 	options.add_option("--path=", {
-		&"help": "",
+		&"help": "Print the path if the file exists.",
 		&"trailing_char": "",
 		&"flag_completion": {
 			"type": FlagType.FILE,

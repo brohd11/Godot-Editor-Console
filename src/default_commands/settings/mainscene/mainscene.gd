@@ -4,7 +4,7 @@ const _SETTING = "application/run/main_scene"
 
 const _HELP = \
 "Get or set the project's main scene.
-Usage: mainscene [res://scene.tscn]
+Usage: settings mainscene [res://scene.tscn]
   (no arg)   print the current main scene path (pipe into 'open')
   <path>     set it and save project.godot"
 

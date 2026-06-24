@@ -4,10 +4,7 @@ const _HELP = \
 "Keep stdin lines matching a pattern (substring by default).
 Substring match by default; pass --regex for patterns. Flags must come BEFORE the
 pattern. For full coreutils behavior on mac/linux, use 'os grep'.
-Usage: ... | <pattern> [--regex] [--ignore-case] [--invert]
-  --regex         treat pattern as a regular expression
-  --ignore-case   case-insensitive match
-  --invert        keep lines that do NOT match"
+Usage: ... | grep <pattern> [--regex] [--ignore-case] [--invert]"
 
 var regex_flag := false
 var ignore_case_flag := false

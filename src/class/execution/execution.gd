@@ -535,11 +535,13 @@ static func _parse_command(ctx:CompletionContext) -> void:
 				ctx.unconsumed_tokens.push_front("[")
 				ctx.unconsumed_tokens.push_back("]")
 				_scope_parse("[", ctx)
-			else:
+			elif UtilsRemote.UClassDetail.get_global_class_path(UString.get_member_access_front(c_1)) != "":
 				_scope_parse("global", ctx)
+			else:
+				ctx.append_error("Unrecognized command: " + c_1)
+				ctx.exit_code = 2 # 2 is err
 	
 	if ctx.scopes.is_empty():
-		print(ctx.title)
 		ctx.append_error("Need to load command set.")
 	
 	if ctx.stdout != "\n":

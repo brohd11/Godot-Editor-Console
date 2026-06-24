@@ -4,7 +4,8 @@ const Config = UtilsLocal.Config
 
 
 const _HELP = \
-"This is a command created with the 'new' command, define help for this command!"
+"Manage commands that run when the console starts.
+Usage: config startup --add <command> [--project]"
 
 var add_flag:bool= false
 var project_flag:bool = false

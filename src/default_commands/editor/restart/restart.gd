@@ -2,8 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "Restart the Godot editor.
-Usage: restart [--no-save]
-  --no-save    restart WITHOUT saving open scenes first (default: save)"
+Usage: editor restart [--no-save]"
 
 var no_save_flag := false
 

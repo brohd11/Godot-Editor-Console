@@ -2,7 +2,8 @@ extends EditorConsoleSingleton.CommandBase
 
 
 const _HELP = \
-"This is a command created with the 'new' command, define help for this command!"
+"Select nodes in the edited scene. Node paths come from stdin (one per line).
+Usage: ... | scene edited select"
 
 var add_flag:=false
 

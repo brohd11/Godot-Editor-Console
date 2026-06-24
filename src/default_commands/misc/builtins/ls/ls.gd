@@ -2,10 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "List files and directories under a project directory (one path per line).
-Usage: ls [res://dir] [--recursive] [--ext=gd] [--dirs]
-  --recursive   descend into subdirectories
-  --ext=        only files with this extension
-  --dirs        list directories only"
+Usage: ls [res://dir] [--recursive] [--ext=gd] [--dirs]"
 
 var recursive_flag := false
 var dirs_flag := false

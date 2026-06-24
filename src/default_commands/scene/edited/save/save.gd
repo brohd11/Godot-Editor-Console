@@ -1,9 +1,9 @@
+@tool
 extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "Save the currently edited scene.
-Usage: save [--as=res://path.tscn]
-  --as=    save the scene to a new path"
+Usage: scene edited save [--as=res://path.tscn]"
 
 var as_flag := ""
 
@@ -38,6 +38,9 @@ func _execute(ctx:CompletionContext):
 	if as_flag != "":
 		EditorInterface.save_scene_as(as_flag)
 	else:
+		if root.scene_file_path == "":
+			ctx.append_error("Scene has no path yet; use 'save --as=res://...' to choose one.")
+			return ExitCode.FAIL
 		err = EditorInterface.save_scene()
 
 	if err != OK:

@@ -21,7 +21,9 @@ static func get_self_command_data() -> Dictionary:
 
 func _get_flags():
 	var options = Options.new()
-	options.add_option("--private")
+	options.add_option("--private", {
+		&"help": "Include private (underscore-prefixed) methods."
+	})
 	return options.get_options()
 
 func _process_flag(flag:String):

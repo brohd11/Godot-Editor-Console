@@ -501,8 +501,9 @@ static func execute_interactive(input_text:String, params:={}):
 	var console = EditorConsoleSingleton.get_instance()
 	var active_ctx = params.get(&"parent_ctx")
 	if not is_instance_valid(active_ctx):
-		var gdrc = console.get_gdrc()
-		active_ctx = CompletionContext.new_ctx(input_text, gdrc, true)
+		active_ctx = CompletionContext.new_ctx(input_text, null, true)
+		#var gdrc = console.get_gdrc()
+		#active_ctx = CompletionContext.new_ctx(input_text, gdrc, true)
 	
 	var print_to_log = params.get(&"print", false)
 	var rich_text = params.get(&"rich_text") as RichTextLabel

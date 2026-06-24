@@ -8,6 +8,17 @@ const ScriptUtil = preload("res://addons/editor_console/src/default_commands/scr
 const LIST_COMMANDS_OPTIONS = ["--methods", "--signals", "--constants", "--properties", "--enums"]
 const LIST_MODIFIER_OPTIONS = ["--lines", "--data", "--inherited"]
 
+const LIST_OPTION_HELP = {
+	"--methods": "List the script's methods.",
+	"--signals": "List the script's signals.",
+	"--constants": "List the script's constants.",
+	"--properties": "List the script's properties.",
+	"--enums": "List the script's enums (requires --inherited).",
+	"--lines": "Print one member per line.",
+	"--data": "Print each member's details.",
+	"--inherited": "Include inherited members from the base class.",
+}
+
 
 static func get_command_name() -> String:
 	return "list"
@@ -22,12 +33,16 @@ static func get_self_command_data() -> Dictionary:
 func _get_flags() -> Dictionary:
 	var options = Options.new()
 	for cmd in LIST_COMMANDS_OPTIONS:
-		options.add_option(cmd)
-	
+		options.add_option(cmd, {
+			&"help": LIST_OPTION_HELP.get(cmd, "")
+		})
+
 	#if options.size() < LIST_COMMANDS_OPTIONS.size():
 	options.add_separator("Modifiers")
 	for cmd in LIST_MODIFIER_OPTIONS:
-		options.add_option(cmd)
+		options.add_option(cmd, {
+			&"help": LIST_OPTION_HELP.get(cmd, "")
+		})
 	
 	return options.get_options()
 

@@ -35,10 +35,10 @@ func _get_commands():
 func _get_flags() -> Dictionary:
 	var options = Options.new()
 	options.add_option("--text", {
-		&"help": ""
+		&"help": "Output the target script's source code to stdout."
 	})
 	options.add_option("--path=", {
-		&"help": "",
+		&"help": "Target a script by res:// path instead of the current one.",
 		&"trailing_char": "",
 		&"flag_completion": {"type": FlagType.FILE, "ext": ["gd"]},
 	})

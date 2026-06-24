@@ -2,7 +2,8 @@ extends EditorConsoleSingleton.CommandBase
 
 
 const _HELP = \
-"This is a command created with the 'new' command, define help for this command!"
+"Run a gdsh script file in a subprocess.
+Usage: run_gdsh <res://script.gdsh>"
 
 static func get_command_name():
 	return "run_gdsh"

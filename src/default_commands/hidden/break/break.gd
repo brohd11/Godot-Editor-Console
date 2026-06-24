@@ -1,7 +1,7 @@
 extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
-"This is a command created with the 'new' command, define help for this command!"
+"Break out of the current loop. Only valid inside a gdsh loop."
 
 static func get_command_name():
 	return "break"

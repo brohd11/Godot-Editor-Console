@@ -2,7 +2,8 @@ extends EditorConsoleSingleton.CommandBase
 
 
 const _HELP = \
-"Commands related to the scene tree."
+"Commands related to the scene tree.
+Pass-through command — routes to its subcommands."
 
 static func get_command_name():
 	return "scene"

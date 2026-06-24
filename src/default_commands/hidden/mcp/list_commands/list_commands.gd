@@ -2,7 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 
 const _HELP = \
-"This is a command created with the 'new' command, define help for this command!"
+"List all available console commands, with a usage preamble."
 
 const PREAMBLE = \
 "Editor console — commands compose like a Unix shell.

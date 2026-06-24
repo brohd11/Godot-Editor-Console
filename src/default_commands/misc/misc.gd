@@ -1,7 +1,8 @@
 extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
-"Misc commands."
+"Misc commands.
+Pass-through command — routes to its subcommands."
 
 static func get_command_name() -> String:
 	return "misc"

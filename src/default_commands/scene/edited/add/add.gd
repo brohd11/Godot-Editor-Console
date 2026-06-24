@@ -3,8 +3,7 @@ extends EditorConsoleSingleton.CommandBase
 const _HELP = \
 "Add a new node to the edited scene.
 Parent is the first selected node, or the scene root if nothing is selected.
-Usage: add <ClassName> [name] [--select]
-  --select    select the newly created node"
+Usage: scene edited add <ClassName> [name] [--select]"
 
 var select_flag := false
 

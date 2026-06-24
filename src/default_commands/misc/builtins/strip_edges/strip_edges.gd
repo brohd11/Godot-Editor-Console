@@ -17,8 +17,12 @@ static func get_self_command_data():
 
 func _get_flags() -> Dictionary:
 	var options = Options.new()
-	options.add_option("--left")
-	options.add_option("--right")
+	options.add_option("--left", {
+		&"help": "Strip leading whitespace only."
+	})
+	options.add_option("--right", {
+		&"help": "Strip trailing whitespace only."
+	})
 	return options.get_options()
 
 func _process_flag(flag:String):

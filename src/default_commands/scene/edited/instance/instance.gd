@@ -2,8 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "Instance a scene as a child of the selected node (or the scene root).
-Usage: instance <res://scene.tscn> [--select]
-  --select    select the new instance"
+Usage: scene edited instance <res://scene.tscn> [--select]"
 
 var select_flag := false
 

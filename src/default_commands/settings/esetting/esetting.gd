@@ -2,12 +2,12 @@ extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "Get or set an editor setting (EditorSettings).
-Usage: setting <name> [value]
+Usage: settings esetting <name> [value]
   (no value)   print the current value
   <value>      set it (converted to the setting's current type)"
 
 static func get_command_name() -> String:
-	return "setting"
+	return "esetting"
 
 static func get_self_command_data() -> Dictionary:
 	return _command_data({

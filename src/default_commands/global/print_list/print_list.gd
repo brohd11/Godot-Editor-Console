@@ -4,6 +4,13 @@ extends EditorConsoleSingleton.CommandBase
 const UClassDetail = UtilsRemote.UClassDetail
 
 const _PRINT_LIST_OPTIONS = ["--tool", "--abstract", "--name=", "--lang=", "--base="]
+const _PRINT_LIST_HELP = {
+	"--tool": "Only list tool classes.",
+	"--abstract": "Only list abstract classes.",
+	"--name=": "Filter by class name (substring).",
+	"--lang=": "Filter by script language (default GDScript).",
+	"--base=": "Filter by base class.",
+}
 
 var show_abstract:= false
 var show_tool:= false
@@ -26,10 +33,13 @@ func _get_flags() -> Dictionary:
 	for arg in _PRINT_LIST_OPTIONS:
 		if arg.ends_with("="):
 			options.add_option(arg, {
+				&"help": _PRINT_LIST_HELP.get(arg, ""),
 				&"trailing_char": ""
 			})
 		else:
-			options.add_option(arg)
+			options.add_option(arg, {
+				&"help": _PRINT_LIST_HELP.get(arg, "")
+			})
 	return options.get_options()
 
 func _process_flag(flag:String):

@@ -2,7 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 
 const _HELP = \
-"This is a command created with the 'new' command, define help for this command!"
+"Drop the first positional argument of the parent command (gdsh argument shifting)."
 
 static func get_command_name():
 	return "shift"

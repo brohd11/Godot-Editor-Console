@@ -3,7 +3,7 @@ extends EditorConsoleSingleton.CommandBase
 const _HELP = \
 "Search file contents across the project.
 Outputs one 'res://path:line:text' per match (pipeable).
-Usage: search <pattern> [--ext=gd] [--regex] [--ignore-case]"
+Usage: editor search <pattern> [--ext=gd] [--regex] [--ignore-case]"
 
 const _TEXT_EXTS = ["gd", "tscn", "tres", "cfg", "txt", "md", "json", "csv", "gdshader", "import", "gdsh"]
 

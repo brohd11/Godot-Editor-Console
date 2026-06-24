@@ -5,7 +5,7 @@ const _HELP = \
 Usage: ... | attach <res://script.gd>"
 
 static func get_command_name() -> String:
-	return "attach"
+	return " scene edited attach"
 
 static func get_self_command_data() -> Dictionary:
 	return _command_data({

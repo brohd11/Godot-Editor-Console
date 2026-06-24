@@ -75,29 +75,41 @@ func __get_self_command_data__() -> Dictionary:
 	var processed = Options.get_single_option_dict(name, params)
 	return processed
 
-func get_help_string() -> String:
+func get_help_string(full_string:bool=false) -> String:
 	var help = get_self_command_data().get(&"help", "")
-	if help == "":
-		return ""
+	if not full_string or help == "":
+		return help
+	
+	var flags = get_flags()
+	flags.erase(Options.Keys.COMMAND_META)
+	if flags.size() > 0:
+		help += "\nFlags:"
+		# width of the widest flag name, so the help descriptions line up in a column
+		var flag_width = 0
+		for f in flags.keys():
+			if Options.Keys.get_seperator(f) != null:
+				continue
+			flag_width = maxi(flag_width, f.length())
+		for f in flags.keys():
+			var separator = Options.Keys.get_seperator(f)
+			if separator != null:
+				# label already carries its own decorators (see Options.add_separator)
+				help += "\n  " + separator if separator != "" else "\n"
+				continue
+			var f_help = flags[f].get(&"help", "")
+			if f_help == "":
+				help += "\n  " + f
+				continue
+			if f_help.contains("\n"):
+				f_help = f_help.get_slice("\n", 0)
+			help += "\n  " + f.rpad(flag_width) + "  " + f_help
+
 	var commands = get_commands()
 	commands.erase(Options.Keys.COMMAND_META)
 	if commands.size() > 0:
 		help += "\nSubcommands:"
 		for c in commands.keys():
 			help += "\n  " + c
-			var c_help = commands[c].get(&"help")
-			if c_help != "":
-				help += ": " + c_help
-	
-	var flags = get_flags()
-	flags.erase(Options.Keys.COMMAND_META)
-	if flags.size() > 0:
-		help += "\nFlags:"
-		for f in flags.keys():
-			help += "\n  " + f
-			var f_help = flags[f].get(&"help")
-			if f_help != "":
-				help += ": " + f_help
 	return help
 
 
@@ -348,9 +360,9 @@ func _get_help_for_token(token:String):
 	var split = _split_flag(token)
 	var option_data = _get_option_data(split, get_flags(), get_commands())
 	if option_data != null and option_data.has(&"help"):
-		_ctx_obj.append_output(get_help_string())
-		if split == get_command_name():
-			print_available_commands()
+		_ctx_obj.append_output(get_help_string(true))
+		#if split == get_command_name(): # added this to get help string
+			#print_available_commands()
 	else:
 		_get_help(token)
 

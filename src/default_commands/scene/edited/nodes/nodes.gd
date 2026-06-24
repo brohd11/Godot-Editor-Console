@@ -14,7 +14,7 @@ var script_flag:=""
 var selected_flag:=false
 
 static func get_command_name():
-	return "get_nodes"
+	return "nodes"
 
 static func get_self_command_data():
 	return _command_data({
@@ -36,7 +36,7 @@ func _get_flags() -> Dictionary:
 		&"help": "Check nodes inherit"
 	})
 	options.add_option("--selected", {
-		&"help": ""
+		&"help": "Restrict to the currently selected nodes."
 	})
 	return options.get_options()
 
