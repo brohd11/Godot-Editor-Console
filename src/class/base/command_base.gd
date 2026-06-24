@@ -245,7 +245,11 @@ func execute(ctx:CompletionContext):
 		_get_help_for_token(consumed_tokens.front())
 		#print(positional_args)
 		return ExitCode.FAIL
-	return _execute(ctx)
+	
+	var result = _execute(ctx)
+	if result != null and result is int:
+		ctx.exit_code = result
+	return result
 
 func _execute(ctx:CompletionContext):
 	var help = consumed_tokens.front()
