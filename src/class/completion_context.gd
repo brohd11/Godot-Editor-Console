@@ -4,7 +4,7 @@ const UClassDetail = UtilsRemote.UClassDetail
 const UString = UtilsRemote.UString
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
-const ConsoleLineEdit = UtilsLocal.ConsoleLineContainer.ConsoleLineEdit
+const ConsoleLineEdit = UtilsLocal.ConsoleLineEdit
 const ExitCode = UtilsLocal.CommandBase.ExitCode
 
 const ConsoleTokenizer = UtilsLocal.ConsoleTokenizer
@@ -18,11 +18,13 @@ enum Propagate{
 	VARIABLES,
 	FUNCTIONS,
 	ALIASES,
+	PROPERTY,
 }
 
 var title:String
 
-var line_edit:ConsoleLineEdit
+var console_container:UtilsLocal.ConsoleContainer
+var line_edit:CodeEdit #:ConsoleLineEdit
 
 var console_display_string:String
 
@@ -46,6 +48,8 @@ var variables := {}
 var functions := {}
 var aliases := {}
 var scopes := {}
+
+var cwd:String = "res://"
 
 var stdin:String
 var stdout:String
@@ -304,6 +308,8 @@ static func new_ctx(text:String, parent:CompletionContext=null, sub_shell:=false
 		if not sub_shell: # so that function definitions do not populate up
 			ctx.parent_ctx = parent
 		
+		ctx.console_container = parent.console_container
+		ctx.cwd = parent.cwd
 		ctx.execute = parent.execute
 		ctx.os_mode = parent.os_mode # not sure that this is necessary?
 		
@@ -336,3 +342,6 @@ func propogate(target:Propagate, key:String, value):
 		Propagate.ALIASES:
 			for inh:CompletionContext in inher: 
 				inh.aliases[key] = value
+		Propagate.PROPERTY:
+			for inh:CompletionContext in inher:
+				inh.set(key, value)

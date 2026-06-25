@@ -2,10 +2,10 @@ extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
 "Attach a script to nodes. Targets come from stdin (node paths) or the selection.
-Usage: ... | attach <res://script.gd>"
+Usage: ... | scene edited attach <res://script.gd>"
 
 static func get_command_name() -> String:
-	return " scene edited attach"
+	return "attach"
 
 static func get_self_command_data() -> Dictionary:
 	return _command_data({

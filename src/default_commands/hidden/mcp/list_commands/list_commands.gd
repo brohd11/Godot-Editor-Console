@@ -29,4 +29,10 @@ static func get_self_command_data():
 func _execute(ctx:CompletionContext):
 	var ins = EditorConsoleSingleton.get_instance()
 	ctx.append_output(PREAMBLE)
-	ctx.append_output(ins.get_command_list())
+	
+	var list = ins._cache.get(EditorConsoleSingleton.ConsoleBridge.COMMAND_LIST_KEY, "")
+	if list.is_empty():
+		list = ins.ConsoleBridge.build_mcp_command_list()
+		ins._cache[EditorConsoleSingleton.ConsoleBridge.COMMAND_LIST_KEY] = list
+	
+	ctx.append_output(list)

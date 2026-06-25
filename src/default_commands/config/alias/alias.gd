@@ -81,8 +81,7 @@ func _execute(ctx:CompletionContext):
 		ctx.append_error("--add and --rm flags are mutually exclusive.")
 		return ExitCode.FAIL
 	
-	var console = EditorConsoleSingleton.get_instance()
-	var file_path = console.os_home_dir.path_join(".gdrc")
+	var file_path = EditorConsoleSingleton.UtilsLocal.ConsoleOS.get_os_home_dir().path_join(".gdrc")
 	if not FileAccess.file_exists(file_path):
 		FileAccess.open(file_path, FileAccess.WRITE)
 	

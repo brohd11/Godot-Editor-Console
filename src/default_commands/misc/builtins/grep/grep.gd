@@ -35,6 +35,11 @@ func _process_flag(flag:String):
 		invert_flag = true
 
 func _execute(ctx:CompletionContext):
+	#return Execution.execute_command("os " + " ".join(consumed_tokens), {
+		#&"parent_ctx": ctx,
+	#})
+	# Atlernative plan, just forward through os
+	
 	var pattern = positional_args[0]
 	var regex:RegEx
 	if regex_flag:

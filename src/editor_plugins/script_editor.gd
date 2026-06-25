@@ -37,10 +37,10 @@ func _callback(script_editor:CodeEdit, path):
 				method_name += " -- "
 			var call_string = "script%s call%s %s" % [member_path, default_flag, method_name]
 			
-			ed_console.set_console_text(call_string)
-			if not ed_console.console_line_container.console_line_edit.visible:
+			ed_console.editor_container.set_console_text(call_string)
+			if not ed_console.editor_container.line_edit.visible:
 				ed_console._toggle_console()
-			ed_console.console_line_container.console_line_edit.grab_focus()
+			ed_console.editor_container.line_edit.grab_focus()
 		else:
 			UtilsLocal.Print.error("Could not resolve access path for: %s" % word)
 		

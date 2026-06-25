@@ -1,6 +1,8 @@
 @tool
 extends Node
 
+const COMMAND_LIST_KEY = "command_list"
+
 ## Loopback TCP listener that runs editor_console commands sent by an external
 ## client (e.g. the Go MCP server / CLI) and returns the captured output.
 ##
@@ -21,9 +23,9 @@ var _server: TCPServer
 ## gdsh functions and multiline all behave identically to typing in the console.
 static func run_command_capture(text:String) -> Dictionary:
 	var ctx = EditorConsoleSingleton.get_main_ctx()
+	
 	EditorConsoleSingleton.execute_interactive(text, {
-		&"parent_ctx": ctx,
-		&"print": false,
+		&"parent_ctx": ctx, # no console container provided means no print or history
 	})
 	return {
 		"stdout": ctx.stdout,

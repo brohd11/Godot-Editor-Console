@@ -21,9 +21,14 @@ func _process_flag(flag:String):
 	if flag == "--history":
 		clear_history = true
 
-func _execute(_ctx:CompletionContext):
-	if clear_history:
-		EditorConsoleSingleton.get_instance().previous_commands.clear()
-		
-	EditorConsoleSingleton.get_instance().clear_button.pressed.emit()
+func _execute(ctx:CompletionContext):
+	var console_container:UtilsLocal.ConsoleContainer = ctx.console_container
 	
+	if clear_history:
+		console_container.command_history.clear()
+	
+	var rich_text = console_container.get_rich_text()
+	if is_instance_valid(rich_text):
+		rich_text.clear()
+	else:
+		EditorConsoleSingleton.get_instance().clear_button.pressed.emit()

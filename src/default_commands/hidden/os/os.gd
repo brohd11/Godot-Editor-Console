@@ -2,6 +2,8 @@ extends EditorConsoleSingleton.CommandBase
 
 const UFile = UtilsRemote.UFile
 
+const CDCmd = preload("res://addons/editor_console/src/default_commands/hidden/cd/cd.gd")
+
 const _OS_LINUX = "Linux"
 const _OS_MAC = "macOS"
 const _OS_WIN = "Windows"
@@ -17,47 +19,41 @@ static func get_self_command_data() -> Dictionary:
 		&"help": "All commands after the 'os' prefix are ran via OS.execute with stdin if piped."
 	})
 
-static func get_os_string():
+static func get_os_user() -> String:
 	var system = OS.get_name()
-	if system == _OS_LINUX:
-		var user = OS.get_environment("USER")
-		var hostname = OS.get_environment("HOSTNAME")
-		hostname = hostname.strip_edges()
-		if hostname == "":
-			var output = []
-			var _exit = OS.execute("hostname",[], output)
-			hostname = output[0].strip_edges()
-			if hostname == "":
-				hostname = "linux-pc"
-		return "%s@%s" % [user, hostname]
-		
-	elif system == _OS_WIN:
-		var user = OS.get_environment("USERNAME")
-		var hostname = OS.get_environment("COMPUTERNAME")
-		return "%s@%s" % [user, hostname]
-	elif system == _OS_MAC:
-		var user = OS.get_environment("USER")
-		var hostname = OS.get_environment("HOSTNAME")
-		hostname = hostname.strip_edges()
-		if hostname == "":
-			var output = []
-			var _exit = OS.execute("hostname", [], output)
-			hostname = output[0].strip_edges()
-			if hostname == "":
-				hostname = "mac"
-		return "%s@%s" % [user, hostname]
+	match system:
+		_OS_LINUX, _OS_MAC: return OS.get_environment("USER")
+		_OS_WIN: return OS.get_environment("USERNAME")
+		_: return "user"
 
-static func get_os_home_dir():
+static func get_os_host() -> String:
 	var system = OS.get_name()
-	if system == _OS_LINUX:
-		var home = OS.get_environment("HOME")
-		return home
-	elif system == _OS_MAC:
-		var home = OS.get_environment("HOME")
-		return home
-	elif system == _OS_WIN:
-		var home = OS.get_environment("USERPROFILE")
-		return home
+	match system:
+		_OS_LINUX, _OS_MAC:
+			var hostname = OS.get_environment("HOSTNAME").strip_edges()
+			if hostname == "":
+				var output = []
+				var _exit = OS.execute("hostname",[], output)
+				hostname = output[0].strip_edges()
+				if hostname == "":
+					if system == _OS_LINUX:
+						hostname = "linux-pc"
+					else:
+						hostname = "mac"
+			return hostname
+		_OS_WIN:
+			return OS.get_environment("COMPUTERNAME")
+		_: return "Unrecongnized"
+
+static func get_os_string():
+	return "%s@%s" % [get_os_user(), get_os_host()]
+
+static func get_os_home_dir() -> String:
+	var system = OS.get_name()
+	match system:
+		_OS_LINUX, _OS_MAC: return OS.get_environment("HOME")
+		_OS_WIN: return OS.get_environment("USERPROFILE")
+		_: return "NO HOME"
 
 func _get_commands() -> Dictionary:
 	return {}
@@ -79,35 +75,34 @@ func _consume_self(ctx:CompletionContext) -> ExitCode:
 func _get_help(_what:String):
 	pass
 
-func _get_completions(_ctx:CompletionContext) -> Dictionary:
-	if not EditorConsoleSingleton.get_instance().os_mode:
-		return {}
-	
+func _get_completions(ctx:CompletionContext) -> Dictionary:
 	#if positional_args.is_empty():
 		#return _get_os_commands()
 	if positional_args.is_empty():
 		return {}
 	var options = Options.new()
 	if positional_args[0] == "cd":
-		var target_dir = EditorConsoleSingleton.get_instance().os_cwd
-		if positional_args.size() > 1:
-			var next_dir = positional_args[1]
-			if next_dir.ends_with("/"):
-				pass
-			elif next_dir.contains("/"):
-				next_dir = next_dir.get_base_dir()
-			else:
-				next_dir = ""
-			target_dir = target_dir.path_join(next_dir)
-		if not DirAccess.dir_exists_absolute(target_dir):
-			return {}
-		var dirs = DirAccess.get_directories_at(target_dir)
-		dirs = Array(dirs)
-		dirs.push_front("..")
-		for dir in dirs:
-			options.add_option(dir, {
-				&"trailing_char": "/"
-			})
+		var split_args = positional_args.slice(1)
+		return CDCmd.get_completion_static(ctx, split_args)
+		#var target_dir = ctx.cwd
+		#if positional_args.size() > 1:
+			#var next_dir = positional_args[1]
+			#if next_dir.ends_with("/"):
+				#pass
+			#elif next_dir.contains("/"):
+				#next_dir = next_dir.get_base_dir()
+			#else:
+				#next_dir = ""
+			#target_dir = target_dir.path_join(next_dir)
+		#if not DirAccess.dir_exists_absolute(target_dir):
+			#return {}
+		#var dirs = DirAccess.get_directories_at(target_dir)
+		#dirs = Array(dirs)
+		#dirs.push_front("..")
+		#for dir in dirs:
+			#options.add_option(dir, {
+				#&"trailing_char": "/"
+			#})
 	
 	return options.get_options()
 
@@ -118,24 +113,25 @@ func _get_target_positional_count() -> int:
 func _execute(ctx:CompletionContext):
 	var editor_console = EditorConsoleSingleton.get_instance()
 	if positional_args.is_empty():
-		editor_console.toggle_os_mode()
+		#editor_console.toggle_os_mode() # is this even reachable? this func is moved to console container
 		return ExitCode.OK
 	
 	var command_needs_scan = false # not being set?
 	
-	var trimmed_command = editor_console.last_command.trim_prefix("os").strip_edges()
-	if trimmed_command.is_empty():
-		trimmed_command = "os"
-	
-	var cwd_check = _check_dir_exists_shell(editor_console.os_cwd)
-	#print("OS CWD CHECK:", editor_console.os_cwd, " -> ", cwd_check)
-	if cwd_check == "" or not DirAccess.dir_exists_absolute(cwd_check) or not editor_console.os_cwd.is_absolute_path():
-		ctx.append_output("Sanity check, resetting cwd.")
-		editor_console.os_cwd = ProjectSettings.globalize_path("res://")
-		return ExitCode.FAIL
+	#var cwd_check = _check_dir_exists_shell(ctx.cwd, ctx)
+	##print("OS CWD CHECK:", ctx.cwd, " -> ", cwd_check)
+	#if cwd_check == "" or not DirAccess.dir_exists_absolute(cwd_check) or not ctx.cwd.is_absolute_path():
+		#ctx.append_output("Sanity check, resetting cwd.")
+		#ctx.cwd = ProjectSettings.globalize_path("res://")
+		#ctx.propogate(CompletionContext.Propagate.PROPERTY, "cwd", ctx.cwd)
+		#return ExitCode.FAIL
 	
 	var result = [""]
 	if positional_args[0] in EMULATED_COMMANDS:
+		if positional_args[0] == "cd":
+			var split_args = positional_args.slice(1)
+			return CDCmd.execute_static(ctx, split_args)
+		
 		result = _emulated_command(positional_args, ctx)
 	else:
 		result = _execute_wrapper(positional_args, ctx)
@@ -161,25 +157,7 @@ static func _execute_wrapper(commands:Array, ctx:CompletionContext=null):
 	
 	#print(commands)
 	
-	var combined = ""
-	if ctx != null:
-		combined = " ".join(commands)
-		
-		# using raw text will not allow gd side variables to work
-		#combined = ctx.raw_text.trim_prefix("os").strip_escapes()
-		#print("RAW:", combined)
-	else:
-		#for i in range(commands.size()):
-			#var tok = commands[i]
-			#if tok.contains(" "):
-				#var quote_char = "'"
-				#if UtilsRemote.UString.is_string_or_string_name(tok):
-					#quote_char = tok[0]
-					#tok = UtilsRemote.UString.unquote(tok)
-				#tok = ConsoleTokenizer.shell_quote(tok, quote_char)
-				#commands[i] = tok
-		
-		combined = " ".join(commands)
+	var combined = " ".join(commands)
 	
 	
 	var os_name := OS.get_name()
@@ -203,7 +181,7 @@ static func _execute_wrapper(commands:Array, ctx:CompletionContext=null):
 			combined = combined + " < %s" % stdin_q
 
 	# script + executor
-	var cwd_q = q.call(editor_console.os_cwd)
+	var cwd_q = q.call(ctx.cwd)
 	var ext := "bat" if is_win else "sh"
 	var tmp_args_abs := ProjectSettings.globalize_path(
 		"user://addons/editor_console/tmp/args.%s" % ext)   # RAW path for the args array
@@ -249,7 +227,7 @@ static func _emulated_command(commands:Array, ctx:CompletionContext) -> Array:
 	if c_1 == "ls":
 		return _ls(commands, ctx)
 	elif c_1 == "cd":
-		return _cd(commands)
+		return _cd(commands, ctx)
 	
 	return [""]
 
@@ -258,55 +236,57 @@ static func _ls(commands:Array, ctx:CompletionContext):
 		var c_2 = commands[1]
 		if c_2.begins_with("--"):
 			#_execute_wrapper(commands)
-			return _execute_wrapper(commands)
+			return _execute_wrapper(commands, ctx)
 	
-	var result = _execute_wrapper(commands)
+	var result = _execute_wrapper(commands, ctx)
 	if ctx.command_statements.size() == 1:
 		result[0] = _one_line_result(result[0])
 	return result
  
-static func _cd(commands:Array):
-	var editor_console = EditorConsoleSingleton.get_instance()
+static func _cd(commands:Array, ctx:CompletionContext):
+	var cwd = ProjectSettings.globalize_path(ctx.cwd)
+	print(commands)
 	var target_dir = ""
 	if commands.size() == 1:
 		target_dir = ProjectSettings.globalize_path("res://")
 	elif commands.size() == 2:
 		var c_2 = commands[1]
 		if c_2.begins_with("-") or c_2.begins_with("--"):
-			var result = _execute_wrapper(commands)
+			var result = _execute_wrapper(commands, ctx)
 			return result
 		
 		target_dir = ProjectSettings.globalize_path(c_2)
 		if c_2.begins_with("..") or c_2.begins_with("."):
-			target_dir = editor_console.os_cwd.path_join(c_2)
+			target_dir = cwd.path_join(c_2)
 			target_dir = target_dir.simplify_path()
 	
-	var dir_exists = _check_dir_exists_shell(target_dir)
+	
+	var dir_exists = _check_dir_exists_shell(target_dir, ctx)
 	if dir_exists:
 		if not dir_exists.ends_with("/"):
 			dir_exists += "/"
-		editor_console.os_cwd = dir_exists
+		ctx.propogate(CompletionContext.Propagate.PROPERTY, "cwd", dir_exists)
 	else:
-		var check_cwd = _check_dir_exists_shell(editor_console.os_cwd)
+		var check_cwd = _check_dir_exists_shell(cwd, ctx)
 		if not check_cwd:
-			editor_console.os_cwd = "res://"
+			ctx.propogate(CompletionContext.Propagate.PROPERTY, "cwd", "res://")
 			return ["", "Current working dir not valid, resetting to 'res://'"]
 		if target_dir.begins_with("/"):
 			return ["", "Directory does not exist: %s" % target_dir]
 		else:
-			return ["", "Directory does not exist: %s" % editor_console.os_cwd.path_join(target_dir)]
+			return ["", "Directory does not exist: %s" % cwd.path_join(target_dir)]
 		
 	return [""]
 
 
-static func _check_dir_exists_shell(dir):
+static func _check_dir_exists_shell(dir, ctx):
 	var check_dir_command = []
 	var os_name = OS.get_name()
 	if os_name == _OS_LINUX or os_name == _OS_MAC:
 		check_dir_command = ['test -d "%s" && realpath "%s"' % [dir, dir]]
 	elif os_name == _OS_WIN:
 		check_dir_command = ["if exist \"%s\" (echo true) else (echo false)" % dir]
-	var result = _execute_wrapper(check_dir_command)
+	var result = _execute_wrapper(check_dir_command, ctx)
 	return result[0].strip_edges()
 
 static func _one_line_result(result_string):

@@ -450,6 +450,7 @@ static func execute_command(text:String, params:={}):
 		os_ctx.execute_parse()
 		_parse_command(os_ctx)
 		active_ctx.append_output(os_ctx.stdout)
+		active_ctx.append_error(os_ctx.stderr)
 	else:
 		var skip_current_block = false
 		var last_ctx = null
@@ -489,18 +490,13 @@ static func execute_command(text:String, params:={}):
 				if current_ctx.exit_code == 0:
 					skip_current_block = true  # Succeeded! Skip the next block.
 			
-			# stderr never flows through a pipe, so always surface it (otherwise
-			# errors from non-final pipeline stages are silently dropped).
-			active_ctx.append_error(current_ctx.stderr)
+			active_ctx.append_error(current_ctx.stderr) # stderr never flows through a pipe, always surface
 			if cmd_data.post != "|":
 				active_ctx.append_output(current_ctx.stdout)
 				active_ctx.last_status = current_ctx.exit_code
 			
 			# end of command
 			last_ctx = current_ctx
-	
-	
-	#active_ctx.strip_output_newlines()
 	
 	# returns parent or the subshell
 	return active_ctx

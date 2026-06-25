@@ -12,11 +12,25 @@ const Pr = UString.PrintRich
 const UClassDetail = UtilsRemote.UClassDetail
 const EditorColors = UtilsRemote.EditorColors
 
-var global_names = []
-var var_names = []
-var scope_names = []
+var current_ctx:UtilsLocal.CompletionContext
+
+var global_names:= []
+var var_names:= []
+var scope_names:= []
+var func_names:= []
+var aliases:= []
 
 var os_mode:bool
+
+var setting_helper:UtilsRemote.SettingHelperEditor
+var global_color:Color
+var func_color:Color
+
+func _init() -> void:
+	setting_helper = UtilsRemote.SettingHelperEditor.new()
+	setting_helper.subscribe_property(self, &"global_color", "text_editor/theme/highlighting/user_type_color", Color())
+	setting_helper.subscribe_property(self, &"func_color", "text_editor/theme/highlighting/gdscript/function_definition_color", Color())
+	setting_helper.initialize()
 
 func _get_line_syntax_highlighting(line: int) -> Dictionary:
 	var text_edit = get_text_edit()
@@ -25,6 +39,11 @@ func _get_line_syntax_highlighting(line: int) -> Dictionary:
 		return check_keyword(line_text, ["os"], Colors.SCOPE, 0)
 	
 	global_names = UClassDetail.get_all_global_class_paths().keys()
+	if is_instance_valid(current_ctx):
+		var_names = current_ctx.variables.keys()
+		scope_names = current_ctx.scopes.keys()
+		func_names = current_ctx.functions.keys()
+		aliases = current_ctx.aliases.keys()
 	
 	var hl_info = {}
 	
@@ -34,22 +53,16 @@ func _get_line_syntax_highlighting(line: int) -> Dictionary:
 		#var cmd_start_index = line_text.find(cmd)
 		#cmd_start = cmd_start_index + 1
 		
-	var other_token_hl = check_keyword(cmd, ConsoleTokenizer.HL_TOKENS, Colors.SYMBOL)
-	hl_info.merge(other_token_hl)
+
+	hl_info.merge(check_keyword(cmd, ConsoleTokenizer.HL_TOKENS, Colors.SYMBOL))
+	hl_info.merge(check_keyword(cmd, scope_names, Colors.SCOPE))
+	hl_info.merge(check_keyword(cmd, var_names, Colors.VAR_GREEN))
 	
-	var scope_hl = check_keyword(cmd, scope_names, Colors.SCOPE)
-	hl_info.merge(scope_hl)
-	
-	#var hidden_scope_hl = check_keyword(cmd, hidden_scope_names, scope_color)
-	#hl_info.merge(hidden_scope_hl)
-	
-	var var_name_hl = check_keyword(cmd, var_names, Colors.VAR_GREEN)
-	hl_info.merge(var_name_hl)
-	
-	var global_name_hl = check_keyword(cmd, global_names, EditorColors.get_syntax_color(EditorColors.SyntaxColor.ENGINE_TYPE))
+	var global_name_hl = check_keyword(cmd, global_names, global_color)
 	hl_info.merge(global_name_hl)
-		
-		
+	
+	hl_info.merge(check_keyword(cmd, func_names, func_color)) # these should have new colors
+	hl_info.merge(check_keyword(cmd, aliases, Colors.VAR_GREY))
 	
 	var hl_info_keys = hl_info.keys()
 	hl_info_keys.sort()

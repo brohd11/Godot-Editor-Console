@@ -17,6 +17,8 @@ const Config = UtilsLocal.Config
 const ScopeDataKeys = UtilsLocal.ScopeDataKeys
 const Colors = UtilsLocal.Colors
 
+const ConsoleContainer = UtilsLocal.ConsoleContainer
+
 const ConsoleCommandSetBase = UtilsLocal.ConsoleCommandSetBase
 const CommandBase = UtilsLocal.CommandBase
 const CompletionContext = UtilsLocal.CompletionContext
@@ -26,62 +28,36 @@ const ScriptEditorContext = preload("res://addons/editor_console/src/editor_plug
 const ConsoleBridge = preload("res://addons/editor_console/src/bridge/console_bridge.gd")
 
 
-
-
-
-#region Old plugin.gd vars
-
-
 var right_click_handler:RightClickHandler
-
 var script_editor_context:ScriptEditorContext
 
 var filter_line_edit:LineEdit
 var main_hsplit:HSplitContainer
-var console_line_container:UtilsLocal.ConsoleLineContainer
+var editor_container:UtilsLocal.ConsoleContainer
+var console_containers:= []
 
 var show_filter:bool = true
 
+var settings_helper:UtilsRemote.SettingHelperEditor
+var _console_replace_filter:bool=false
 # When true, mutating scene commands register on the editor undo stack (Ctrl+Z).
 # When false they apply directly with no undo entry. Toggle via `config undo on|off`.
 var undo_tracking:bool = true
 
-#endregion
 
 var _cache:= {}
 
 var _bridge:ConsoleBridge
-var _command_list_cache:String = ""
-
-var settings_helper:UtilsRemote.SettingHelperEditor
-var _console_replace_filter:bool=false
-
-var console_line_edit:UtilsLocal.ConsoleLineContainer.ConsoleLineEdit
-var last_command:String
-var previous_commands = []
-var current_command_index:int = -1
-
-var os_label:RichTextLabel
-var os_mode:= false
-var os_user:String
-var os_string_raw:String
-var os_string:String
-var os_home_dir:String
-var os_cwd:String:
-	set(value):
-		value = value.trim_suffix("/")
-		os_cwd = value
-		_update_os_string()
 
 
-var scope_dict = {}
-var hidden_scope_dict = {}
-var _temp_scope_dict = {}
 
-var variable_dict = {}
-var working_variable_dict = {}
 
-var tokenizer:UtilsLocal.ConsoleTokenizer
+var scope_dict:= {}
+var hidden_scope_dict:= {}
+var _temp_scope_dict:= {}
+
+var variable_dict:= {}
+var working_variable_dict:= {}
 
 var filter_button:Button
 var clear_button:Button
@@ -96,11 +72,6 @@ func _init(plugin:EditorPlugin) -> void:
 	settings_helper.subscribe_property(self, &"undo_tracking", EditorSet.TRACK_UNDO_REDO, true)
 	settings_helper.initialize()
 	
-	os_user = UtilsLocal.ConsoleOS.get_os_string()
-	os_cwd = ProjectSettings.globalize_path("res://")
-	os_home_dir = UtilsLocal.ConsoleOS.get_os_home_dir()
-	_update_os_string()
-	
 	script_editor_context = ScriptEditorContext.new()
 	plugin.add_context_menu_plugin(EditorContextMenuPlugin.CONTEXT_SLOT_SCRIPT_EDITOR_CODE, script_editor_context)
 	
@@ -112,7 +83,6 @@ func _ready() -> void:
 	EditorInterface.get_resource_filesystem().filesystem_changed.connect(_on_filesystem_changed)
 
 func _ready_deferred():
-	#tokenizer = UtilsLocal.ConsoleTokenizer.new()
 	_load_default_commands()
 	EditorNodeRef.call_on_ready(_start_up_commands)
 
@@ -177,7 +147,6 @@ static func register_temp_scope(scope_name:String, object_or_callable:Variant) -
 		return
 	
 	ins._temp_scope_dict[scope_name] = data
-	#set_var_highlighter()
 	ins._load_default_commands()
 
 
@@ -197,7 +166,7 @@ func _load_default_commands():
 	hidden_scope_dict.clear()
 	variable_dict.clear()
 	
-	_command_list_cache = ""
+	_cache.erase(ConsoleBridge.COMMAND_LIST_KEY)
 	
 	_get_scope_set_data(UtilsLocal.DefaultCommands)
 	scope_dict.merge(_temp_scope_dict, true)
@@ -218,26 +187,11 @@ func _load_default_commands():
 	for script_path in sets:
 		_get_scope_set_data(script_path)
 	
-	if is_instance_valid(console_line_edit):
-		set_var_highlighter()
-	
+	update_consoles()
 	return true
 
 
-func set_var_highlighter():
-	var current_scope_data = get_current_scope_data()
-	
-	var syn:UtilsLocal.SyntaxHl = console_line_edit.syntax_highlighter
-	syn.scope_names = current_scope_data.keys()
-	#syn.scope_names = scope_dict.keys()
-	#syn.hidden_scope_names = hidden_scope_dict.keys()
-	syn.var_names = variable_dict.keys()
-	syn.clear_highlighting_cache()
-	
-	console_line_edit.scope_dict = scope_dict
-	console_line_edit.combined_scope_dict = current_scope_data
-	console_line_edit.variable_dict = variable_dict
-	console_line_edit.editor_console = self
+
 
 static func register_persistent_scope(scope_name:String, script_path:String, project:bool=false):
 	if not _instance_valid_err(): return
@@ -400,128 +354,19 @@ func get_current_scope_data():
 	return dict
 
 
-func _update_os_string():
-	os_string = _get_console_label_string(true)
-	if os_label:
-		os_label.text = os_string
-
-func _toggle_os_mode():
-	os_mode = not os_mode
-	console_line_edit.syntax_highlighter.os_mode = os_mode
-	console_line_edit.os_mode = os_mode
-	if os_mode:
-		_update_os_string()
-		print_rich(_get_console_label_string(), " Entered OS mode.")
-		if console_line_edit.visible:
-			os_label.show()
-	else:
-		os_label.text = _get_console_label_string()
-		print_rich(_get_console_label_string(), " Exited OS mode")
-
-func _get_console_label_string(os:=false):
-	if os:
-		var display_cwd = os_cwd#.trim_prefix(os_home_dir)
-		if display_cwd == "":
-			display_cwd = "/"
-		elif display_cwd == os_home_dir:
-			display_cwd = "~"
-		else:
-			if true: # make this a setting?
-				display_cwd = display_cwd.trim_suffix("/").get_file()
-			else:
-				display_cwd = "~/" + display_cwd
-		return Pr.new().append(os_user, Colors.OS_USER).append(":").append(display_cwd, Colors.OS_PATH).append(" $").get_string()
-	
-	var accent_color = UtilsRemote.EditorColors.get_theme_color(UtilsRemote.EditorColors.ThemeColor.ACCENT)
-	return Pr.new().append("Console$", accent_color).get_string()
-
-func set_console_text(text:String) -> void:
-	_set_console_text(text)
-
-func _set_console_text(text:String) -> void:
-	console_line_edit.text = text
-	await console_line_edit.get_tree().process_frame
-	console_line_edit.set_caret_column(text.length())
-
-
-func add_to_history(command:String):
-	last_command = command
-	var history_prompt = command
-	if os_mode and history_prompt.begins_with("os"):
-		history_prompt = history_prompt.trim_prefix("os").strip_edges()
-	var cmd_index = previous_commands.rfind(history_prompt)
-	if cmd_index == -1:
-		previous_commands.append(history_prompt)
-	else:
-		previous_commands.remove_at(cmd_index)
-		previous_commands.append(history_prompt)
-
-func _console_gui_input(event: InputEvent) -> void:
-	if not console_line_edit.has_focus():
-		return
-	
-	if event is InputEventKey:
-		var keycode = event.keycode
-		var keycode_text = event.as_text_keycode()
-		if event.is_pressed() and keycode == KEY_ENTER:
-			_on_console_text_submitted(console_line_edit.text)
-		
-		if not event.is_pressed():
-			return
-		
-		if keycode == KEY_UP:
-			prev_command()
-		elif keycode == KEY_DOWN:
-			next_command()
-		elif keycode_text == "Ctrl+Shift+Up":
-			prev_valid_command()
-		elif keycode_text == "Ctrl+Shift+Down":
-			next_valid_command()
-
-
-func _on_console_text_submitted(new_text:String) -> void:
-	working_variable_dict.clear()
-	current_command_index = -1
-	
-	if new_text.strip_edges() == "os":
-		toggle_os_mode()
-	else:
-		var main_ctx = get_main_ctx()
-		execute_interactive(new_text, {
-			&"parent_ctx": main_ctx,
-			&"os_mode": os_mode,
-			&"print": true,
-			&"add_to_hist": true
-		})
-	
-	await console_line_edit.get_tree().process_frame
-	console_line_edit.clear()
-	
-	var console_text = get_console_text_box() as RichTextLabel
-	console_text.scroll_to_line(console_text.get_line_count())
-
-
-#! keys rich_text:RichTextLabel parent_ctx:CompletionContext print:bool add_to_hist:bool os_mode:bool
+#! keys parent_ctx:CompletionContext print:bool add_to_hist:bool os_mode:bool
+#! keys console_container:ConsoleContainer
 static func execute_interactive(input_text:String, params:={}):
-	var console = EditorConsoleSingleton.get_instance()
+	var console_container:ConsoleContainer = params.get(&"console_container")
+	var print_to_log = params.get(&"print", false)
+	var add_to_hist = params.get(&"add_to_hist", false)
 	var active_ctx = params.get(&"parent_ctx")
 	if not is_instance_valid(active_ctx):
 		active_ctx = CompletionContext.new_ctx(input_text, null, true)
-		#var gdrc = console.get_gdrc()
-		#active_ctx = CompletionContext.new_ctx(input_text, gdrc, true)
-	
-	var print_to_log = params.get(&"print", false)
-	var rich_text = params.get(&"rich_text") as RichTextLabel
-	var add_to_hist = params.get(&"add_to_hist", false)
-	if params.has(&"os_mode"):
-		active_ctx.os_mode = params.get(&"os_mode")
 	
 	var full_display = ""
 	var multi_line_commands = ""
 	var split_delim = UString.string_safe_split(input_text, ";")
-	
-	#var raw_split = "\n".join(split_delim)
-	#Execution.execute_command_multiline(raw_split, active_ctx)
 	
 	for i in range(split_delim.size()):
 		var line:String = split_delim[i]
@@ -552,133 +397,61 @@ static func execute_interactive(input_text:String, params:={}):
 	if multi_line_commands.is_empty():
 		return
 	
-	if print_to_log and input_text.strip_edges() != "os":
-		var display = ""
-		if not active_ctx.os_mode:
-			display = "%s %s" % [console._get_console_label_string(), full_display]
-		else:
-			display = "%s %s" % [console.os_string, input_text.strip_edges()]
+	if is_instance_valid(console_container):
+		if print_to_log and input_text.strip_edges() != "os":
+			var display = ""
+			if not active_ctx.os_mode: # need to deal with the console container
+				display = "%s %s" % [console_container.get_console_label_string(false), full_display]
+			else:
+				display = "%s %s" % [console_container.get_console_label_string(true), input_text.strip_edges()]
+			
+			console_container.print_to_console(display)
 		
-		if is_instance_valid(rich_text):
-			rich_text += display
-		else:
-			print_rich(display)
-		
+		if add_to_hist:
+			console_container.add_to_history(input_text)
 	
-	if add_to_hist:
-		console.add_to_history(input_text)
 	
 	Execution.execute_command_multiline(multi_line_commands, active_ctx)
-	
-	#var raw_split = "\n".join(split_delim)
-	#Execution.execute_command_multiline(raw_split, active_ctx)
-	
 	
 	active_ctx.strip_output_newlines()
 	active_ctx.strip_error_newlines()
 	
-	if print_to_log:
-		if active_ctx.stderr != "":
-			if is_instance_valid(rich_text):
-				rich_text += active_ctx.stderr
-			else:
-				print(active_ctx.stderr)
-			
-		elif not active_ctx.stdout.is_empty():
-		#elif print_to_log and not active_ctx.stdout.is_empty():
-			if is_instance_valid(rich_text):
-				rich_text += active_ctx.stdout
-			elif active_ctx.stdout.contains("[/color]"):
-				print_rich(active_ctx.stdout)
-			else:
-				print(active_ctx.stdout)
-		
+	if is_instance_valid(console_container) and print_to_log:
+		if not active_ctx.stdout.is_empty():
+			console_container.print_to_console(active_ctx.stdout)
+		if not active_ctx.stderr.is_empty():
+			console_container.print_to_console("stderr:")
+			console_container.print_to_console(active_ctx.stderr)
 
 
-func prev_command():
-	current_command_index -= 1
-	if current_command_index < -1:
-		current_command_index = previous_commands.size() - 1
-	if current_command_index == -1:
-		console_line_edit.clear()
-		return
-	if current_command_index < previous_commands.size():
-		_set_console_text(previous_commands[current_command_index])
-
-func next_command():
-	current_command_index += 1
-	if current_command_index > previous_commands.size() - 1:
-		current_command_index = -1
-		console_line_edit.clear()
-		return
-	if current_command_index < previous_commands.size():
-		_set_console_text(previous_commands[current_command_index])
-
-
-## UNSURE
-func prev_valid_command():
-	var console_line_text = console_line_edit.text
-	if console_line_text.strip_edges() == "":
-		return
-	var commands = console_line_text.split(" ")
-	var next_command = commands[0]
-	for com in commands:
-		next_command = scope_dict.get(com)
-		if not next_command:
-			break
-
-func next_valid_command():
-	var console_line_text = console_line_edit.text
-	if console_line_text.strip_edges() == "":
-		return
-
-##
-
-
-func get_console_text_box():
-	return EditorNodeRef.get_node_ref(EditorNodeRef.Nodes.EDITOR_LOG_RICH_TEXT_LABEL)
-
-
-#region Old plugin.gd Logic
-
-
-#^ should move this into the console line container? or make a new object to house it at least, would clean it up a bit in here
 
 func _add_console_line_edit():
 	_get_editor_log_button_refs()
 	
-	#var filter_check = BottomPanel.get_filter_line_edit()
-	#if filter_check is not LineEdit:
-		#print("Filter is not found: %s" % filter_check)
-		#return
 	filter_line_edit = BottomPanel.get_filter_line_edit()
 	var vbox = filter_line_edit.get_parent()
 	main_hsplit = HSplitContainer.new()
 	main_hsplit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.add_child(main_hsplit)
 	
-	console_line_container = UtilsLocal.ConsoleLineContainer.new()
+	editor_container = UtilsLocal.ConsoleContainer.new()
+	editor_container.is_editor = true
 	filter_line_edit.reparent(main_hsplit)
 	filter_line_edit.show()
-	main_hsplit.add_child(console_line_container)
+	main_hsplit.add_child(editor_container)
 	
-	console_line_container.apply_styleboxes(filter_line_edit)
-	console_line_container.custom_minimum_size.y = filter_line_edit.size.y
+	editor_container.custom_minimum_size.y = filter_line_edit.size.y
 	
-	os_label = console_line_container.os_label
-	os_label.text = _get_console_label_string()
-	console_line_container.console_line_edit.gui_event_passthrough.connect(_console_gui_input)
-	console_line_container.console_button.pressed.connect(_toggle_console)
-	console_line_container.console_button.gui_input.connect(_on_button_gui_input)
+	editor_container.console_button.pressed.connect(_toggle_console)
+	editor_container.console_button.gui_input.connect(_on_button_gui_input)
 	
-	console_line_edit = console_line_container.console_line_edit
 	if is_instance_valid(filter_button):
 		filter_button.toggled.connect(_on_filter_toggled)
 	
-	set_var_highlighter()
+	update_consoles()
 	
 	right_click_handler = RightClickHandler.new()
-	console_line_container.add_child(right_click_handler)
+	editor_container.add_child(right_click_handler)
 
 
 func _remove_console_line_edit():
@@ -705,31 +478,30 @@ func _get_editor_log_button_refs():
 
 
 func _on_filter_toggled(toggled:bool) -> void: # this is the filter toggle in editor log panel
-	console_line_container.visible = toggled
+	editor_container.visible = toggled
 	if toggled:
-		if not console_line_edit.visible: # if console is not visible, show filter regardless of last setting
+		if not editor_container.line_edit.visible: # if console is not visible, show filter regardless of last setting
 			filter_line_edit.show()
 		elif not _can_show_filter():
 			filter_line_edit.hide()
-			console_line_edit.grab_focus()
+			editor_container.line_edit.grab_focus()
 		else:
 			filter_line_edit.visible = show_filter
 
 
 func _toggle_console():
-	var console_line_edit = console_line_container.console_line_edit
-	console_line_edit.visible = not console_line_edit.visible
-	if console_line_edit.visible:
+	editor_container.line_edit.visible = not editor_container.line_edit.visible
+	if editor_container.line_edit.visible:
 		main_hsplit.collapsed = false
-		console_line_container.console_panel.show()
-		console_line_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		console_line_edit.grab_focus()
+		editor_container.console_panel.show()
+		editor_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		editor_container.line_edit.grab_focus()
 		if not _can_show_filter():
 			filter_line_edit.hide()
 	else:
-		console_line_container.console_panel.hide()
+		editor_container.console_panel.hide()
 		filter_line_edit.show()
-		console_line_container.size_flags_horizontal = Control.SIZE_SHRINK_END
+		editor_container.size_flags_horizontal = Control.SIZE_SHRINK_END
 		main_hsplit.collapsed = true
 
 
@@ -740,12 +512,14 @@ func _on_button_gui_input(event):
 		if event.button_index == 2:
 			var options = RightClickHandler.Options.new()
 			options.add_option("Toggle Console", _toggle_console)
-			if console_line_container.console_line_edit.visible:
+			if editor_container.line_edit.visible:
 				options.add_option("Toggle Filter", _toggle_filter)
-				options.add_option("OS/Toggle Mode", _toggle_os_mode)
-				if os_mode:
-					options.add_option("OS/Toggle Label", _toggle_os_label_minimum_size)
-			right_click_handler.display_on_control(options, console_line_container.console_button)
+				
+				# these would be dependenet on os_mode
+				#options.add_option("OS/Toggle Mode", _toggle_os_mode)
+				#if os_mode:
+					#options.add_option("OS/Toggle Label", _toggle_os_label_minimum_size)
+			right_click_handler.display_on_control(options, editor_container.console_button)
 
 
 
@@ -756,17 +530,10 @@ func _toggle_filter(): #^ right click toggle
 func _can_show_filter():
 	return not _console_replace_filter and show_filter
 
-func toggle_os_mode() -> void:
-	_toggle_os_mode()
 
-func _toggle_os_label_minimum_size() -> void:
-	os_label.fit_content = not os_label.fit_content
-	if not os_label.fit_content:
-		os_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	else:
-		os_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-
-
+func update_consoles():
+	for container:ConsoleContainer in console_containers:
+		container.new_ctx() # this 
 
 
 static func run_gdsh(file_path:String, main_ctx:CompletionContext=null):
@@ -842,10 +609,12 @@ static func get_completion_for_input(input_text:String, params:={}):
 	var show_commands = params.get(&"show_commands", true)
 	var show_flags = params.get(&"show_flags", true)
 	
-	var main = get_main_ctx()
-	var ctx = CompletionContext.new_ctx(input_text, main)
-	ctx.os_mode = console.os_mode
+	var main = params.get(&"ctx")
+	if not is_instance_valid(main):
+		main = get_main_ctx()
 	
+	var ctx = CompletionContext.new_ctx(input_text, main)
+	ctx.execute = false # ctx should not be execute for a completion
 	
 	if params.has(&"line_edit"):
 		ctx.line_edit = params.line_edit
@@ -865,7 +634,6 @@ static func get_completion_for_input(input_text:String, params:={}):
 				&"insert": k
 			})
 		return options.get_options()
-	
 	
 	
 	var first_word:String = ""
@@ -968,7 +736,6 @@ func _get_cached(key:String):
 	
 	return _cache.get(key)
 
-#endregion
 
 class EditorSet:
 	const CONSOLE_REPLACE_FILTER = &"plugin/editor_console/active_console_replace_filter"
@@ -978,15 +745,18 @@ class Keys:
 	const NO_MATCHING_COMMAND = &"NO_MATCHING_COMMAND"
 
 
-#region MCP
-# Bridge control + command capture live on ConsoleBridge now
-# (ConsoleBridge.start_bridge / stop_bridge / bridge_status / run_command_capture).
-# `_bridge` (the running listener) is still stored on this instance.
-
-## Build command list for MCP server. Result is cached until config is reloaded.
-func get_command_list() -> String:
-	if _command_list_cache == "":
-		_command_list_cache = ConsoleBridge.build_mcp_command_list()
-	return _command_list_cache
-
-#endregion
+static func new_console(window:=false):
+	var container = UtilsLocal.ConsoleMainContainer.new()
+	if not window:
+		return container
+	
+	var win = Window.new()
+	win.size = Vector2i(800, 800)
+	win.initial_position = Window.WINDOW_INITIAL_POSITION_CENTER_SCREEN_WITH_KEYBOARD_FOCUS
+	
+	win.add_child(container)
+	container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	win.close_requested.connect(win.queue_free)
+	
+	EditorInterface.get_base_control().add_child(win)
+	return win
