@@ -26,14 +26,10 @@ var title:String
 var console_container:UtilsLocal.ConsoleContainer
 var line_edit:CodeEdit #:ConsoleLineEdit
 
-var console_display_string:String
-
-
 var command_statements:Array = []
 var current_command_statement_index:int = 0
 var current_command_caret:int
 
-var chained_command:=false
 # common used
 
 var execute:bool = false
@@ -49,7 +45,7 @@ var functions := {}
 var aliases := {}
 var scopes := {}
 
-var cwd:String = "res://"
+var cwd:String = ProjectSettings.globalize_path("res://")
 
 var stdin:String
 var stdout:String
@@ -94,15 +90,6 @@ func _init(text:="") -> void:
 func set_positional_args(path_or_name:String, args:Array):
 	variables["$0"] = path_or_name
 	positional_args = args
-	
-	#var arg_size = args.size()
-	#for i in range(1, 20):
-		#var val = ""
-		#if i < arg_size:
-			#val = args[i]
-		#variables["$" + str(i)] = val
-	#
-	#variables["$@"] = " ".join(args)
 
 func set_line_edit(_line_edit:CodeEdit):
 	line_edit = _line_edit
@@ -283,6 +270,8 @@ func strip_error_newlines():
 	stderr = stderr.lstrip("\n").rstrip("\n")
 	return stderr
 
+func get_variable(name:String):
+	return ConsoleTokenizer.check_variable(name, self)
 
 func get_root_ctx():
 	var inherited = get_inherited_ctxs()

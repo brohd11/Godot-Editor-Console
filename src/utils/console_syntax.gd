@@ -12,6 +12,8 @@ const Pr = UString.PrintRich
 const UClassDetail = UtilsRemote.UClassDetail
 const EditorColors = UtilsRemote.EditorColors
 
+const HIGHLIGHT_DELIMS = [" ", '"']
+
 var current_ctx:UtilsLocal.CompletionContext
 
 var global_names:= []
@@ -47,22 +49,15 @@ func _get_line_syntax_highlighting(line: int) -> Dictionary:
 	
 	var hl_info = {}
 	
-	var cmd = line_text # temp for testing
-	#var cmd_start = 0
-	#for cmd in command_statements:
-		#var cmd_start_index = line_text.find(cmd)
-		#cmd_start = cmd_start_index + 1
-		
-
-	hl_info.merge(check_keyword(cmd, ConsoleTokenizer.HL_TOKENS, Colors.SYMBOL))
-	hl_info.merge(check_keyword(cmd, scope_names, Colors.SCOPE))
-	hl_info.merge(check_keyword(cmd, var_names, Colors.VAR_GREEN))
+	hl_info.merge(check_keyword(line_text, ConsoleTokenizer.HL_TOKENS, Colors.SYMBOL))
+	hl_info.merge(check_keyword(line_text, scope_names, Colors.SCOPE))
+	hl_info.merge(check_keyword_variables(line_text, var_names, Colors.VAR_GREEN))
 	
-	var global_name_hl = check_keyword(cmd, global_names, global_color)
+	var global_name_hl = check_keyword(line_text, global_names, global_color)
 	hl_info.merge(global_name_hl)
 	
-	hl_info.merge(check_keyword(cmd, func_names, func_color)) # these should have new colors
-	hl_info.merge(check_keyword(cmd, aliases, Colors.VAR_GREY))
+	hl_info.merge(check_keyword(line_text, func_names, func_color)) # these should have new colors
+	hl_info.merge(check_keyword(line_text, aliases, Colors.VAR_GREY))
 	
 	var hl_info_keys = hl_info.keys()
 	hl_info_keys.sort()
@@ -83,14 +78,34 @@ func check_keyword(line_text:String, keywords:Array, color:Color, max_idx:=-1) -
 			if line_text.length() == end_idx:
 				valid_hl = true
 			if line_text.length() > end_idx:
-				if line_text[end_idx] == " " or line_text[end_idx] == ".":
+				if line_text[end_idx] in HIGHLIGHT_DELIMS or line_text[end_idx] == ".":
 					valid_hl = true
 			if key_idx - 1 > -1:
-				if line_text[key_idx - 1] != " ":
+				if not line_text[key_idx - 1] in HIGHLIGHT_DELIMS:
 					valid_hl = false
 			if valid_hl:
 				hl_info[key_idx] = {"color":color}
 				hl_info[end_idx] = {"color":default_text_color}
 			key_idx = line_text.find(keyword, end_idx)
+	
+	return hl_info
+
+func check_keyword_variables(line_text:String, keywords:Array, color:Color, max_idx:=-1) -> Dictionary:
+	if max_idx == -1:
+		max_idx = line_text.length()
+	
+	var matches = ConsoleTokenizer.variable_regex.search_all(line_text)
+	if matches.is_empty():
+		return {}
+	
+	var hl_info = {}
+	for m in matches:
+		var string = m.get_string()
+		if current_ctx.variables.has(string):
+			hl_info[m.get_start()] = {"color":color}
+			hl_info[m.get_end()] = {"color":default_text_color}
+		else:
+			hl_info[m.get_start()] = {"color":Colors.VAR_GREY}
+			hl_info[m.get_end()] = {"color":default_text_color}
 	
 	return hl_info

@@ -23,11 +23,13 @@ static func get_completion_static(ctx:CompletionContext, pos_args:Array) -> Dict
 	var target_dir = ctx.cwd
 	
 	if pos_args.size() == 1:
-		var next_dir = pos_args[0]
-		if next_dir.is_absolute_path():
-			target_dir = next_dir
-		else:
-			target_dir = target_dir.path_join(next_dir)
+		target_dir = _complete_path(pos_args[0], ctx.cwd)
+		
+		#var next_dir = pos_args[0]
+		#if next_dir.is_absolute_path():
+			#target_dir = next_dir
+		#else:
+			#target_dir = target_dir.path_join(next_dir)
 	
 		if target_dir.ends_with("/"):
 				pass
@@ -56,8 +58,7 @@ static func execute_static(ctx:CompletionContext, pos_args:Array):
 	var current_cwd = ctx.cwd
 	var target = pos_args[0]
 	
-	if target.is_relative_path():
-		target = current_cwd.path_join(target).simplify_path()
+	target = _complete_path(target, ctx.cwd)
 	
 	target = ProjectSettings.globalize_path(target)
 	if DirAccess.dir_exists_absolute(target):

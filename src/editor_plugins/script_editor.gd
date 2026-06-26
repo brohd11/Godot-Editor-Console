@@ -42,7 +42,7 @@ func _callback(script_editor:CodeEdit, path):
 				ed_console._toggle_console()
 			ed_console.editor_container.line_edit.grab_focus()
 		else:
-			UtilsLocal.Print.error("Could not resolve access path for: %s" % word)
+			printerr("Could not resolve access path for: %s" % word)
 		
 	elif path == INFO:
 		var member_info_data = _get_member_info(script_editor)
@@ -50,7 +50,7 @@ func _callback(script_editor:CodeEdit, path):
 			Pr.new().append("Printing member info: ").append(member_info_data.path, UtilsLocal.Colors.ACCENT_MUTE).display()
 			print(member_info_data.info)
 		else:
-			UtilsLocal.Print.error("Could not resolve access path for: %s" % word)
+			printerr("Could not resolve access path for: %s" % word)
 
 
 func _get_valid_items(script_editor:CodeEdit):

@@ -1,7 +1,6 @@
 @tool
 extends EditorPlugin
 
-
 const PLUGIN_NAME = "EditorConsole"
 const CONTAINER_PATH = "res://addons/editor_console/src/container/main_container.gd"
 
@@ -20,6 +19,7 @@ func _enter_tree() -> void:
 	EditorConsoleSingleton.register_node(self)
 	
 	dm_im = DockManager.InstanceManager.new(self, true)
+
 
 func _exit_tree() -> void:
 	remove_tool_menu_item(PLUGIN_NAME)

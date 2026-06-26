@@ -57,7 +57,7 @@ func _process_flag(flag:String):
 		target_base = flag.get_slice("--base=", 1)
 		target_base = UString.unquote(target_base)
 	else:
-		UtilsLocal.Print.error("Unrecognized argument: " + flag)
+		_ctx_obj.append_error("Unrecognized argument: " + flag)
 
 
 func _get_completions(ctx:CompletionContext):

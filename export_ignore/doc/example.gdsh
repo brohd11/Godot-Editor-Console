@@ -83,6 +83,11 @@ if [ "$(echo "subs yup")" == "subs yup" ] {
 
 if [ "test" == "e" ] || [ "test" == "test" ] {
 	echo "or test"
+	
+}
+
+for i in $@ {
+	
 }
 
 if return_test "arg" {

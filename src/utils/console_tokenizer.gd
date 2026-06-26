@@ -25,7 +25,7 @@ var execute:bool=false
 
 
 static var _token_regex:RegEx
-static var _variable_regex:RegEx
+static var variable_regex:RegEx
 
 var color_var_ok = "96f442"
 var color_var_fail = "cc000c"
@@ -50,10 +50,10 @@ static func _initialize_regex():
 		_token_regex = RegEx.new()
 		_token_regex.compile(define + word)
 	
-	if not is_instance_valid(_variable_regex) or true:
-		_variable_regex = RegEx.new()
-		#_variable_regex.compile("\\$[\\w+|?|@|#]\\b")
-		_variable_regex.compile("\\$(?:\\w+\\b|[?@#])")
+	if not is_instance_valid(variable_regex) or true:
+		variable_regex = RegEx.new()
+		#variable_regex.compile("\\$[\\w+|?|@|#]\\b")
+		variable_regex.compile("\\$(?:\\w+\\b|[?@#])")
 
 
 #! keys commands:PackedStringArray expanded:PackedStringArray args:PackedStringArray display:String
@@ -221,11 +221,17 @@ func _get_token_color(token:String):
 	
 	if var_token_check in HL_TOKENS:
 		var_token_check = wrap_color(var_token_check, UtilsLocal.Colors.SYMBOL.to_html())
-	elif var_token_check in editor_console.scope_dict or var_token_check in editor_console.hidden_scope_dict:
-		var_token_check = wrap_color(var_token_check, UtilsLocal.Colors.SCOPE.to_html())
 	elif UClassDetail.get_global_class_path(var_token_check) != "":
 		var_token_check = wrap_color(var_token_check, EditorColors.get_syntax_color(EditorColors.SyntaxColor.ENGINE_TYPE).to_html())
+	elif is_instance_valid(active_ctx):
+		if var_token_check in active_ctx.scopes:
+			var_token_check = wrap_color(var_token_check, UtilsLocal.Colors.SCOPE.to_html())
+		elif var_token_check in active_ctx.functions:
+			var_token_check = wrap_color(var_token_check, EditorColors.get_syntax_color(EditorColors.SyntaxColor.FUNCTION_DEFINITION).to_html())
 	
+	# if active ctx not set, should be always though I think...
+	elif var_token_check in editor_console.scope_dict or var_token_check in editor_console.hidden_scope_dict:
+		var_token_check = wrap_color(var_token_check, UtilsLocal.Colors.SCOPE.to_html())
 	
 	if is_string:
 		var_token_check = quote_char + var_token_check + quote_char
@@ -271,46 +277,6 @@ func _expand_token(token, alias_data:Dictionary, seen_tokens:={}):
 	return expanded_tokens
 
 
-
-#func _check_variable(arg:String):
-	#if arg.begins_with("$"):
-		#var variable_callable = editor_console.variable_dict.get(arg)
-		#if variable_callable:
-			#var variable = variable_callable.call()
-			#if variable is String:
-				#editor_console.working_variable_dict[variable] = variable
-				#return variable
-			#else:
-				#editor_console.working_variable_dict[variable.to_string()] = variable
-				#return variable.to_string()
-	#
-	#
-	#var exp_idx = arg.find('{#')
-	#if exp_idx > -1:
-		#var expr = Expression.new()
-		#var arg_stripped = arg.replace("'","").replace('"',"").trim_prefix("{#").trim_suffix("}")
-		#if arg_stripped.find("<") > -1:
-			#
-			#pass
-		#var err = expr.parse(arg_stripped)
-		#if err == OK:
-			#var result = expr.execute()
-			#if PRINT_DEBUG:
-				#print(result)
-			#var type = Var.check_type(arg)
-			#if type:
-				#result = Var.string_to_type(result, type)
-			#editor_console.working_variable_dict[arg] = result
-			#return arg
-	#
-	#var type_str = Var.check_type(arg)
-	#if type_str:
-		#var variable = Var.string_to_type(arg, type_str)
-		#editor_console.working_variable_dict[arg] = variable
-		#return arg
-	#
-	#return arg
-
 func _check_variable(token:String, display:=false):
 	return check_variable(token, active_ctx, display)
 
@@ -345,7 +311,7 @@ static func check_variable(token:String, active:CompletionContext, display:=fals
 		if is_string:
 			stripped_token = UString.unquote(token)
 		
-		var matches = _variable_regex.search_all(stripped_token)
+		var matches = variable_regex.search_all(stripped_token)
 		
 		var new_string = ""
 		var last_end = 0
@@ -627,7 +593,7 @@ func _get_token_color_old(token:String, pr:Pr, leading_space:bool, is_expanded:b
 			stripped_token = UString.unquote(token)
 		#print("STRIPPED:", stripped_token)
 		
-		var matches = _variable_regex.search_all(stripped_token)
+		var matches = variable_regex.search_all(stripped_token)
 		if is_string:
 			pr.append(quote_char)
 		

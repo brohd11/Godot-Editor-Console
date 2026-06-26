@@ -44,13 +44,8 @@ var _console_replace_filter:bool=false
 # When false they apply directly with no undo entry. Toggle via `config undo on|off`.
 var undo_tracking:bool = true
 
-
 var _cache:= {}
-
 var _bridge:ConsoleBridge
-
-
-
 
 var scope_dict:= {}
 var hidden_scope_dict:= {}
@@ -63,9 +58,6 @@ var filter_button:Button
 var clear_button:Button
 
 func _init(plugin:EditorPlugin) -> void:
-	if not FileAccess.file_exists(UtilsLocal.EDITOR_CONSOLE_SCOPE_PATH):
-		DirAccess.make_dir_recursive_absolute(UtilsLocal.EDITOR_CONSOLE_SCOPE_PATH.get_base_dir())
-		UtilsRemote.UFile.write_to_json({}, UtilsLocal.EDITOR_CONSOLE_SCOPE_PATH)
 	
 	settings_helper = UtilsRemote.SettingHelperEditor.new()
 	settings_helper.subscribe_property(self, &"_console_replace_filter", EditorSet.CONSOLE_REPLACE_FILTER, false)
@@ -74,6 +66,7 @@ func _init(plugin:EditorPlugin) -> void:
 	
 	script_editor_context = ScriptEditorContext.new()
 	plugin.add_context_menu_plugin(EditorContextMenuPlugin.CONTEXT_SLOT_SCRIPT_EDITOR_CODE, script_editor_context)
+	
 	
 	# add func to load user config
 
@@ -85,6 +78,9 @@ func _ready() -> void:
 func _ready_deferred():
 	_load_default_commands()
 	EditorNodeRef.call_on_ready(_start_up_commands)
+	
+	if EditorSet.get_enable_gdsh():
+		EditorInterface.get_script_editor().register_syntax_highlighter(UtilsLocal.GdshHl.new())
 
 func _start_up_commands():
 	var config = Config.get_merged_config()
@@ -96,6 +92,8 @@ func _start_up_commands():
 		return
 	var main_ctx = get_main_ctx()
 	Execution.execute_command_multiline(cmds, main_ctx)
+	
+	
 
 func _on_filesystem_changed():
 	if _cache == null:
@@ -740,6 +738,14 @@ func _get_cached(key:String):
 class EditorSet:
 	const CONSOLE_REPLACE_FILTER = &"plugin/editor_console/active_console_replace_filter"
 	const TRACK_UNDO_REDO = &"plugin/editor_console/track_undo_redo"
+	const ENABLE_GDSH = &"plugin/editor_console/enable_gdshell_highlighter"
+	
+	static func get_enable_gdsh():
+		var ed_set = EditorInterface.get_editor_settings()
+		if not ed_set.has_setting(ENABLE_GDSH):
+			ed_set.set_setting(ENABLE_GDSH, false)
+		return ed_set.get_setting(ENABLE_GDSH)
+		
 
 class Keys:
 	const NO_MATCHING_COMMAND = &"NO_MATCHING_COMMAND"

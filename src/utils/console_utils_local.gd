@@ -10,6 +10,7 @@ const ConsoleOS = preload("res://addons/editor_console/src/default_commands/hidd
 
 
 const SyntaxHl = preload("res://addons/editor_console/src/utils/console_syntax.gd")
+const GdshHl = preload("res://addons/editor_console/src/utils/misc/gdsh_hl.gd")
 
 const ConsoleMainContainer = preload("res://addons/editor_console/src/container/main_container.gd")
 const ConsoleContainer = preload("res://addons/editor_console/src/container/console_container.gd")
@@ -25,39 +26,9 @@ const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils
 const Pr = UtilsRemote.UString.PrintRich
 
 
-const EDITOR_CONSOLE_SCOPE_PATH = "res://.addons/editor_console/scope_data.json" #! ignore-remote
-
-# deprecate these
-static func get_scope_data():
-	return UtilsRemote.UFile.read_from_json(EDITOR_CONSOLE_SCOPE_PATH)
-
-static func get_registered_global_classes():
-	var scope_data = get_scope_data()
-	return scope_data.get(ScopeDataKeys.GLOBAL_CLASSES, [])
-
-static func save_scope_data(new_data:Dictionary):
-	UtilsRemote.UFile.write_to_json(new_data, EDITOR_CONSOLE_SCOPE_PATH)
-
-
-
 class ScopeDataKeys:
-	const global_classes = "global_classes"
-	const sets = "sets"
-	const scopes = "scopes"
-	
-	const GLOBAL_CLASSES = &"scope_data_keys.global_classes"
-	const SETS = &"scope_data_keys.sets"
-	const SCOPES = &"scope_data_keys.scopes"
-	const COMMAND_DIRS = &"scope_data_keys.command_dirs"
-	
 	const SCRIPT = &"script"
 	const CALLABLE = &"callable"
-
-
-class GDSHKeys:
-	const GDCONF = "user://addons/editor_console/gdsh.cfg"
-	
-	const ALIAS = &"gdsh_keys.alias"
 
 class Colors:
 	
@@ -87,23 +58,6 @@ class Colors:
 	const ERROR_RED = Color(0.651, 0.071, 0.004, 1.0)
 	
 	const GRAY = Color.GRAY
-	
-	
-
-
-class Print:
-	static func error_arg_count(callable:Callable, args:Array):
-		var message = "Callable - '%s'" % callable.get_method()
-		error_arg_count_int(callable.get_argument_count(), args, message)
-	
-	static func error_arg_count_int(desired_count:int, args:Array, message:=""):
-		error(message)
-		Pr.new().append("\tExpected %s arguments, received %s" % [desired_count, args.size()], Colors.ERROR_RED)\
-		.append("\n\tArguments: ").append("  ".join(args), Colors.ACCENT_MUTE).display()
-	
-	
-	static func error(message):
-		Pr.new().append("EditorConsole: ", Colors.ERROR_RED).append(message).display()
 
 
 class Config:
@@ -204,5 +158,3 @@ class Config:
 				print("EditorConsole config - incompatible types: ", a_value, " - ", b_value)
 		
 		dict_a.merge(dict_b)
-		
-		pass

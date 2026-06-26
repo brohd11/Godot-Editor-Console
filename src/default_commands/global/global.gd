@@ -39,10 +39,10 @@ func _consume_self(ctx:CompletionContext) -> ExitCode:
 
 func _get_help(what:String):
 	if global_access_path != "":
-		print(get_self_command_data().get(&"help"))
+		_ctx_obj.append_output(get_self_command_data().get(&"help"))
 		print_available_commands()
 	else:
-		print("Unrecognized command: ", what)
+		_ctx_obj.append_error("Unrecognized command: " + what)
 
 func _get_commands() -> Dictionary:
 	if global_access_path != "":
@@ -52,7 +52,8 @@ func _get_commands() -> Dictionary:
 
 
 func _get_completions(ctx:CompletionContext):
-	var registered_classes = UtilsLocal.get_registered_global_classes()
+	var config = UtilsLocal.Config.get_merged_config()
+	var registered_classes = config.get_section(config.GLOBAL_CLASSES, [])
 	var global_classes = UClassDetail.get_all_global_class_paths()
 	var valid_global_class_dict = {}
 	var invalid_global_class_dict = {}

@@ -432,7 +432,6 @@ static func _call_method(ctx:CompletionContext, callable:Callable, args:Array, c
 	if args.size() != callable_arg_count:
 		if not create_default_args:
 			ctx.append_error("Arg count mismatch: %s - expected %s, got %s" % [callable.get_method(), callable_arg_count, args.size()])
-			UtilsLocal.Print.error_arg_count(callable, args)
 			return
 		
 	var obj = callable.get_object()
@@ -444,7 +443,6 @@ static func _call_method(ctx:CompletionContext, callable:Callable, args:Array, c
 	var property_info = UtilsRemote.UClassDetail.get_member_info_by_path(script, method_name)
 	if not (property_info is Dictionary and property_info.has("args")):
 		ctx.append_error("Could not get method '%s' info in object: %s" % [method_name, obj])
-		ConsolePrint.error("Could not get method '%s' info in object: %s" % [method_name, obj])
 		return
 	var valid_args = true
 	var callable_args = property_info.get("args")
@@ -470,7 +468,6 @@ static func _call_method(ctx:CompletionContext, callable:Callable, args:Array, c
 							err = false
 					if err:
 						ctx.append_error("Arg '%s' type mismatch: %s passed, should be %s" % [arg_data.get("name"), pass_str, type_string(type)])
-						ConsolePrint.error("Arg '%s' type mismatch: %s passed, should be %s" % [arg_data.get("name"), pass_str, type_string(type)])
 						valid_args = false
 				continue
 			
@@ -508,7 +505,6 @@ static func _call_method(ctx:CompletionContext, callable:Callable, args:Array, c
 	
 	if not valid_args:
 		ctx.append_error("Invalid arguments")
-		ConsolePrint.error("Invalid arguments.")
 		return
 	var result = callable.callv(args)
 	if result != null:
@@ -581,6 +577,15 @@ func print_available_commands():
 		_ctx_obj.append_output("Available commands:")
 		for c in commands:
 			_ctx_obj.append_output("\t" + c)
+
+## Relative paths will be completed via base_dir, absolute are returned unchanged
+static func _complete_path(to_check:String, base_dir:String):
+	if to_check.is_absolute_path():
+		return to_check
+	var simp = base_dir.path_join(to_check).simplify_path()
+	simp += "/" if to_check.ends_with("/") else "" # simplify path strips the trailing slash
+	return simp
+	
 
 func _get_config(type:int=0):
 	if type == 0:
