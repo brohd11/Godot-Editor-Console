@@ -33,6 +33,9 @@ func _process_flag(flag:String):
 func _get_completions(ctx:CompletionContext):
 	var flags = get_flags(true)
 	
+	if not is_instance_valid(ScriptUtil.get_script_from_ctx(ctx)):
+		return {}
+	
 	var methods = ScriptUtil.get_methods_from_ctx(ctx, show_private, false, false)
 	if not ctx.unconsumed_tokens.is_empty():
 		var current_name = ctx.unconsumed_tokens.pop_front()

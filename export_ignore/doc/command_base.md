@@ -8,7 +8,7 @@ By using the recommended folder structure, you really don't need to overide much
 `get_self_command_data`, and/or `_execute`. Even these are not strictly necessary if the command is just a passthrough node with no execution, but the base class will print messages if they aren't defined. See below:
 
 ### variables available from the base class
-```
+```gdscript
 ## the base class can be found in EditorConsoleSingleton
 extends EditorConsoleSingleton.CommandBase
 
@@ -22,7 +22,7 @@ var positional_arg_index = -1
 ctx:CompletionContext
 ```
 ### standard overides - these should be overidden in every class
-```
+```gdscript
 ## How you will call the command
 static func get_command_name() -> String:
 	return "command"
@@ -47,7 +47,7 @@ func _execute(ctx:CompletionContext):
 
 ```
 ### optional overides
-```
+```gdscript
 ## Called by 'get_flags', overide to provide flags. Base logic provides none.
 ## Example below, Options object processes data in the same way as 'get_self_command_data'.
 
@@ -92,7 +92,7 @@ func _get_help(what:String)
 func _consume_self(ctx:CompletionContext) -> ExitCode
 ```
 ### utility functions
-```
+```gdscript
 ## Get all commands in the current files children directories
 func _get_commands_in_dir(sort_priority:=true)
 

@@ -1,10 +1,18 @@
 #!gdsh
 
+# functions recieve positional arguments
 scope_test(){
 	GLOBAL=$1
 	local local="$2"
-	echo "result is:: $local"
 }
+
+(scope_test "a global string!" "a local string!") # sub shell
+echo "Subshell func - GLOBAL:$GLOBAL:local:$local:"
+
+alias st=scope_test
+
+st "a global string!" "a local string!"
+echo "Standard func - GLOBAL:$GLOBAL:local:$local:"
 
 get_nodes_test(){
 	echo "node1
@@ -13,87 +21,39 @@ node3
 node4"
 }
 
-return_test(){
-	if "$#" == 1 {
-		echo returning 0
-		return 0
-	}
-	echo returning 1
-	return 1
+nodes=$(get_nodes_test) # command substitution
+
+node_count=$(echo "$nodes" | count)
+[ $node_count == 4 ] && echo "Inline conditional &&"
+[ $node_count != 4 ] || echo "Inline conditional ||"
+
+for n in $nodes {
+	echo "For loop: $n"
 }
 
-# echo "$nodes"
-
-RES=$(scope_test "a global string!" "a local string!")
-echo $RES
-
-echo "GLOBAL search:: $GLOBAL"
-echo "LOCAL search:: $local"
-
-scope_test "a global string!" "a local string!"
-echo "GLOBAL search:: $GLOBAL"
-echo "LOCAL search:: $local"
-
-nodes=$(get_nodes_test)
-echo "$nodes" | os grep 2 | strip_edges ; echo "single line - end here"; echo "Nodes single line multi
-
-$nodes"
-
-
-echo "Start Multiline - 
-nodes selected:
-$nodes
-End Multiline."
-
-
-if [ $local == "" ]{
-	echo "[if branch] - Local var not set! (as it shouldn't be...)"
-} elif [ $local == "Nope" ] {
-	echo "Got Nodes!"
-} else {
-	echo "GOT EM"
+count=0
+while [ $count -lt 10 ] {
+	count=$(math $count + 1)
+	if [ $(math $count % 2) == 0 ] { echo "While loop: $count" }
 }
 
-if [ "$GLOBAL" ==  "" ]{
-	echo "Local var not set!"
-} elif [ "$GLOBAL" == "a global string!" ] {
-	echo "[elif branch] - Global var is set! (as it should be...)"
-} else {
-	echo "GOT EM"
-}
 
-if [ "$nodes" == "" ]{
-	echo "No Nodes"
-} elif [ "$nodes" == "Nope" ] {
-	echo "Nope!"
-} else {
-	echo "[else branch] - Got Nodes!"
-}
+return_test(){ if "$#" == 1 { return 0 }; return 1 }
 
-if [ "$(echo "subs yup")" == "subs yup" ] {
-	echo "Subs test worked"
-	if[ "$(get_nodes_test)" == "$nodes" ] {
-		echo "nested check worked!"
-	}else{
-		echo "nested didn't work"
-	}
-} else {
-	echo "Subs test didn't!"
-}
-
-if [ "test" == "e" ] || [ "test" == "test" ] {
-	echo "or test"
-	
-}
-
-for i in $@ {
-	
-}
-
-if return_test "arg" {
+if return_test "arg" { # with arg returns 0 
 	echo first return test passed
-	return_test
-	if [ $? -eq 1 ] {
+	return_test # no arg returns 1
+	if [ $? -eq 1 ] { # $? is the last exit code
 		echo "Return test passed both tests"
 	}
+}
+
+# expr runs an expression on the args provided. math is an alias of expr, they are identical
+expr_bool(){ [ $(expr $1) == "true" ] && return 0 ; return 1 }
+
+mystr="'MyString'.to_lower()"
+if expr_bool "$mystr.begins_with('M')" {
+	echo "MyString to lower begins with M"
+} elif expr_bool "$mystr.begins_with('m')" {
+	echo "MyString to lower begins with m"
 }

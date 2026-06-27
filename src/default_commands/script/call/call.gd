@@ -43,6 +43,9 @@ func _get_completions(ctx:CompletionContext):
 	if not _positional_arg_index_valid():
 		return {}
 	
+	if not is_instance_valid(ScriptUtil.get_script_from_ctx(ctx)):
+		return {}
+	
 	var flags = get_flags(true)
 	
 	var methods = ScriptUtil.get_methods_from_ctx(ctx, show_private, true)
