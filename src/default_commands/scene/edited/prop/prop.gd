@@ -4,8 +4,8 @@ const _HELP = \
 "Get or set a property on nodes. Targets come from stdin (node paths, one per line);
 if stdin is empty the current editor selection is used.
 Usage:
-  ... | prop <name>              print the property for each node
-  ... | prop <name> <value>      set the property on each node
+  ... | scene edited prop <name>              print the property for each node
+  ... | scene edited prop <name> <value>      set the property on each node
 Value is converted to the property's current type (falls back to str_to_var).
 Nested paths are supported, e.g. 'position:x'."
 
@@ -55,11 +55,6 @@ func _execute(ctx:CompletionContext):
 		var node_path = str(root.get_path_to(n))
 		ctx.append_output("%s.%s = %s" % [node_path, prop_name, str(n.get_indexed(prop_path))])
 
-func _convert_value(value_str:String, current):
-	var parsed = str_to_var(value_str)
-	if parsed != null:
-		return parsed
-	return value_str
 
 func _resolve_nodes(ctx:CompletionContext, root:Node) -> Array:
 	var nodes := []

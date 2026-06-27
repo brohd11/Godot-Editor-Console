@@ -26,16 +26,10 @@ func _execute(ctx:CompletionContext):
 		return
 
 	var current = ProjectSettings.get_setting(name, null)
-	var converted = _convert_value(positional_args[1], current)
+	var converted = ConsoleTokenizer.Var.auto_convert(positional_args[1], typeof(current))
 	ProjectSettings.set_setting(name, converted)
 	var err = ProjectSettings.save()
 	if err != OK:
 		ctx.append_error("Saved setting but project.godot save failed (error %s)." % err)
 		return ExitCode.FAIL
 	ctx.append_output("%s = %s" % [name, str(converted)])
-
-func _convert_value(value_str:String, current):
-	var parsed = str_to_var(value_str)
-	if parsed != null:
-		return parsed
-	return value_str

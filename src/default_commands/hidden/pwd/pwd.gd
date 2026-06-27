@@ -2,7 +2,8 @@ extends EditorConsoleSingleton.CommandBase
 
 
 const _HELP = \
-"This is a command created with the 'new' command, define help for this command!"
+"Print current working directory.
+Usage: pwd [--local]"
 
 var local_flag:=false
 

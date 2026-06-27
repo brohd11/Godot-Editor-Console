@@ -5,11 +5,14 @@ const UNode = UtilsRemote.UNode
 const _HELP = \
 "Print the node tree of the edited scene.
 Default output is one node path per line (pipe into 'prop', 'delete', etc).
-Usage: scene edited tree [--pretty] [--type=ClassName] [--script=res://path.gd]"
+Usage: scene edited tree [--ignore-owner] [--pretty] [--type=ClassName] [--script=res://path.gd]"
 
 var pretty_flag := false
 var type_flag := ""
 var script_flag := ""
+var ignore_owner_flag := false
+
+var scene_root:Node
 
 static func get_command_name() -> String:
 	return "tree"
@@ -33,6 +36,9 @@ func _get_flags() -> Dictionary:
 		&"trailing_char": "",
 		&"flag_completion": {"type": FlagType.FILE, "ext": ["gd"]},
 	})
+	options.add_option("--ignore-owner", {
+		&"help": "Also list nodes not owned by the scene root. Includes nested packed scene nodes."
+	})
 	return options.get_options()
 
 func _process_flag(flag:String):
@@ -42,10 +48,12 @@ func _process_flag(flag:String):
 		type_flag = _get_flag_value(flag)
 	elif flag.begins_with("--script="):
 		script_flag = UString.unquote(_get_flag_value(flag))
+	elif flag == "--ignore-owner":
+		ignore_owner_flag = true
 
 func _execute(ctx:CompletionContext):
-	var root = EditorInterface.get_edited_scene_root()
-	if not is_instance_valid(root):
+	scene_root = EditorInterface.get_edited_scene_root()
+	if not is_instance_valid(scene_root):
 		ctx.append_error("No edited scene open.")
 		return ExitCode.FAIL
 
@@ -55,13 +63,13 @@ func _execute(ctx:CompletionContext):
 			script_flag = global_check
 
 	if pretty_flag:
-		_print_pretty(ctx, root, 0)
+		_print_pretty(ctx, scene_root, 0)
 		return
 
-	for n in UNode.recursive_get_nodes(root):
+	for n in UNode.recursive_get_nodes(scene_root):
 		if not _passes_filter(n):
 			continue
-		ctx.append_output(str(root.get_path_to(n)))
+		ctx.append_output(str(scene_root.get_path_to(n)))
 
 func _passes_filter(n:Node) -> bool:
 	if type_flag != "" and not ClassDB.is_parent_class(n.get_class(), type_flag):
@@ -69,6 +77,9 @@ func _passes_filter(n:Node) -> bool:
 	if script_flag != "":
 		var script = n.get_script()
 		if not is_instance_valid(script) or script.resource_path != script_flag:
+			return false
+	if not ignore_owner_flag:
+		if n != scene_root and n.owner != scene_root:
 			return false
 	return true
 

@@ -19,14 +19,11 @@ var _server: TCPServer
 #region External control (moved from EditorConsoleSingleton)
 
 ## Run a console command line non-interactively and return captured output.
-## Reuses the exact line-submit path (execute_interactive), so ';', pipes, '&&'/'||',
-## gdsh functions and multiline all behave identically to typing in the console.
+## Uses Execution.execute_command_multiline, bypassing syntax highlighting,
+## and variable checking for the display line. Just raw execution.
 static func run_command_capture(text:String) -> Dictionary:
 	var ctx = EditorConsoleSingleton.get_main_ctx()
-	
-	EditorConsoleSingleton.execute_interactive(text, {
-		&"parent_ctx": ctx, # no console container provided means no print or history
-	})
+	EditorConsoleSingleton.Execution.execute_command_multiline(text, ctx)
 	return {
 		"stdout": ctx.stdout,
 		"stderr": ctx.stderr,
@@ -218,9 +215,5 @@ static func _get_scope_commands(scope:EditorConsoleSingleton.CommandBase, curren
 		if get_cmd != null:
 			var cmd = get_cmd.call()
 			_get_scope_commands(cmd, path, list)
-		#else:
-			#var sub_p = path + " " + str(s)
-			#sub_p = sub_p.strip_edges()
-			#list[sub_p] = ""
 
 #endregion

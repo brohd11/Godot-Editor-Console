@@ -15,7 +15,7 @@ static func get_self_command_data() -> Dictionary:
 		&"positional_count": "min:1,max:2",
 	})
 
-func _get_completions(ctx:CompletionContext):
+func _get_completions(_ctx:CompletionContext):
 	if not _positional_arg_index_valid():
 		return {}
 	var settings = EditorInterface.get_editor_settings()
@@ -38,12 +38,6 @@ func _execute(ctx:CompletionContext):
 		return
 
 	var current = settings.get_setting(name)
-	var converted = _convert_value(positional_args[1], current)
+	var converted = ConsoleTokenizer.Var.auto_convert(positional_args[1], typeof(current))
 	settings.set_setting(name, converted)
 	ctx.append_output("%s = %s" % [name, str(converted)])
-
-func _convert_value(value_str:String, current):
-	var parsed = str_to_var(value_str)
-	if parsed != null:
-		return parsed
-	return value_str
