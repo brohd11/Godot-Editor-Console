@@ -30,5 +30,6 @@ func _execute(ctx:CompletionContext):
 	var rich_text = console_container.get_rich_text()
 	if is_instance_valid(rich_text):
 		rich_text.clear()
+		rich_text.text = ""
 	else:
 		EditorConsoleSingleton.get_instance().clear_button.pressed.emit()
