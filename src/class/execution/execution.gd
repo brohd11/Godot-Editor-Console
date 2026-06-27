@@ -175,8 +175,8 @@ func _parse_in_loop(line: String):
 		loop_ctx.positional_args = execution_ctx.positional_args
 		loop_ctx.data[_IS_LOOP_KEY] = true
 		var loop = "\n".join(accumulated_lines)
-		
-		if loop_condition.begins_with("for"):
+		# This cannot handle command substituiton in the condition
+		if loop_condition.begins_with("for"): 
 			var for_match = _for_loop_regex.search(loop_condition)
 			var iterator = for_match.get_string("iter")
 			var collection = for_match.get_string("coll")
@@ -752,7 +752,7 @@ static func expand_commands(text:String, parent:CompletionContext, display:=fals
 	}
 
 static func _initialize_regex():
-	if not is_instance_valid(_func_def_regex) or true:
+	if not is_instance_valid(_func_def_regex):
 		_func_def_regex = RegEx.new()
 		_func_def_regex.compile(
 			r"^[ \t]*(\w+)\s*\(\s*\)\s*\{" #$"
@@ -764,6 +764,6 @@ static func _initialize_regex():
 			r"^\s*(?:\}\s*)?(?<type>if|elif|else)\b(?<cond>[^{]*)\{"
 		)
 	
-	if not is_instance_valid(_for_loop_regex) or true:
+	if not is_instance_valid(_for_loop_regex):
 		_for_loop_regex = RegEx.new()
 		_for_loop_regex.compile(r"^for\s+(?<iter>\w+)\s+in\s+(?<coll>[$A-Za-z0-9 ]*)\s*{")

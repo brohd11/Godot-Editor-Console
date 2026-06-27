@@ -50,9 +50,8 @@ static func _initialize_regex():
 		_token_regex = RegEx.new()
 		_token_regex.compile(define + word)
 	
-	if not is_instance_valid(variable_regex) or true:
+	if not is_instance_valid(variable_regex):
 		variable_regex = RegEx.new()
-		#variable_regex.compile("\\$[\\w+|?|@|#]\\b")
 		variable_regex.compile("\\$(?:\\w+\\b|[?@#])")
 
 static func get_variable_regex():
