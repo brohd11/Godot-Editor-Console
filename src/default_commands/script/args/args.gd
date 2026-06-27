@@ -47,22 +47,21 @@ func _execute(ctx:CompletionContext):
 	var script = ScriptUtil.get_script_from_ctx(ctx)
 	var methods = ScriptUtil.get_methods_from_ctx(ctx, show_private, false, false)
 	if not method_name in methods:
-		print("Unrecognized method: ", method_name)
+		ctx.append_error("Unrecognized method: " + method_name)
 		return ExitCode.FAIL
 	
-	list_args(script, method_name)
-	return ExitCode.OK
+	return list_args(script, method_name, ctx)
 
 
-static func list_args(script:Script, method_name:String):
+static func list_args(script:Script, method_name:String, ctx:CompletionContext):
 	var property_info = UClassDetail.get_member_info_by_path(script, method_name)
 	if property_info is not Dictionary:
-		print("Could not get method '%s' in script: %s" % [method_name, script])
-		return
+		ctx.append_error("Could not get method '%s' in script: %s" % [method_name, script])
+		return ExitCode.ERR
 	var args_array = property_info.get("args", [])
 	if args_array.is_empty():
-		print("No args to list.")
-		return
+		ctx.append_output("No args to list.")
+		return ExitCode.OK
 	
 	var class_name_color = EditorColors.get_syntax_color(EditorColors.SyntaxColor.BASE_TYPE)
 	var pr = Pr.new()
@@ -73,4 +72,6 @@ static func list_args(script:Script, method_name:String):
 		if type == "Nil":
 			color = Colors.VAR_RED
 		pr.append(name + ":").append(type, color).append("  ")
-	pr.display()
+	
+	ctx.append_output(pr.get_string())
+	return ExitCode.OK

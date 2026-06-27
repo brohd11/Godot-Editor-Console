@@ -10,19 +10,7 @@
 				"files": []
 			},
 			"export_folder": "editor-console{{version=editor_console}}/editor_console",
-			"other_transfers": [
-				{
-					"from":"res://addons/gdterm/terminal/main.gd",
-					"to":"gdterm/terminal/main.gd"
-				},
-				{
-					"from":"res://addons/gdterm/terminal.gd",
-					"to":"gdterm/terminal.gd"
-				},
-				{
-					"to":"gdterm/.gdignore"
-				}
-			],
+			"other_transfers": [],
 			"remote_dir": "res://addons/editor_console/src/remote",
 			"source": "res://addons/editor_console"
 		},

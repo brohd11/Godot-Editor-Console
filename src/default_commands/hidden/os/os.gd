@@ -111,20 +111,10 @@ func _get_target_positional_count() -> int:
 	return positional_args.size()
 
 func _execute(ctx:CompletionContext):
-	var editor_console = EditorConsoleSingleton.get_instance()
 	if positional_args.is_empty():
-		#editor_console.toggle_os_mode() # is this even reachable? this func is moved to console container
 		return ExitCode.OK
 	
 	var command_needs_scan = false # not being set?
-	
-	#var cwd_check = _check_dir_exists_shell(ctx.cwd, ctx)
-	##print("OS CWD CHECK:", ctx.cwd, " -> ", cwd_check)
-	#if cwd_check == "" or not DirAccess.dir_exists_absolute(cwd_check) or not ctx.cwd.is_absolute_path():
-		#ctx.append_output("Sanity check, resetting cwd.")
-		#ctx.cwd = ProjectSettings.globalize_path("res://")
-		#ctx.propogate(CompletionContext.Propagate.PROPERTY, "cwd", ctx.cwd)
-		#return ExitCode.FAIL
 	
 	var result = [""]
 	if positional_args[0] in EMULATED_COMMANDS:
@@ -150,15 +140,7 @@ func _execute(ctx:CompletionContext):
 
 
 static func _execute_wrapper(commands:Array, ctx:CompletionContext=null):
-	
-	var editor_console = EditorConsoleSingleton.get_instance()
-	
-	
-	
-	#print(commands)
-	
 	var combined = " ".join(commands)
-	
 	
 	var os_name := OS.get_name()
 	var is_win := os_name == _OS_WIN
@@ -226,8 +208,6 @@ static func _emulated_command(commands:Array, ctx:CompletionContext) -> Array:
 	var c_1 = commands[0]
 	if c_1 == "ls":
 		return _ls(commands, ctx)
-	elif c_1 == "cd":
-		return _cd(commands, ctx)
 	
 	return [""]
 
@@ -243,51 +223,6 @@ static func _ls(commands:Array, ctx:CompletionContext):
 		result[0] = _one_line_result(result[0])
 	return result
  
-static func _cd(commands:Array, ctx:CompletionContext):
-	var cwd = ProjectSettings.globalize_path(ctx.cwd)
-	print(commands)
-	var target_dir = ""
-	if commands.size() == 1:
-		target_dir = ProjectSettings.globalize_path("res://")
-	elif commands.size() == 2:
-		var c_2 = commands[1]
-		if c_2.begins_with("-") or c_2.begins_with("--"):
-			var result = _execute_wrapper(commands, ctx)
-			return result
-		
-		target_dir = ProjectSettings.globalize_path(c_2)
-		if c_2.begins_with("..") or c_2.begins_with("."):
-			target_dir = cwd.path_join(c_2)
-			target_dir = target_dir.simplify_path()
-	
-	
-	var dir_exists = _check_dir_exists_shell(target_dir, ctx)
-	if dir_exists:
-		if not dir_exists.ends_with("/"):
-			dir_exists += "/"
-		ctx.propogate(CompletionContext.Propagate.PROPERTY, "cwd", dir_exists)
-	else:
-		var check_cwd = _check_dir_exists_shell(cwd, ctx)
-		if not check_cwd:
-			ctx.propogate(CompletionContext.Propagate.PROPERTY, "cwd", "res://")
-			return ["", "Current working dir not valid, resetting to 'res://'"]
-		if target_dir.begins_with("/"):
-			return ["", "Directory does not exist: %s" % target_dir]
-		else:
-			return ["", "Directory does not exist: %s" % cwd.path_join(target_dir)]
-		
-	return [""]
-
-
-static func _check_dir_exists_shell(dir, ctx):
-	var check_dir_command = []
-	var os_name = OS.get_name()
-	if os_name == _OS_LINUX or os_name == _OS_MAC:
-		check_dir_command = ['test -d "%s" && realpath "%s"' % [dir, dir]]
-	elif os_name == _OS_WIN:
-		check_dir_command = ["if exist \"%s\" (echo true) else (echo false)" % dir]
-	var result = _execute_wrapper(check_dir_command, ctx)
-	return result[0].strip_edges()
 
 static func _one_line_result(result_string):
 	var one_line = result_string.replace("\n", "  ").strip_edges()

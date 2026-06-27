@@ -12,7 +12,6 @@ const Execution = UtilsLocal.Execution
 const ConsoleTokenizer = UtilsLocal.ConsoleTokenizer
 const ConsoleUndo = UtilsLocal.ConsoleUndo
 const CompletionContext = UtilsLocal.CompletionContext
-const ConsolePrint = UtilsLocal.Print
 const Colors = UtilsLocal.Colors
 
 const Options = UtilsLocal.Options
@@ -53,7 +52,6 @@ func __get_name__():
 	var nm = get_command_name()
 	if nm == _UNAMED:
 		_ctx_obj.append_output("Unamed Command in -> " + get_script().resource_path.get_file())
-		#print("Unamed Command in -> ", get_script().resource_path.get_file())
 	return nm
 
 static func get_self_command_data() -> Dictionary:
@@ -116,6 +114,7 @@ func get_help_string(full_string:bool=false) -> String:
 
 func _route(ctx:CompletionContext): # shared by both passes
 	_initialize(ctx)
+	
 	if PRINT_DEBUG:
 		print("UNCONSUMED BEFORE::", ctx.unconsumed_tokens)
 	
@@ -148,6 +147,7 @@ func _route(ctx:CompletionContext): # shared by both passes
 		var option_data = _get_option_data(token, flags, commands)
 		if PRINT_DEBUG:
 			print("DATA::", option_data)
+		
 		if token.begins_with("--"):
 			if token in flags:
 				# if flag has a token to consume after, unhandled currently
@@ -194,6 +194,7 @@ func _route(ctx:CompletionContext): # shared by both passes
 		var pos_arg = _consume_token(ctx)
 		var tok_b_curs = ctx.token_before_cursor
 		var is_string:bool = UString.is_string_or_string_name(pos_arg)
+		
 		if PRINT_DEBUG:
 			print(":", ctx.char_before_cursor, ":", tok_b_curs.length(), ":", tok_b_curs, ":", pos_arg.length(), ":", pos_arg, ":")
 		
@@ -236,7 +237,7 @@ func _consume_token(ctx:CompletionContext):
 func execute(ctx:CompletionContext):
 	var selected = _route(ctx)
 	if PRINT_DEBUG:
-		print("SEL::", selected)
+		print("CommandBase execute - selected::", selected)
 	if selected is ExitCode:
 		return selected
 	if selected:
@@ -244,7 +245,6 @@ func execute(ctx:CompletionContext):
 	# no child selected: this node requires one -> print usage
 	if not _correct_positional_count():
 		_get_help_for_token(consumed_tokens.front())
-		#print(positional_args)
 		return ExitCode.FAIL
 	
 	var result = _execute(ctx)
@@ -358,7 +358,6 @@ func _get_commands_in_dir(sort_priority:=true):
 
 func _get_command(command:String):
 	_ctx_obj.append_error("Unrecognized command - get command: " + command)
-	#print("Unrecognized command - get command: ", command)
 	return
 
 func _get_help_for_token(token:String):
@@ -366,8 +365,6 @@ func _get_help_for_token(token:String):
 	var option_data = _get_option_data(split, get_flags(), get_commands())
 	if option_data != null and option_data.has(&"help"):
 		_ctx_obj.append_output(get_help_string(true))
-		#if split == get_command_name(): # added this to get help string
-			#print_available_commands()
 	else:
 		_get_help(token)
 
@@ -464,7 +461,6 @@ static func _call_method(ctx:CompletionContext, callable:Callable, args:Array, c
 						if converted != null:
 							args[i] = converted
 							ctx.append_output("Arg '%s' conversion: %s %s -> %s %s" % [arg_data.get("name"), pass_str, passed, type_string(type), converted])
-							print("Arg '%s' conversion: %s %s -> %s %s" % [arg_data.get("name"), pass_str, passed, type_string(type), converted])
 							err = false
 					if err:
 						ctx.append_error("Arg '%s' type mismatch: %s passed, should be %s" % [arg_data.get("name"), pass_str, type_string(type)])
@@ -508,10 +504,10 @@ static func _call_method(ctx:CompletionContext, callable:Callable, args:Array, c
 		return
 	var result = callable.callv(args)
 	if result != null:
-		print("RES::", result)
 		if result is Object:
 			if result.get_class() in _RESULTS_TO_SKIP:
 				return
+		ctx.append_output("GDScript Method Call:")
 		ctx.append_output(str(result))
 
 
@@ -595,7 +591,7 @@ func _get_config(type:int=0):
 	elif type == 2:
 		return UtilsLocal.Config.get_project_config()
 	else:
-		printerr("Unrecognized config type: %s; 0=Merged, 1=Global, 2=Project\nReturning merged data.")
+		_ctx_obj.append_error("Unrecognized config type: %s; 0=Merged, 1=Global, 2=Project\nReturning merged data.")
 		return UtilsLocal.Config.get_merged_config()
 
 static func _initialize_regex():

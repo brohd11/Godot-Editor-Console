@@ -94,7 +94,7 @@ func _print_list(ctx:CompletionContext):
 			continue
 		if target_language != language:
 			continue
-		#prints(target_base, base)
+		
 		if is_instance_valid(name_check):
 			if not name_check.check_text(name):
 				continue

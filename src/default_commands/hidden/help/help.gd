@@ -12,5 +12,5 @@ static func get_command_name() -> String:
 func _execute(ctx:CompletionContext):
 	var available_commands =  EditorConsoleSingleton.get_instance().scope_dict.keys()
 	available_commands = "\n".join(available_commands).strip_edges()
-	print(HELP_TEXT.strip_edges() % available_commands)
+	ctx.append_output(HELP_TEXT.strip_edges() % available_commands)
 	return ExitCode.OK

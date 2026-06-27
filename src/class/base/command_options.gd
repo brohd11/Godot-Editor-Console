@@ -68,7 +68,7 @@ static func process_option_dict(params:={}) -> Dictionary:
 		elif params.icon is Texture2D:
 			data.icon = params.icon
 		else:
-			print("Unrecognized Texture: %s" % params.icon)
+			printerr("Command Options - Unrecognized Texture: %s" % params.icon)
 	
 	data[Keys.METADATA] = params.get(&"metadata", {})
 	

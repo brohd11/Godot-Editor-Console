@@ -67,16 +67,16 @@ func _execute(ctx:CompletionContext):
 		_get_help_for_token("list")
 		return
 	if not ctx.unconsumed_tokens.is_empty():
-		print("Unrecognized commands: ", ctx.unconsumed_tokens)
+		ctx.append_error("Unrecognized commands: " + str(ctx.unconsumed_tokens))
 		return 1
 	var script = ScriptUtil.get_script_from_ctx(ctx)
 	var script_name = UClassDetail.get_global_class_name(script.resource_path)
 	if script_name == "":
 		script_name = script.resource_path.get_file()
-	print_members(ctx, script_name, consumed_tokens, script)
+	return print_members(ctx, script_name, consumed_tokens, script)
 
 
-static func print_members(ctx:CompletionContext, script_name:String, flags:Array, script:Script):
+static func print_members(ctx:CompletionContext, script_name:String, flags:Array, script:Script) -> int:
 	var print_data = LIST_MODIFIER_OPTIONS[1] in flags
 	var print_lines = LIST_MODIFIER_OPTIONS[0] in flags
 	var inherited = LIST_MODIFIER_OPTIONS[2] in flags
@@ -92,7 +92,7 @@ static func print_members(ctx:CompletionContext, script_name:String, flags:Array
 			ctx.append_error("'--data', '--lines', and '--inherited' should be passed with another argument.")
 		else:
 			ctx.append_error("Pass arguments for the list command.")
-		return
+		return ExitCode.ERR
 	
 	var pr = Pr.new()
 	for i in range(flags_size):
@@ -164,3 +164,5 @@ static func print_members(ctx:CompletionContext, script_name:String, flags:Array
 			if i < flags_size - 1:
 				ctx.append_output("") # print blank line between sections
 			continue
+	
+	return ExitCode.OK

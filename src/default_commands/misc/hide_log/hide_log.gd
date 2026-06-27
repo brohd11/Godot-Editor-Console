@@ -1,6 +1,6 @@
 extends EditorConsoleSingleton.CommandBase
 
-var adjust_size:=false
+var adjust_size:=-1
 var toggle_log:=false
 var toggle_buttons:=false
 
@@ -14,8 +14,9 @@ static func get_self_command_data() -> Dictionary:
 
 func _get_flags() -> Dictionary:
 	var options = Options.new()
-	options.add_option("--size", {
-		&"help": "Adjust the minimum size of the editor log."
+	options.add_option("--size=", {
+		&"help": "Adjust the minimum size of the editor log.",
+		&"trailing_char": ""
 	})
 	options.add_option("--log", {
 		&"help": "Toggle the log label."
@@ -26,19 +27,38 @@ func _get_flags() -> Dictionary:
 	return options.get_options()
 
 func _process_flag(flag:String):
-	if flag == "--size":
-		adjust_size = true
+	if flag.begins_with("--size="):
+		var sz = _get_flag_value(flag)
+		if sz.is_valid_float():
+			adjust_size = int(sz.to_float())
+		elif sz.is_valid_int():
+			adjust_size = sz.to_int()
+		else:
+			adjust_size = -100
+		
+		if adjust_size < 0:
+			adjust_size = -100
+		
 	elif flag == "--log":
 		toggle_log = true
 	elif flag == "--buttons":
 		toggle_buttons = true
 
 func _get_target_positional_count() -> int:
-	if adjust_size:
-		return 1
+	#if adjust_size:
+		#return 1
 	return 0
 
 func _execute(_ctx:CompletionContext):
+	if adjust_size == -100:
+		var flag = ""
+		for c in consumed_tokens:
+			if c.begins_with("--size="):
+				flag = c
+				break
+		_ctx.append_error("Could not get size from flag: " + flag)
+		return ExitCode.ERR
+	
 	var editor_log = EditorNodeRef.get_node_ref(EditorNodeRef.Nodes.EDITOR_LOG)
 	var vbox = editor_log.get_child(1).get_child(0) as VBoxContainer
 	var label = EditorNodeRef.get_node_ref(EditorNodeRef.Nodes.EDITOR_LOG_RICH_TEXT_LABEL)
@@ -54,16 +74,8 @@ func _execute(_ctx:CompletionContext):
 			vbox.custom_minimum_size.y = 0
 		return
 	
-	if adjust_size:
-		var size = positional_args[0] as String
-		if size.is_valid_float():
-			size = size.to_float()
-		elif size.is_valid_int():
-			size = size.to_int()
-		else:
-			print("Pass size number as arg.")
-			return ExitCode.FAIL
-		vbox.custom_minimum_size.y = max(0, size)
+	if adjust_size > -1:
+		vbox.custom_minimum_size.y = max(0, adjust_size)
 	
 	if toggle_log:
 		label.visible = not label.visible

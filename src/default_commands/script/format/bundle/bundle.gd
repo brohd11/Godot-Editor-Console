@@ -13,10 +13,10 @@ static func get_self_command_data() -> Dictionary:
 	})
 
 
-func _execute(_ctx:CompletionContext):
-	_resolve_const(ScriptEditorRef.get_current_code_edit())
+func _execute(ctx:CompletionContext):
+	_resolve_const(ScriptEditorRef.get_current_code_edit(), ctx)
 
-static func _resolve_const(script_editor:CodeEdit):
+static func _resolve_const(script_editor:CodeEdit, ctx:CompletionContext):
 	var current_script_path = ScriptEditorRef.get_current_script().resource_path
 	var current_script_dir = current_script_path.get_base_dir()
 	var completed_preloads := {}
@@ -25,16 +25,16 @@ static func _resolve_const(script_editor:CodeEdit):
 	var i = -1
 	while true:
 		if i > 7500:
-			print("LINED OUT AT 7500 lines")
-			return
+			ctx.append_error("Bundle - Lined out at 7500 lines.")
+			return ExitCode.ERR
 		i += 1
 		if i == script_editor.get_line_count():
 			if pending_preloads.is_empty():
-				return
+				return ExitCode.OK # i think this is ok?
 			#if at the end of the file, just start dumping all pending
 			script_editor.insert_line_at(i - 1, "")
 			script_editor.insert_line_at(i, "")
-			process_pending(script_editor, i, pending_preloads, completed_preloads)
+			process_pending(script_editor, i, pending_preloads, completed_preloads, ctx)
 			continue
 		
 		var line = script_editor.get_line(i)
@@ -71,7 +71,7 @@ static func _resolve_const(script_editor:CodeEdit):
 			
 		elif current_indent_level == 0 and not pending_preloads.is_empty():
 			# blank line with current indent level of
-			process_pending(script_editor, i, pending_preloads, completed_preloads)
+			process_pending(script_editor, i, pending_preloads, completed_preloads, ctx)
 			continue
 		
 		if not stripped.begins_with("const"):
@@ -86,7 +86,7 @@ static func _resolve_const(script_editor:CodeEdit):
 		if assignment.ends_with(".gd"):
 			var whitespace = "\t".repeat(int(indent * 0.25))
 			script_editor.set_line(i, whitespace + "pass #" + line.strip_edges())
-			if not check_history(const_name, assignment, completed_preloads):
+			if not check_history(const_name, assignment, completed_preloads, ctx):
 				pass #^c if it is already done, pass
 			elif current_indent_level == 0:
 				dump_file(script_editor, i, assignment, const_name)
@@ -95,12 +95,12 @@ static func _resolve_const(script_editor:CodeEdit):
 				pending_preloads.append(stripped)
 
 
-static func process_pending(script_editor:CodeEdit, line_number:int, pending:Array, completed:Dictionary):
+static func process_pending(script_editor:CodeEdit, line_number:int, pending:Array, completed:Dictionary, ctx:CompletionContext):
 	var pending_stripped = pending.pop_front()
 	var pending_const_data = GDScriptParse.get_var_or_const_info(pending_stripped)
 	var const_name = pending_const_data[0]
 	var assignment = pending_const_data[2]
-	if not check_history(const_name, assignment, completed):
+	if not check_history(const_name, assignment, completed, ctx):
 		return
 	dump_file(script_editor, line_number, assignment, const_name)
 	completed[const_name] = assignment
@@ -136,11 +136,11 @@ static func dump_file(script_editor:CodeEdit, line_number:int, type_path:String,
 	script_editor.end_action()
 
 
-static func check_history(name:String, assignment:String, completed:Dictionary):
+static func check_history(name:String, assignment:String, completed:Dictionary, ctx:CompletionContext):
 	if completed.has(name):
 		if completed[name] != assignment:
-			printerr("Imported class doesn't name clash, not of same type.")
-			printerr("First: ", completed[name])
-			printerr("Second: ", assignment)
+			ctx.append_error("Imported class doesn't name clash, not of same type.")
+			ctx.append_error("First: " + completed[name])
+			ctx.append_error("Second: " + assignment)
 		return false
 	return true

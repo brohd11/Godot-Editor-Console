@@ -74,12 +74,13 @@ func _execute(ctx:CompletionContext):
 		ctx.append_error("Unrecognized method: " + method_name)
 		return ExitCode.FAIL
 	
-	call_method(ctx, script, method_name)
+	return call_method(ctx, script, method_name)
 
 
 func call_method(ctx:CompletionContext, script:Script, method_name:String):
 	if not script.has_method(method_name):
-		print("Static method '%s' not in script." % method_name)
-		return
+		ctx.append_error("Static method '%s' not in script." % method_name)
+		return ExitCode.ERR
 	var callable = script.get(method_name)
 	_call_method(ctx, callable, ctx.arguments, create_default)
+	return ExitCode.OK

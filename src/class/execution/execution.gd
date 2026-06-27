@@ -26,8 +26,10 @@ static func run_test():
 	var string = FileAccess.get_file_as_string(TEST_PATH)
 	var exe_ctx = CompletionContext.new()
 	execute_command_multiline(string, exe_ctx)
-	print("DONE")
-	print(exe_ctx.stdout)
+	
+	if EditorConsoleSingleton.PRINT_DEBUG:
+		print("DONE")
+		print(exe_ctx.stdout)
 
 static var _func_def_regex:RegEx
 static var _conditional_regex:RegEx
@@ -89,15 +91,18 @@ func run(string: String):
 			
 			
 			if execution_ctx.exit_requested:
-				#print("EXITING:", s, ":EXIT:", execution_ctx.exit_code)
+				if EditorConsoleSingleton.PRINT_DEBUG:
+					print("EXITING:", s, ":EXIT:", execution_ctx.exit_code)
 				return
 			if _is_function and execution_ctx.data.get(UtilsLocal.Function.RETURN_KEY, -1) > -1:
 				execution_ctx.last_status = execution_ctx.data.get(UtilsLocal.Function.RETURN_KEY, -1)
-				#print("FUNC RETURN::", s)
+				if EditorConsoleSingleton.PRINT_DEBUG:
+					print("FUNC RETURN::", s)
 				return
 			if _is_loop:
 				if execution_ctx.data.get(_LOOP_CONTINUE_KEY, false):
-					print("CONTINUE:", s)
+					if EditorConsoleSingleton.PRINT_DEBUG:
+						print("CONTINUE:", s)
 					return
 				elif execution_ctx.data.get(_LOOP_BREAK_KEY, false):
 					return
@@ -161,7 +166,9 @@ func _parse_in_multiline_string(line: String):
 		_parse_normal(full_line)
 
 func _parse_in_loop(line: String):
-	print("IN LOOP:", line)
+	if EditorConsoleSingleton.PRINT_DEBUG:
+		print("IN LOOP:", line)
+	
 	if brace_depth == 1 and line.begins_with("}"):
 		# process the loop function
 		var loop_ctx = CompletionContext.new_ctx("Loop", execution_ctx)
@@ -178,14 +185,17 @@ func _parse_in_loop(line: String):
 				execution_ctx.exit_code = UtilsLocal.CommandBase.ExitCode.ERR
 				return
 			var coll_val = _substitute_vars(collection)
-			print(collection, " -> ", coll_val)
 			var coll_split = UString.string_safe_split_multi(coll_val, [" ", "\t", "\n"])
-			print(coll_split)
+			if EditorConsoleSingleton.PRINT_DEBUG:
+				print(collection, " -> ", coll_val)
+				print(coll_split)
+			
 			for item in coll_split:
 				loop_ctx.data.erase(_LOOP_CONTINUE_KEY)
 				loop_ctx.variables["$" + iterator] = item
 				execute_command_multiline(loop, loop_ctx)
-				print("LOOP BREAK:", loop_ctx.data)
+				if EditorConsoleSingleton.PRINT_DEBUG:
+					print("LOOP BREAK:", loop_ctx.data)
 				if loop_ctx.data.get(_LOOP_BREAK_KEY, false):
 					break
 			
@@ -199,7 +209,8 @@ func _parse_in_loop(line: String):
 				if loop_ctx.data.get(_LOOP_BREAK_KEY, false):
 					break
 		
-		print("LOOP OUT---\n", loop_ctx.stdout, "\n---")
+		if EditorConsoleSingleton.PRINT_DEBUG:
+			print("LOOP OUT---\n", loop_ctx.stdout, "\n---")
 		loop_ctx.write_to_parent(execution_ctx)
 		
 		reset_loop()
@@ -298,7 +309,6 @@ func _handle_conditional():
 			return
 
 func _evaluate_condition(condition: String) -> bool:
-	#print("EVAL::", condition)
 	var ctx = execute_command(condition, {
 		&"parent_ctx": execution_ctx,
 	})
@@ -313,7 +323,6 @@ func _substitute_vars(string):
 			return string
 	
 	var val = ConsoleTokenizer.check_variable(string, execution_ctx)
-	#print("SUBSTITUTE:", string, " -> ", val)
 	return val
 
 
@@ -416,8 +425,6 @@ static func source_file(file_path:String, parent_ctx:CompletionContext=null, all
 	execute_command("os " + file_path, {
 		&"parent_ctx": parent_ctx,
 	})
-	
-	#print("SOURCE::", parent_ctx.stdout)
 	return parent_ctx
 
 
@@ -478,9 +485,14 @@ static func execute_command(text:String, params:={}):
 			if cmd_data.pre == "|" and is_instance_valid(last_ctx):
 				current_ctx.stdin = last_ctx.stdout
 			
-			#print("STDIN:", current_ctx.stdin)
+			
+			
 			_parse_command(current_ctx)
-			#print("STDOUT:", current_ctx.stdout)
+			
+			if EditorConsoleSingleton.PRINT_DEBUG:
+				pass
+				#print("STDIN:", current_ctx.stdin)
+				#print("STDOUT:", current_ctx.stdout)
 			
 			if cmd_data.post == "&&":
 				if current_ctx.exit_code != 0:
@@ -567,7 +579,6 @@ static func expand_commands(text:String, parent:CompletionContext, display:=fals
 	var token_data = tokenizer.parse_command_string_execute(text, display)
 	var all_expanded_text = " ".join(token_data.expanded)
 	
-	#print(token_data.expanded)
 	if token_data.expanded.is_empty():
 		parent.exit_code = CompletionContext.ExitCode.FAIL
 		parent.exit_requested = true

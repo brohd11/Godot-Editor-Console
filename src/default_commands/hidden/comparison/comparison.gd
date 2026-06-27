@@ -23,7 +23,9 @@ func _execute(ctx:CompletionContext):
 		ctx.append_error("[: missing closing ']'")
 		return
 	var args := positional_args.slice(0, positional_args.size() - 1)  # drop "]"
-	print("EVAL ARGS::", args)
+	if EditorConsoleSingleton.PRINT_DEBUG:
+		print("EVAL ARGS::", args)
+	
 	ctx.exit_code = ExitCode.OK if _eval(args, ctx) else ExitCode.FAIL
 
 

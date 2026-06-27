@@ -31,14 +31,13 @@ func _process_flag(flag:String):
 		"--project": project_flag = true
 		"--global": global_flag = true
 
-func _get_completions(ctx:CompletionContext):
+func _get_completions(_ctx:CompletionContext):
 	if project_flag or global_flag:
 		return {}
 	return get_flags(true)
 
-func _execute(ctx:CompletionContext):
+func _execute(_ctx:CompletionContext):
 	if project_flag:
-		print("OPEN:", UtilsLocal.Config.get_project_config().file_path)
 		_open(UtilsLocal.Config.get_project_config().file_path)
 	if global_flag:
 		_open(UtilsLocal.Config.get_global_config_path())

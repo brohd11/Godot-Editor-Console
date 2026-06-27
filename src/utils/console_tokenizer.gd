@@ -1,6 +1,6 @@
 
 const PLUGIN_EXPORTED = false
-const PRINT_DEBUG = PLUGIN_EXPORTED # or true
+const PRINT_DEBUG = EditorConsoleSingleton.PRINT_DEBUG
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 const Colors = UtilsLocal.Colors
@@ -54,6 +54,10 @@ static func _initialize_regex():
 		variable_regex = RegEx.new()
 		#variable_regex.compile("\\$[\\w+|?|@|#]\\b")
 		variable_regex.compile("\\$(?:\\w+\\b|[?@#])")
+
+static func get_variable_regex():
+	_initialize_regex()
+	return variable_regex
 
 
 #! keys commands:PackedStringArray expanded:PackedStringArray args:PackedStringArray display:String
@@ -163,16 +167,14 @@ func _tokenize_string(text: String, expand:bool=true, display:=false) -> Diction
 			continue
 		# end command substitution
 		
-		#print("Tokenize String:", token)
-		# expansion
 		
+		# expansion
 		var expanded = [token]
 		if not is_string:
 			expanded = _expand_token(token, active_ctx.aliases)
 		
 		var expanded_display = ""
 		for e in expanded:
-			#print("EXPAND e:", e)
 			var var_check = _check_variable(e, display)
 			if not display:
 				expanded_tokens.append(var_check)
@@ -188,7 +190,6 @@ func _tokenize_string(text: String, expand:bool=true, display:=false) -> Diction
 				
 				else:
 					expanded_tokens.append(e)
-					#print("VC::", var_check)
 					var inner = var_check.replace(UNDEFINED, wrap_color("undef", color_var_fail))
 					var undef = " " + wrap_variable(e, "__PLACEHOLDER__")
 					undef = undef.replace("__PLACEHOLDER__", inner)
@@ -203,7 +204,6 @@ func _tokenize_string(text: String, expand:bool=true, display:=false) -> Diction
 				display_string += " " + expanded_display # _get_token_color(expanded_display)
 		# end expansion
 	
-	#print("EXPANDED::", text, " -> ", expanded_tokens)
 	return {
 		"expanded": expanded_tokens,
 		"display": display_string.strip_edges()
@@ -286,7 +286,9 @@ static func check_variable(token:String, active:CompletionContext, display:=fals
 	_initialize_regex()
 	#^r should this be unquoted here?
 	if token.begins_with("$("):
-		print("CHECK VAR: ", token)
+		if PRINT_DEBUG:
+			print("CHECK VAR: ", token)
+		
 		if not is_instance_valid(active) or not active.execute:
 			return token  # don't want to execute when doing completions
 		
@@ -347,9 +349,12 @@ static func check_variable(token:String, active:CompletionContext, display:=fals
 					default = UNDEFINED
 				var_check = active.variables.get(var_string, default)
 			
-			print(display, ":DISP:TOKEN:",var_string, " -> ", var_check)
+			if PRINT_DEBUG:
+				print(display, ":DISP:TOKEN:",var_string, " -> ", var_check)
+			
 			if var_check != var_string and var_check.contains("$") and not var_check.contains(UNDEFINED):
-				print("RECUR CHEK;", var_string, " -> ", var_check)
+				if PRINT_DEBUG:
+					print("RECUR CHEK;", var_string, " -> ", var_check)
 				var_check = check_variable(var_check, active)
 			
 			var left = stripped_token.substr(last_end, m.get_start() - last_end)
@@ -361,7 +366,8 @@ static func check_variable(token:String, active:CompletionContext, display:=fals
 		if is_string:
 			new_string = quote_char + new_string + quote_char
 		
-		print("RETURN:", token, " -> ", new_string)
+		if PRINT_DEBUG:
+			print("RETURN:", token, " -> ", new_string)
 		return new_string
 	return token
 
@@ -591,7 +597,6 @@ func _get_token_color_old(token:String, pr:Pr, leading_space:bool, is_expanded:b
 		var stripped_token = token
 		if UString.is_string_or_string_name(token):
 			stripped_token = UString.unquote(token)
-		#print("STRIPPED:", stripped_token)
 		
 		var matches = variable_regex.search_all(stripped_token)
 		if is_string:
@@ -620,7 +625,6 @@ func _get_token_color_old(token:String, pr:Pr, leading_space:bool, is_expanded:b
 			pr.append(quote_char)
 			new_string = quote_char + new_string + quote_char
 		
-		#print("RETURN:", token, " -> ", new_string)
 		return new_string
 	
 	if is_expanded:

@@ -46,14 +46,14 @@ func _get_completions(_ctx:CompletionContext):
 func _unwrap_quotes():
 	return 0
 
-func _execute(_ctx:CompletionContext):
+func _execute(ctx:CompletionContext):
 	
 	var new_command_name:String = UString.unquote(positional_args[1])
 	if new_command_name.get_extension() != "":
 		new_command_name = new_command_name.get_basename()
 	if not new_command_name.is_valid_filename():
-		print("Not a valid file name: ", new_command_name)
-		return
+		ctx.append_error("Not a valid file name: " + new_command_name)
+		return ExitCode.ERR
 	
 	var command_path:String = positional_args[0]
 	command_path = UString.unquote(command_path).strip_edges()
@@ -61,20 +61,20 @@ func _execute(_ctx:CompletionContext):
 	if command_path.is_absolute_path():
 		target_command_dir = command_path
 	else:
-		target_command_dir = _get_new_command_dir()
+		target_command_dir = _get_new_command_dir(ctx)
 	
 	if target_command_dir == "":
-		print("Could not get new command dir: ", command_path)
-		return
+		ctx.append_error("Could not get new command dir: " + command_path)
+		return ExitCode.ERR
 	
 	
 	if DirAccess.dir_exists_absolute(target_command_dir):
 		var dirs = DirAccess.get_directories_at(target_command_dir)
 		for d in dirs:
 			if d == new_command_name:
-				print("Command already in directory.")
-				print(target_command_dir)
-				return
+				ctx.append_error("Command already in directory.")
+				ctx.append_error(target_command_dir)
+				return ExitCode.ERR
 	
 	var new_command_dir = target_command_dir.path_join(new_command_name)
 	var new_command_path = new_command_dir.path_join(new_command_name + ".gd")
@@ -89,7 +89,7 @@ func _execute(_ctx:CompletionContext):
 	EditorInterface.get_resource_filesystem().scan()
 	
 	if FileAccess.file_exists(new_command_path):
-		print("New command created at: ", new_command_path)
+		ctx.append_output("New command created at: " + new_command_path)
 		var new_script = load(new_command_path)
 		if open_flag:
 			if UtilsRemote.UFile.path_in_res(new_command_path):
@@ -100,9 +100,9 @@ func _execute(_ctx:CompletionContext):
 		
 		if register_flag:
 			EditorConsoleSingleton.register_persistent_scope(new_command_name, new_command_path)
+	return ExitCode.OK
 
-
-func _get_new_command_dir():
+func _get_new_command_dir(ctx:CompletionContext) -> String:
 	var command_path:String = UString.unquote(positional_args[0]).strip_edges()
 	if command_path == "hidden":
 		return HIDDEN_DIR
@@ -118,8 +118,8 @@ func _get_new_command_dir():
 	var command_object = null
 	var current_command = console.get_scope_script(path_parts[0])
 	if current_command == null:
-		print("Could not retrieve command: ", command_path)
-		return
+		ctx.append_error("Could not retrieve command: " + command_path)
+		return ""
 	
 	command_object = current_command.new()
 	path_parts.remove_at(0)
@@ -128,19 +128,19 @@ func _get_new_command_dir():
 		var commands = command_object.get_commands()
 		var next_command_data = commands.get(p)
 		if next_command_data == null or not next_command_data.has(&"get_command"):
-			print("Could not retrieve command: ", command_path)
-			return
+			ctx.append_error("Could not retrieve command: " + command_path)
+			return ""
 		
 		var get_com_func = next_command_data[&"get_command"]
 		var next_command_obj = get_com_func.call()
 		if not is_instance_valid(next_command_obj):
-			print("Could not retrieve command: ", command_path)
-			return
+			ctx.append_error("Could not retrieve command: " + command_path)
+			return ""
 		command_object = next_command_obj
 	
 	if not is_instance_valid(command_object):
-		print("Could not resolve command object path: ", command_path)
-		return
+		ctx.append_error("Could not resolve command object path: " + command_path)
+		return ""
 	
 	var current_command_path = command_object.get_script().resource_path
 	var command_dir = current_command_path.get_base_dir()

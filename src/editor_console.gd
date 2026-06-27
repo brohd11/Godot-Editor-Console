@@ -2,6 +2,8 @@ class_name EditorConsoleSingleton #! singleton-module
 extends SingletonRefCount
 const SingletonRefCount = Singletons.RefCount
 
+const PRINT_DEBUG = not PLUGIN_EXPORTED or true
+
 const SCRIPT = preload("res://addons/editor_console/src/editor_console.gd")
 
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
@@ -194,7 +196,7 @@ func _load_default_commands():
 static func register_persistent_scope(scope_name:String, script_path:String, project:bool=false):
 	if not _instance_valid_err(): return
 	if not FileAccess.file_exists(script_path):
-		print("Could not load script: %s" % script_path)
+		printerr("Could not load script: %s" % script_path)
 		return
 	
 	var target_config = Config.get_target_config(project)
@@ -674,7 +676,7 @@ static func get_completion_for_input(input_text:String, params:={}):
 	elif completion.has_method("get_options"):
 		completion = completion.get_options()
 	else:
-		print("Unhandled completion result: ", completion)
+		printerr("EditorConsoleSingleton::get_completion_for_input - Unhandled completion result: ", completion)
 		return {}
 	
 	

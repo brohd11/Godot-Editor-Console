@@ -94,7 +94,7 @@ func check_keyword_variables(line_text:String, keywords:Array, color:Color, max_
 	if max_idx == -1:
 		max_idx = line_text.length()
 	
-	var matches = ConsoleTokenizer.variable_regex.search_all(line_text)
+	var matches = ConsoleTokenizer.get_variable_regex().search_all(line_text)
 	if matches.is_empty():
 		return {}
 	

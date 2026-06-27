@@ -19,7 +19,8 @@ func _execute(ctx:CompletionContext):
 
 static func run_expr(ctx:CompletionContext, args:Array):
 	var expression = " ".join(args)
-	print("IN EXPR::", expression)
+	if EditorConsoleSingleton.PRINT_DEBUG:
+		print("IN EXPR::", expression)
 	var expr = Expression.new()
 	var err = expr.parse(expression)
 	if err != OK:

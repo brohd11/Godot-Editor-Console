@@ -73,9 +73,6 @@ func _get_completions(ctx:CompletionContext):
 		return {}
 	
 	var cursor_on_access = ctx.token_before_cursor == script_access_path and ctx.char_before_cursor != " "
-	#print(ctx.token_before_cursor)
-	#print(cursor_on_access, ":", ctx.char_before_cursor,":")
-	#print(ctx.word_before_cursor)
 	if not cursor_on_access:
 		var commands = get_commands(true)
 		commands.merge(get_flags(true))

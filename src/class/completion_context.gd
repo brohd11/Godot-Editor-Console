@@ -203,9 +203,6 @@ func completion_parse():
 			if idx < current_command_caret:
 				token_before_cursor = cmd
 				break
-	
-	
-	#print("FINAL: ", unconsumed_tokens)
 
 
 func execute_parse():
