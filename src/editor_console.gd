@@ -2,7 +2,7 @@ class_name EditorConsoleSingleton #! singleton-module
 extends SingletonRefCount
 const SingletonRefCount = Singletons.RefCount
 
-const PRINT_DEBUG = not PLUGIN_EXPORTED or true
+const PRINT_DEBUG = false # not PLUGIN_EXPORTED# or true
 
 const SCRIPT = preload("res://addons/editor_console/src/editor_console.gd")
 
@@ -365,37 +365,20 @@ static func execute_interactive(input_text:String, params:={}):
 		active_ctx = CompletionContext.new_ctx(input_text, null, true)
 	
 	var full_display = ""
-	var multi_line_commands = ""
 	var split_delim = UString.string_safe_split(input_text, ";")
-	
 	for i in range(split_delim.size()):
 		var line:String = split_delim[i]
 		var expand_data:Dictionary = Execution.expand_commands(line, active_ctx, true)
 		if active_ctx.exit_requested:
 			return # expand can return an error
 		
-		var expanded_condition_map:Dictionary = expand_data.condition_map
 		var expanded_commands:Array = expand_data.command_statements
 		if expanded_commands.size() == 1 and expanded_commands[0] == "":
 			continue
 		
-		
-		for cmd_i in expanded_condition_map.keys():
-			var data = expanded_condition_map[cmd_i]
-			var cmd_text = data.get("text")
-			var post = data.get("post")
-			var insert = " %s " % post if post != "" else " "
-			multi_line_commands += cmd_text + insert
-		
-		multi_line_commands += "\n"
-		
 		full_display += expand_data.display
 		if i < split_delim.size() - 1:
 			full_display += "; "
-	
-	multi_line_commands = multi_line_commands.strip_edges()
-	if multi_line_commands.is_empty():
-		return
 	
 	if is_instance_valid(console_container):
 		if print_to_log and input_text.strip_edges() != "os":
@@ -411,7 +394,7 @@ static func execute_interactive(input_text:String, params:={}):
 			console_container.add_to_history(input_text)
 	
 	
-	Execution.execute_command_multiline(multi_line_commands, active_ctx)
+	Execution.execute_command_multiline(input_text, active_ctx)
 	
 	active_ctx.strip_output_newlines()
 	active_ctx.strip_error_newlines()

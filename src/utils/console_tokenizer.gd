@@ -1,6 +1,6 @@
 
 const PLUGIN_EXPORTED = false
-const PRINT_DEBUG = EditorConsoleSingleton.PRINT_DEBUG
+const PRINT_DEBUG = EditorConsoleSingleton.PRINT_DEBUG# or true
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 const Colors = UtilsLocal.Colors
@@ -289,7 +289,8 @@ static func check_variable(token:String, active:CompletionContext, display:=fals
 		if PRINT_DEBUG:
 			print("CHECK VAR: ", token)
 		
-		if not is_instance_valid(active) or not active.execute:
+		#if not is_instance_valid(active) or not active.execute:
+		if display: #^ maybe just make display always do no execution.
 			return token  # don't want to execute when doing completions
 		
 		var stripped = token.trim_prefix("$(").trim_suffix(")")
@@ -298,7 +299,6 @@ static func check_variable(token:String, active:CompletionContext, display:=fals
 			&"parent_ctx": active,
 			&"sub_shell": true
 		})
-		
 		return sub_shell_ctx.strip_output_newlines()
 	
 	var is_string = UString.is_string_or_string_name(token)

@@ -70,9 +70,9 @@ func run(string: String):
 		line = remove_comment(line, true).strip_edges()
 		if line.is_empty() or line.begins_with("#"):
 			continue
-		var statements = [line]
-		if state != ParseState.IN_MULTILINE_STRING and line.contains(";"):
-			statements = UString.string_safe_split(line, ";")
+		var statements: PackedStringArray = [line]
+		if state != ParseState.IN_MULTILINE_STRING:
+			statements = _split_statements(line)
 		for s:String in statements:
 			s = s.strip_edges()
 			match state:
@@ -397,6 +397,107 @@ static func _is_in_loop(line:String) -> bool:
 	if not line.ends_with("{"):
 		return false
 	return line.begins_with("for ") or line.begins_with("while ")
+
+
+# Splits a physical line into normalized statements. Splits on unquoted ";" and,
+# when a "{" actually opens a block (if/elif/else/for/while/name()), treats the
+# "{" and its matching "}" as statement boundaries too. Literal braces (e.g.
+# "echo {a:1}") are left intact. "} else {" / "} elif x {" stay joined so the
+# conditional handler can consume them.
+const _BRACE_LITERAL := 0
+const _BRACE_BLOCK := 1
+
+static func _split_statements(line: String) -> PackedStringArray:
+	# build into a regular Array (pass-by-reference); PackedStringArray is
+	# copy-on-write, so a helper appending to it would not mutate the caller.
+	var out: Array = []
+	var cur := ""
+	var brace_stack: Array[int] = []
+	var in_single := false
+	var in_double := false
+	var escaped := false
+	var i := 0
+	var n := line.length()
+	while i < n:
+		var ch := line[i]
+		if escaped:
+			cur += ch
+			escaped = false
+			i += 1
+			continue
+		if ch == "\\":
+			cur += ch
+			escaped = true
+			i += 1
+			continue
+		if ch == "'" and not in_double:
+			in_single = not in_single
+			cur += ch
+			i += 1
+			continue
+		if ch == "\"" and not in_single:
+			in_double = not in_double
+			cur += ch
+			i += 1
+			continue
+		if in_single or in_double:
+			cur += ch
+			i += 1
+			continue
+
+		if ch == ";":
+			_flush_statement(out, cur)
+			cur = ""
+		elif ch == "{":
+			cur += "{"
+			if _is_block_header(cur):
+				_flush_statement(out, cur)
+				cur = ""
+				brace_stack.push_back(_BRACE_BLOCK)
+			else:
+				brace_stack.push_back(_BRACE_LITERAL)
+		elif ch == "}":
+			var is_block_close := brace_stack.is_empty() or brace_stack[-1] == _BRACE_BLOCK
+			if not brace_stack.is_empty():
+				brace_stack.pop_back()
+			if is_block_close:
+				_flush_statement(out, cur)
+				cur = ""
+				var rest := line.substr(i + 1).strip_edges()
+				if _begins_with_keyword(rest, "else") or _begins_with_keyword(rest, "elif"):
+					cur = "}"
+				else:
+					out.append("}")
+			else:
+				cur += "}"
+		else:
+			cur += ch
+		i += 1
+	_flush_statement(out, cur)
+	return PackedStringArray(out)
+
+
+static func _flush_statement(out: Array, text: String) -> void:
+	text = text.strip_edges()
+	if text != "":
+		out.append(text)
+
+
+static func _is_block_header(candidate: String) -> bool:
+	if _func_def_regex.search(candidate) != null:
+		return true
+	if _conditional_regex.search(candidate) != null:
+		return true
+	return _is_in_loop(candidate.strip_edges())
+
+
+static func _begins_with_keyword(text: String, keyword: String) -> bool:
+	if not text.begins_with(keyword):
+		return false
+	if text.length() == keyword.length():
+		return true
+	var next := text[keyword.length()]
+	return next == " " or next == "\t" or next == "{"
 
 func _get_string_map(string:String):
 	if _string_maps.has(string):
