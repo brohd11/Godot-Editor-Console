@@ -18,12 +18,13 @@ func _get_target_positional_count() -> int:
 
 func _execute(ctx:CompletionContext):
 	var paths := []
-	paths.append_array(positional_args)
+	for p in positional_args:
+		paths.append(_complete_path(p, ctx.cwd))
 	if ctx.stdin.strip_edges() != "":
 		for line in ctx.stdin.split("\n", false):
 			var p = line.strip_edges()
 			if p != "":
-				paths.append(p)
+				paths.append(_complete_path(p, ctx.cwd))
 
 	if paths.is_empty():
 		ctx.append_error("No paths to trash (argument or stdin).")

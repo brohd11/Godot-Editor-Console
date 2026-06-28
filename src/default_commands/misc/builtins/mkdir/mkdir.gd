@@ -14,7 +14,7 @@ static func get_self_command_data() -> Dictionary:
 	})
 
 func _execute(ctx:CompletionContext):
-	var dir = positional_args[0]
+	var dir = _complete_path(positional_args[0], ctx.cwd)
 	if DirAccess.dir_exists_absolute(dir):
 		ctx.append_output("Directory already exists: " + dir)
 		return

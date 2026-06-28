@@ -1,8 +1,9 @@
 extends EditorConsoleSingleton.CommandBase
 
 const _HELP = \
-"Find project files by name (one path per line).
+"Find files under the current directory by name (one path per line).
 Pattern matches the file name; use * and ? for globbing, otherwise it's a substring match.
+Results are limited to the current directory (see cwd); cd elsewhere to change scope.
 Usage: find <pattern> [--ext=tscn]"
 
 var ext_flag := ""
@@ -32,8 +33,14 @@ func _execute(ctx:CompletionContext):
 	var pattern = positional_args[0]
 	var is_glob = pattern.contains("*") or pattern.contains("?")
 
+	var root := ProjectSettings.localize_path(ctx.cwd)
+	if not root.ends_with("/"):
+		root += "/"
+
 	var matches := 0
 	for f in EditorConsoleSingleton.get_file_paths():
+		if not f.begins_with(root):
+			continue
 		if ext_flag != "" and f.get_extension() != ext_flag:
 			continue
 		var file_name = f.get_file()

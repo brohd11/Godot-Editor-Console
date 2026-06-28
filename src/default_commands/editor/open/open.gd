@@ -41,6 +41,7 @@ func _execute(ctx:CompletionContext):
 	if path == "":
 		ctx.append_error("No path provided (argument or stdin).")
 		return ExitCode.FAIL
+	path = _complete_path(path, ctx.cwd)
 	if not FileAccess.file_exists(path):
 		ctx.append_error("File does not exist: " + path)
 		return ExitCode.FAIL

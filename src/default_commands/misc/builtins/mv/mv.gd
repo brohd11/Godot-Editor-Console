@@ -15,8 +15,8 @@ static func get_self_command_data() -> Dictionary:
 	})
 
 func _execute(ctx:CompletionContext):
-	var src = positional_args[0]
-	var dest = positional_args[1]
+	var src = _complete_path(positional_args[0], ctx.cwd)
+	var dest = _complete_path(positional_args[1], ctx.cwd)
 
 	if not (FileAccess.file_exists(src) or DirAccess.dir_exists_absolute(src)):
 		ctx.append_error("Source does not exist: " + src)

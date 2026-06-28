@@ -14,7 +14,7 @@ static func get_self_command_data():
 	})
 
 func _execute(ctx:CompletionContext):
-	var path = positional_args[0]
+	var path = _complete_path(positional_args[0], ctx.cwd)
 	if not FileAccess.file_exists(path):
 		ctx.exit_code = ExitCode.FAIL
 		ctx.append_error("File doesn't exist, cannot source: " + path)
