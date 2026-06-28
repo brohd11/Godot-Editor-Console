@@ -574,6 +574,9 @@ func print_available_commands():
 		for c in commands:
 			_ctx_obj.append_output("\t" + c)
 
+func complete_path(to_check:String):
+	return _complete_path(to_check, _ctx_obj.cwd)
+
 ## Relative paths will be completed via base_dir, absolute are returned unchanged
 static func _complete_path(to_check:String, base_dir:String):
 	if to_check.is_absolute_path():

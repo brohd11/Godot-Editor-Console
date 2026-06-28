@@ -579,16 +579,18 @@ static func execute_command(text:String, params:={}):
 			var sub_shell_cmd = cmd_text.begins_with("(") and cmd_text.ends_with(")")
 			if sub_shell_cmd:
 				cmd_text = cmd_text.trim_prefix("(").trim_suffix(")").strip_edges()
+				
 			
 			var current_ctx = CompletionContext.new_ctx(cmd_text, active_ctx, sub_shell_cmd)
-			current_ctx.execute_parse()
 			
 			if cmd_data.pre == "|" and is_instance_valid(last_ctx):
 				current_ctx.stdin = last_ctx.stdout
 			
-			
-			
-			_parse_command(current_ctx)
+			if sub_shell_cmd: # ensures nested coditions will parse
+				execute_command_multiline(cmd_text, current_ctx)
+			else:
+				current_ctx.execute_parse()
+				_parse_command(current_ctx)
 			
 			if EditorConsoleSingleton.PRINT_DEBUG:
 				pass
@@ -702,16 +704,31 @@ static func expand_commands(text:String, parent:CompletionContext, display:=fals
 	else:
 		valid_expanded_command_statements.clear()
 		var string_map = UString.get_string_map(all_expanded_text)
-		var start = 0
+		var working_start = 0
+		var valid_command_start = 0
 		var count = 0
-		while start < all_expanded_text.length():# and count < 10:
+		while working_start < all_expanded_text.length():# and count < 10:
 			
-			var and_i = UString.string_safe_find(all_expanded_text, " && ", start, string_map)
-			var or_i = UString.string_safe_find(all_expanded_text, " || ", start, string_map)
-			var pipe_i = UString.string_safe_find(all_expanded_text, " | ", start, string_map)
+			var and_i = UString.string_safe_find(all_expanded_text, " && ", working_start, string_map)
+			var or_i = UString.string_safe_find(all_expanded_text, " || ", working_start, string_map)
+			var pipe_i = UString.string_safe_find(all_expanded_text, " | ", working_start, string_map)
+			var bracket_i = UString.string_safe_find(all_expanded_text, "(", working_start, string_map)
 			
-			if and_i == -1 and or_i == -1 and pipe_i == -1:
-				var final_command = all_expanded_text.substr(start)
+			if and_i == -1:  and_i  = all_exp_length
+			if or_i == -1:   or_i   = all_exp_length
+			if pipe_i == -1: pipe_i = all_exp_length
+			var min_i = min(and_i, or_i, pipe_i)
+			
+			#print("&& %s || %s | %s ( %s" % [and_i, or_i, pipe_i, bracket_i])
+			if bracket_i > -1 and bracket_i < min_i:
+				var end = string_map.bracket_map[bracket_i]
+				if end > min_i:
+					working_start = end
+					continue
+			
+			if min_i == all_exp_length:
+				var final_command = all_expanded_text.substr(valid_command_start)
+				final_command = final_command.strip_edges()
 				condition_map[count] = {
 					"text": final_command,
 					"pre": last_condition,
@@ -720,19 +737,15 @@ static func expand_commands(text:String, parent:CompletionContext, display:=fals
 				valid_expanded_command_statements.append(final_command)
 				break
 			
-			if and_i == -1: and_i =  all_exp_length
-			if or_i == -1: or_i =  all_exp_length
-			if pipe_i == -1: pipe_i = all_exp_length
-			
 			var cond_match = ""
-			match min(and_i, or_i, pipe_i):
+			match min_i:
 				and_i: cond_match = "&&"
 				or_i: cond_match = "||"
 				pipe_i: cond_match = "|"
 			
 			var idx = min(and_i, or_i, pipe_i)
-			var command = all_expanded_text.substr(start, idx - start)
-			#var next_cond = all_expanded_text.substr(idx, cond_match.length() + 1).strip_edges()
+			var command = all_expanded_text.substr(valid_command_start, idx - valid_command_start)
+			command = command.strip_edges()
 			condition_map[count] = {
 				"text": command,
 				"pre": last_condition,
@@ -740,10 +753,11 @@ static func expand_commands(text:String, parent:CompletionContext, display:=fals
 			}
 			valid_expanded_command_statements.append(command)
 			last_condition = cond_match
-			start = idx + cond_match.length() + 2
+			
+			working_start = idx + cond_match.length() + 2
+			valid_command_start = working_start
 			
 			count += 1
-	
 	
 	return {
 		&"command_statements": valid_expanded_command_statements,

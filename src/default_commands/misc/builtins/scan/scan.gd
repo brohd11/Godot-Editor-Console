@@ -62,13 +62,13 @@ func _execute(ctx:CompletionContext):
 			return ExitCode.FAIL
 		pattern = positional_args[0]
 		for i in range(1, positional_args.size()):
-			paths.append(positional_args[i])
+			paths.append(complete_path(positional_args[i]))
 
 	# Paths may also arrive via stdin (one per line), e.g. from `find`.
 	for line in ctx.stdin.split("\n", false):
 		var stripped = line.strip_edges()
 		if stripped != "":
-			paths.append(stripped)
+			paths.append(complete_path(stripped))
 
 	# Compile the matcher. --prints is always regex; otherwise honour --regex.
 	var use_regex = regex_flag or prints_flag
@@ -79,10 +79,11 @@ func _execute(ctx:CompletionContext):
 			ctx.append_error("Invalid regex: " + pattern)
 			return ExitCode.FAIL
 
-	# No explicit paths -> scan the whole project (target extension only).
+	# No explicit paths -> scan cwd (target extension only).
+	var local_cwd = ProjectSettings.localize_path(ctx.cwd)
 	if paths.is_empty():
 		for path in EditorConsoleSingleton.get_file_paths():
-			if path.get_extension() == ext_flag:
+			if path.get_extension() == ext_flag and path.begins_with(local_cwd):
 				paths.append(path)
 
 	var hits := 0
