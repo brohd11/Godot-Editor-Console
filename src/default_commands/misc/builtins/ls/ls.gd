@@ -46,9 +46,10 @@ func _process_flag(flag:String):
 		ext_flag = _get_flag_value(flag).lstrip(".")
 
 func _execute(ctx:CompletionContext):
-	var dir := ProjectSettings.localize_path(ctx.cwd)
+	var dir := ctx.cwd
 	if not positional_args.is_empty():
-		dir = positional_args[0]
+		dir = _complete_path(positional_args[0], ctx.cwd)
+	dir = ProjectSettings.localize_path(dir)
 	if not dir.ends_with("/"):
 		dir += "/"
 	if not DirAccess.dir_exists_absolute(dir):
