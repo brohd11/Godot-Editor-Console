@@ -448,16 +448,15 @@ func _remove_console_line_edit():
 
 func _get_editor_log_button_refs():
 	var editor_log_button_container = EditorNodeRef.get_node_ref(EditorNodeRef.Nodes.EDITOR_LOG_BUTTON_CONTAINER)
-	var editor_log_containers = editor_log_button_container.get_children()
-	for item in editor_log_containers:
-		if item is not HBoxContainer:
+	#print(editor_log_button_container)
+	var buttons = UNode.recursive_get_nodes(editor_log_button_container)
+	for b in buttons:
+		if b is not Button:
 			continue
-		var children = item.get_children()
-		for c in children:
-			if UNode.get_signal_callable(c, "pressed", "EditorLog::_clear_request") != null:
-				clear_button = c
-			if UNode.get_signal_callable(c, "toggled", "EditorLog::_set_search_visible") != null:
-				filter_button = c
+		if UNode.get_signal_callable(b, "pressed", "EditorLog::_clear_request") != null:
+			clear_button = b
+		if UNode.get_signal_callable(b, "toggled", "EditorLog::_set_search_visible") != null:
+			filter_button = b
 
 
 func _on_filter_toggled(toggled:bool) -> void: # this is the filter toggle in editor log panel
