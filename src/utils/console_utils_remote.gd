@@ -17,3 +17,4 @@ const UString = preload("uid://cwootkivqiwq1") #! resolve ALibRuntime.Utils.UStr
 const UResource = preload("uid://72uu8yngsoht") #! resolve ALibRuntime.Utils.UResource
 const UTexture = preload("uid://ddu76iygjkxih") #! resolve ALibRuntime.Utils.UTexture
 const UList = preload("uid://cpehya7u8ggby") #! resolve ALibRuntime.Utils.UList
+const UOs = preload("uid://cnuejrhrodgbx") #! resolve ALibRuntime.Utils.UOs
