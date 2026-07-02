@@ -29,7 +29,8 @@ enum ExitCode {
 enum FlagType {
 	NONE,
 	FILE,
-	DIR
+	DIR,
+	CLASS,
 }
 
 static var _positional_arg_count_regex:RegEx
@@ -203,7 +204,7 @@ func _route(ctx:CompletionContext): # shared by both passes
 			if not split in flags:
 				ctx.append_error("Unrecognized flag: " + split)
 				return ExitCode.ERR
-			_process_flag(split)  # check flags after the positionals
+			_process_flag(pos_arg)  # check flags after the positionals
 			continue
 		
 		if tok_b_curs.replace(" ", "") == pos_arg.replace(" ", ""):
@@ -259,13 +260,11 @@ func _execute(ctx:CompletionContext):
 
 func complete(ctx:CompletionContext):
 	var selected = _route(ctx)
-	if selected is ExitCode:
+	if selected is ExitCode and selected == ExitCode.HELP:
 		return {} # selected # completions recieve a dictionary, should not be an issue I think
-	if PRINT_DEBUG:
-		print("SEL in COMPLETE::", selected)
-	if selected:
+	elif is_instance_valid(selected):
 		return selected.complete(ctx)
-	# no child selected: complete against remaining flags / child names
+	
 	return _get_completions(ctx)
 
 func _get_completions(ctx:CompletionContext):
@@ -276,11 +275,34 @@ func _get_completions(ctx:CompletionContext):
 	if current_flag_completions != null:
 		return current_flag_completions
 	
-	var options = get_flags(true)
-	options.merge(get_commands(true))
-	return options
+	return _get_completion_std_w_context(ctx)
 
+func _get_completion_std_w_context(ctx:CompletionContext, commands:=true, flags:=true) -> Dictionary:
+	var options = Options.new()
+	var _do_com:=false
+	var _do_flag:=false
+	if ctx.char_before_cursor == "" or ctx.char_before_cursor == " ":
+		_do_flag = true
+		_do_com = true
+	elif ctx.token_before_cursor.begins_with("--"):
+		_do_flag = true
+	else:
+		_do_com = true
+	
+	if _do_com and commands:
+		options.merge(get_commands(true))
+	if _do_flag and flags:
+		options.merge(get_flags(true))
+	
+	return options.get_options()
 
+## checks if the first unconsumed or the last consumed begins with --
+func _completion_last_is_flag(ctx:CompletionContext):
+	if ctx.unconsumed_tokens.size() == 1 and ctx.unconsumed_tokens.front().begins_with("--"):
+		return true
+	if consumed_tokens.size() > 0 and consumed_tokens.back().begins_with("--"):
+		return true
+	return false
 
 func get_flags(hide_consumed:=false) -> Dictionary:
 	var options = _get_flags()
@@ -557,6 +579,12 @@ func _get_flag_type_completions(ctx:CompletionContext):
 			for d in dirs:
 				if d.begins(target_dir):
 					completions.append(d)
+	
+	elif flag_type == FlagType.CLASS:
+		var classes = ClassDB.get_class_list()
+		completions.append_array(classes)
+		var user_classes = UtilsRemote.UClassDetail.get_all_global_class_paths().keys()
+		completions.append_array(user_classes)
 	
 	
 	var flag_options = Options.new()

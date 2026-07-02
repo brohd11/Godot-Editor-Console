@@ -30,6 +30,7 @@ func _get_flags() -> Dictionary:
 	options.add_option("--type=", {
 		&"help": "Filter to nodes of this class.",
 		&"trailing_char": "",
+		&"flag_completion": {"type": FlagType.CLASS}
 	})
 	options.add_option("--script=", {
 		&"help": "Filter to nodes using this script.",
