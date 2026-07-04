@@ -87,7 +87,7 @@ func _execute(ctx:CompletionContext):
 		ctx.append_error("Cannot pass more than one 'to flag'.")
 		return ExitCode.ERR
 	
-	var paths:Array[String] = []
+	var paths = []
 	if positional_args.is_empty():
 		if ctx.stdin.is_empty():
 			ctx.append_error("Need file path")
