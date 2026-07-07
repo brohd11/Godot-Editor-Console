@@ -1,0 +1,24 @@
+extends EditorConsoleSingleton.CommandBase
+
+const _HELP = \
+"Reveal a project directory in the OS file manager.
+Usage: open [{path:ctx.cwd}]"
+
+static func get_command_name() -> String:
+	return "open"
+
+static func get_self_command_data() -> Dictionary:
+	return _command_data({
+		&"help": _HELP,
+		&"positional_count": "min:0,max:1",
+	})
+
+func _execute(ctx:CompletionContext):
+	var dir := ctx.cwd
+	if not positional_args.is_empty():
+		dir = _complete_path(positional_args[0], ctx.cwd)
+	var globalized := ProjectSettings.globalize_path(dir)
+	if not DirAccess.dir_exists_absolute(globalized) and not FileAccess.file_exists(globalized):
+		ctx.append_error("Path does not exist: " + dir)
+		return ExitCode.FAIL
+	OS.shell_show_in_file_manager(globalized)

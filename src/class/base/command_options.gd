@@ -41,7 +41,7 @@ func remove_option(option_name:String):
 
 #! keys name:String help:String positional_count:int trailing_char:String icon:Variant
 #! keys get_command:Callable priority:int metadata:Dictionary arg_count:int insert:String
-#! keys flag_completion:Dictionary
+#! keys flag_completion:Dictionary allow_positional_paths:bool
 ## Nested Dict: flag_completion - type, dir, ext
 func add_option(option_name:String, params:={}):
 	_option_dict[option_name] = get_single_option_dict(option_name, params)

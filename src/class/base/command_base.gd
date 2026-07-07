@@ -60,7 +60,6 @@ static func get_self_command_data() -> Dictionary:
 
 #! keys i-Options.add_option;
 static func _command_data(params:={}):
-	#return params
 	return Options.process_option_dict(params)
 
 func __get_self_command_data__() -> Dictionary:
@@ -278,9 +277,13 @@ func _get_completions(ctx:CompletionContext):
 	return _get_completion_std_w_context(ctx)
 
 func _get_completion_std_w_context(ctx:CompletionContext, commands:=true, flags:=true) -> Dictionary:
+	var command_data = get_self_command_data()
+	var allow_pos_paths = command_data.get(&"allow_positional_paths", false)
+	
 	var options = Options.new()
 	var _do_com:=false
 	var _do_flag:=false
+	var _do_path:=false
 	if ctx.char_before_cursor == "" or ctx.char_before_cursor == " ":
 		_do_flag = true
 		_do_com = true
@@ -288,11 +291,28 @@ func _get_completion_std_w_context(ctx:CompletionContext, commands:=true, flags:
 		_do_flag = true
 	else:
 		_do_com = true
+		_do_flag = true
+		#if not allow_pos_paths:
+			#_do_com = true
+			#_do_flag = true
+		#else:
+		for s in ["/", "../", "./"]:
+			if ctx.token_before_cursor.begins_with(s):
+				_do_path = true
+				print("YES::", ctx.token_before_cursor, "::",s)
+				break
 	
-	if _do_com and commands:
-		options.merge(get_commands(true))
-	if _do_flag and flags:
-		options.merge(get_flags(true))
+	if allow_pos_paths and _do_path:
+		var current_pos_arg = ""
+		if positional_args.size() > 0:
+			current_pos_arg = positional_args[positional_arg_index]
+		options.merge(_completion_rel_path(ctx, current_pos_arg))
+	else:
+		if _do_com and commands:
+			options.merge(get_commands(true))
+		if _do_flag and flags:
+			options.merge(get_flags(true))
+	
 	
 	return options.get_options()
 
@@ -593,6 +613,32 @@ func _get_flag_type_completions(ctx:CompletionContext):
 			
 		})
 	return flag_options.get_options()
+
+
+static func _completion_rel_path(ctx:CompletionContext, current_rel_path:String):
+	var target_dir = ctx.cwd
+	var options = Options.new()
+	if current_rel_path != "":
+		target_dir = _complete_path(current_rel_path, ctx.cwd)
+		
+		if target_dir.ends_with("/"):
+			pass
+		elif target_dir.contains("/"):
+			target_dir = target_dir.get_base_dir()
+		
+		if not DirAccess.dir_exists_absolute(target_dir):
+			return {}
+	
+	var dirs = DirAccess.get_directories_at(target_dir)
+	dirs = Array(dirs)
+	dirs.push_front("..")
+	for dir in dirs:
+		options.add_option(dir, {
+			&"trailing_char": "/"
+		})
+	
+	return options.get_options()
+
 
 func print_available_commands():
 	var commands = get_commands()
