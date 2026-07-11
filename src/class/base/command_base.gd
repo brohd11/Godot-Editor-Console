@@ -170,11 +170,10 @@ func _route(ctx:CompletionContext): # shared by both passes
 				if ctx.unconsumed_tokens.is_empty(): # not sure about this, think it's irrelavant
 					selected = ExitCode.FAIL
 				else:
-					selected = null # eExitCode will cause an exit. null will attempt execute
+					selected = null # ExitCode will cause an exit. null will attempt execute
 					#for j in range(consumed, ctx.unconsumed_tokens.size()):
 						#positional_count += 1
 				break
-				#return null # unrecognized; caller decides how to report
 			elif token != ctx.token_before_cursor:# or ctx.char_before_cursor == " ": # if you are past the current or char is ' ', do nothing?
 				# meant to stop a completion if you are not at the end of the line
 				# this may need some tweaking so that token before cursor is the token under cursor?
@@ -292,21 +291,18 @@ func _get_completion_std_w_context(ctx:CompletionContext, commands:=true, flags:
 	else:
 		_do_com = true
 		_do_flag = true
-		#if not allow_pos_paths:
-			#_do_com = true
-			#_do_flag = true
-		#else:
 		for s in ["/", "../", "./"]:
 			if ctx.token_before_cursor.begins_with(s):
 				_do_path = true
-				print("YES::", ctx.token_before_cursor, "::",s)
 				break
 	
 	if allow_pos_paths and _do_path:
-		var current_pos_arg = ""
+		var for_path_completion = ""
 		if positional_args.size() > 0:
-			current_pos_arg = positional_args[positional_arg_index]
-		options.merge(_completion_rel_path(ctx, current_pos_arg))
+			for_path_completion = positional_args[positional_arg_index]
+		
+		for_path_completion = ctx.token_before_cursor # temp test
+		options.merge(_completion_rel_path(ctx, for_path_completion))
 	else:
 		if _do_com and commands:
 			options.merge(get_commands(true))
@@ -620,7 +616,6 @@ static func _completion_rel_path(ctx:CompletionContext, current_rel_path:String)
 	var options = Options.new()
 	if current_rel_path != "":
 		target_dir = _complete_path(current_rel_path, ctx.cwd)
-		
 		if target_dir.ends_with("/"):
 			pass
 		elif target_dir.contains("/"):

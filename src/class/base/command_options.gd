@@ -57,6 +57,7 @@ static func process_option_dict(params:={}) -> Dictionary:
 	var data = {}
 	data.help = params.get(&"help", "No help defined for: %s" % params.get(&"option_name", "Unamed"))
 	data.positional_count = params.get(&"positional_count", 0)
+	data.allow_positional_paths = params.get(&"allow_positional_paths", false)
 	data.priority = params.get(&"priority", 1000)
 	
 	if params.has(&"flag_completion"):
