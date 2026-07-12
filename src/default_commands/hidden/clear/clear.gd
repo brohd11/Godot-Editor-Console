@@ -24,6 +24,11 @@ func _process_flag(flag:String):
 func _execute(ctx:CompletionContext):
 	var console_container:UtilsLocal.ConsoleContainer = ctx.console_container
 	
+	# assumes headless via mcp
+	if not is_instance_valid(console_container):
+		EditorConsoleSingleton.get_instance().clear_button.pressed.emit()
+		return
+	
 	if clear_history:
 		console_container.command_history.clear()
 	

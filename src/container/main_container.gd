@@ -37,7 +37,8 @@ func _ready() -> void:
 	
 	_content_vbox.add_child(line_edit_container)
 	
-	_content_vbox.add_spacer(false).size_flags_vertical = Control.SIZE_SHRINK_END
+	
+	#_content_vbox.add_spacer(false).size_flags_vertical = Control.SIZE_SHRINK_END
 
 
 func get_split_options() -> Options:
