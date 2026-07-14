@@ -157,9 +157,12 @@ func _process_file(ctx:CompletionContext, data_file:String, export_file:String):
 				return ExitCode.FAIL
 			var as_string = FileAccess.get_file_as_string(data_file)
 			var parser = YAMLParser.new()
-			var data = parser.parse(as_string)
-			return _convert_data(data, data_file, export_file, ctx)
-		
+			var err = parser.parse_file(data_file)
+			if err != Error.OK:
+				ctx.append_error("Error reading yaml file: " + data_file)
+				return ExitCode.FAIL
+			return _convert_data(parser.data, data_file, export_file, ctx)
+				
 		_:
 			if not from_bin_flag:
 				ctx.append_error("Unrecognized extension:" + ext)
@@ -174,9 +177,7 @@ func _convert_data(data:Variant, data_file:String, export_file:String, ctx:Compl
 	if json_flag:
 		success = UFile.write_to_json(data, export_file)
 	elif yaml_flag:
-		var yaml = YAMLParser.dump(data)
-		var f = FileAccess.open(export_file, FileAccess.WRITE)
-		success = f.store_string(yaml)
+		success = YAMLParser.dump_to_file(data, export_file)
 	elif bin_flag:
 		var f = FileAccess.open(export_file, FileAccess.WRITE)
 		success = f.store_var(data)

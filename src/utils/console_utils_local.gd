@@ -122,17 +122,13 @@ class Config:
 			return {}
 		var content = FileAccess.get_file_as_string(path)
 		var parser = YAMLParser.new()
-		var parse_data:Variant = parser.parse(content)
-		if parse_data == null:
+		var err = parser.parse_file(path)
+		if err != OK:
 			return {}
-		return parse_data
+		return parser.data
 	
 	static func _write_config(new_data:Dictionary, path:String, reload:=true):
-		var dumped = YAMLParser.dump(new_data)
-		DirAccess.make_dir_recursive_absolute(path.get_base_dir())
-		var fa = FileAccess.open(path, FileAccess.WRITE)
-		fa.store_string(dumped)
-		fa.close()
+		YAMLParser.dump_to_file(new_data, path)
 		if reload:
 			load_config()
 	
