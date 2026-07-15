@@ -5,7 +5,7 @@ const CommandBase = preload("res://addons/editor_console/src/class/base/command_
 const Options = preload("res://addons/editor_console/src/class/base/command_options.gd")
 
 
-const DefaultCommands = preload("res://addons/editor_console/src/default_commands/scope_set/default.gd")
+const DefaultCommands = preload("res://addons/editor_console/src/default_commands/default.gd")
 const ConsoleOS = preload("res://addons/editor_console/src/default_commands/hidden/os/os.gd")
 
 
