@@ -59,8 +59,11 @@ static func get_command_name() -> String:
 
 
 static func get_self_command_data() -> Dictionary:
-	return Options.get_single_option_dict(get_command_name(), {
-		&"help": "List properties of target script\nUsage: script list <options>",
+	return _command_data({
+		&"help": ScriptUtil.get_usage_string(
+			"List properties of target script",
+			"list <options>"
+		),
 	})
 
 func _get_flags() -> Dictionary:

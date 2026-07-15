@@ -9,6 +9,12 @@ const CompletionContext = UtilsLocal.CompletionContext
 
 const CONSOLE_METHODS = ["parse", "get_completion", "execute", "complete"]
 
+const USAGE_TEMPLATE = \
+"Usage: script [option:--path=res://my_path.gd|--class=GlobalClass] %s
+Usage: GlobalClass %s"
+
+static func get_usage_string(preamble:String, commands:String):
+	return preamble + "\n" + USAGE_TEMPLATE % [commands, commands]
 
 static func resolve_access_path(access_path:String):
 	var current_script = EditorInterface.get_script_editor().get_current_script()

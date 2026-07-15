@@ -4,6 +4,7 @@ const ScriptUtil = preload("res://addons/editor_console/src/default_commands/scr
 
 const CONSOLE_METHODS = ["parse", "get_completion", "execute", "complete"]
 
+
 var show_private:=false
 var create_default:= false
 
@@ -12,8 +13,11 @@ static func get_command_name() -> String:
 
 
 static func get_self_command_data() -> Dictionary:
-	return Options.get_single_option_dict(get_command_name(), {
-		&"help": "Call a static function in target script\nUsage: script call <options> <method> -- <...args>",
+	return _command_data({
+		&"help": ScriptUtil.get_usage_string(
+			"Call a static function in target script",
+			"call <options> <method> -- <...args>"
+		),
 		&"positional_count": 1,
 	})
 
