@@ -12,7 +12,7 @@ const Args = preload("res://addons/editor_console/src/default_commands/script/ar
 const Format = preload("res://addons/editor_console/src/default_commands/script/format/format.gd")
 
 const _HELP = \
-"Execute command on current script."
+"Operates on the current script-editor script. --path=res://file.gd for a file, --class=MyClass for a global class."
 
 var script_access_path:String
 var text_flag:=false
@@ -42,12 +42,20 @@ func _get_flags() -> Dictionary:
 		&"trailing_char": "",
 		&"flag_completion": {"type": FlagType.FILE, "ext": ["gd"]},
 	})
+	options.add_option("--class=", {
+		&"help": "Target a global (user) class by name instead of the current script.",
+		&"trailing_char": "",
+		&"flag_completion": {"type": FlagType.CLASS},
+	})
 	return options.get_options()
 
 func _process_flag(flag:String):
 	if flag == "--text":
 		text_flag = true
 	elif flag.begins_with("--path="):
+		var val = _get_flag_value(flag)
+		_set_script_access_path(val)
+	elif flag.begins_with("--class="):
 		var val = _get_flag_value(flag)
 		_set_script_access_path(val)
 

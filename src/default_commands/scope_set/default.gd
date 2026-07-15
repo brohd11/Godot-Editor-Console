@@ -8,7 +8,6 @@ static func register_scopes():
 	var paths = [
 		"res://addons/editor_console/src/default_commands/script/script.gd",
 		"res://addons/editor_console/src/default_commands/global/global.gd",
-		"res://addons/editor_console/src/default_commands/scene/scene.gd",
 		"res://addons/editor_console/src/default_commands/resource/resource.gd",
 		"res://addons/editor_console/src/default_commands/editor/editor.gd",
 		"res://addons/editor_console/src/default_commands/settings/settings.gd",

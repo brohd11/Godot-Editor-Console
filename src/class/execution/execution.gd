@@ -619,8 +619,6 @@ static func execute_command(text:String, params:={}):
 
 static func _parse_command(ctx:CompletionContext) -> void:
 	var tokens:Array = ctx.unconsumed_tokens
-	#if tokens.find("--") > -1:
-		#tokens.remove_at(tokens.rfind("--"))
 	
 	if tokens.is_empty():
 		return

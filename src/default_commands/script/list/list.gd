@@ -87,7 +87,6 @@ func _process_flag(flag:String):
 
 
 func _execute(ctx:CompletionContext):
-	consumed_tokens.erase("list")
 	var script = ScriptUtil.get_script_from_ctx(ctx)
 	var script_name = UClassDetail.get_global_class_name(script.resource_path)
 	if script_name == "":

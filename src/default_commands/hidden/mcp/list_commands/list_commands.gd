@@ -8,7 +8,7 @@ const PREAMBLE = \
 "Editor console — commands compose like a Unix shell.
 - Pipe with | ; chain with && / || / ; ; multi-line gdsh scripts supported.
 - Many commands read targets from stdin (node paths or res:// paths, one per line)
-  and emit the same, so they chain: scene edited tree | scene edited prop position
+  and emit the same, so they chain: editor scene tree | editor scene prop position
 - OS commands can be ran by prefixing with 'os', everything until the end of the line or the next pipe '|'
   will be ran verbatim through bash(mac, linux) or cmd.exe and output returned
 - Bash style variables and command substitution is available

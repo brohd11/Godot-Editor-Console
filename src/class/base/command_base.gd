@@ -214,17 +214,17 @@ func _route(ctx:CompletionContext): # shared by both passes
 				pos_arg = _route_unwrap(pos_arg, unwrap_setting)
 			payload.append(pos_arg)
 			continue
+		elif pos_arg == "--":
+			in_payload = true
+			positional_arg_index = -1
+			payload_index = 0
+			continue
 		elif not is_string and pos_arg.begins_with("--"):
 			var split = _split_flag(pos_arg)
 			if not split in flags:
 				ctx.append_error("Unrecognized flag: " + split)
 				return ExitCode.ERR
 			_process_flag(pos_arg)  # check flags after the positionals
-			continue
-		elif pos_arg == "--":
-			in_payload = true
-			positional_arg_index = -1
-			payload_index = 0
 			continue
 		else:
 			if is_token_before_curs:
