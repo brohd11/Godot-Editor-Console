@@ -30,6 +30,11 @@ func _execute(ctx:CompletionContext):
 		if not script is Script:
 			ctx.append_error("Resource not a script: " + p)
 			continue
-		
-		script.reload()
+		# load() (and even CACHE_MODE_REPLACE) serve the editor's cached GDScript,
+		# which is not refreshed from disk while the editor is unfocused. Re-read the
+		# source explicitly so reload() recompiles the on-disk version; live instances
+		# hold this same script object, so they rebind.
+		if FileAccess.file_exists(p):
+			script.source_code = FileAccess.get_file_as_string(p)
+		script.reload(true)
 		ctx.append_output("Reloaded script: " + p)

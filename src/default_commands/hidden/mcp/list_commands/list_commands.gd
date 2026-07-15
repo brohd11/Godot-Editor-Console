@@ -14,6 +14,13 @@ const PREAMBLE = \
 - Bash style variables and command substitution is available
 - With no stdin, node commands act on the current selection / edited scene.
 - Output goes to stdout; errors and usage go to stderr.
+- After editing project files on disk from outside the editor, run 'editor scan' so
+  added/removed files register. The editor does NOT auto-reload changes while it is
+  unfocused (e.g. while you work in the terminal).
+- If you edited a SCRIPT that already has running instances (an editor dock/plugin,
+  or nodes in the open scene), run 'resource reload_script <res://path>' — this
+  re-reads it from disk and rebinds the live instances. A plain 'editor scan' will
+  not reload them. ('editor scan --focus' also works but steals OS focus.)
 - Run '<command> --help' for usage and flags on any command below.
 
 Available Commands:"

@@ -23,7 +23,8 @@ const Execution = preload("res://addons/editor_console/src/class/execution/execu
 const Function = preload("res://addons/editor_console/src/default_commands/hidden/function/function.gd")
 
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
-const Pr = UtilsRemote.UString.PrintRich
+const UString = UtilsRemote.UString
+const Pr = UString.PrintRich
 
 
 class ScopeDataKeys:
@@ -108,7 +109,8 @@ class Config:
 	
 	static func get_global_config_path() -> String:
 		var paths:EditorPaths = EditorInterface.get_editor_paths()
-		return paths.get_config_dir().path_join("addons/editor_console/config.yml")
+		return UString.path_joinv([paths.get_config_dir(), "addons", "editor_console", "config.yml"])
+		#return paths.get_config_dir().path_join("addons/editor_console/config.yml")
 	
 	static func _get_global_config_data():
 		return _get_config_data(get_global_config_path())
