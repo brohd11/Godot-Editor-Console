@@ -405,6 +405,8 @@ static func execute_interactive(input_text:String, params:={}):
 		if not active_ctx.stderr.is_empty():
 			console_container.print_to_console("stderr:")
 			console_container.print_to_console(active_ctx.stderr)
+	else:
+		active_ctx.clean_output()
 
 
 

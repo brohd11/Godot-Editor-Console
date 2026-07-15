@@ -31,6 +31,7 @@ enum FlagType {
 	FILE,
 	DIR,
 	CLASS,
+	USER_CLASS,
 }
 
 static var _positional_arg_count_regex:RegEx
@@ -622,6 +623,10 @@ func _get_flag_type_completions(ctx:CompletionContext):
 	elif flag_type == FlagType.CLASS:
 		var classes = ClassDB.get_class_list()
 		completions.append_array(classes)
+		var user_classes = UtilsRemote.UClassDetail.get_all_global_class_paths().keys()
+		completions.append_array(user_classes)
+	
+	elif flag_type == FlagType.USER_CLASS:
 		var user_classes = UtilsRemote.UClassDetail.get_all_global_class_paths().keys()
 		completions.append_array(user_classes)
 	

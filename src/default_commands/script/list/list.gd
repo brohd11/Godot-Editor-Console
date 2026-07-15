@@ -123,7 +123,7 @@ func list_members(ctx:CompletionContext, script_name:String, script:Script) -> i
 			ctx.append_output("Script %s:" % [flag_raw])
 			
 		
-		_add_to_members_to_output(ctx, members, pr, print_data, print_pretty)
+		_add_to_members_to_output(ctx, members, pr)
 	
 	ctx.strip_output_newlines()
 	return ExitCode.OK
@@ -155,24 +155,25 @@ static func _get_members(script:GDScript, flag:String, inherited:bool):
 				return UClassDetail.class_get_all_enums(script)
 			else:
 				return {}
-			
 
-static func _add_to_members_to_output(ctx, members, pr, print_data:bool, pretty:bool):
+
+func _add_to_members_to_output(ctx:CompletionContext, members:Dictionary, pr:Pr):
 	if members.is_empty():
-		pr.append("\tNone in script.", Colors.VAR_RED)
+		var err_color = Colors.VAR_RED if pretty_flag else Color.TRANSPARENT
+		pr.append("\tNone in script.", err_color)
 		ctx.append_output(pr.get_string(true))
 	else:
-		if pretty and not print_data:
+		if pretty_flag and not data_flag:
 			pr.append("\t" + "  ".join(members.keys()), Colors.ACCENT_MUTE)
 			ctx.append_output(pr.get_string(true))
 		
 		else:
 			for m in members.keys():
 				var member_string = "%s" % m
-				var member_color = Colors.ACCENT_MUTE if pretty else Color.TRANSPARENT
+				var member_color = Colors.ACCENT_MUTE if pretty_flag else Color.TRANSPARENT
 				pr.append("\t%s" % m, member_color)
 				ctx.append_output(pr.get_string(true))
-				if print_data:
+				if data_flag:
 					var data = members.get(m)
 					if data == null:
 						pr.append("\t\tNo data.")
@@ -181,7 +182,7 @@ static func _add_to_members_to_output(ctx, members, pr, print_data:bool, pretty:
 						ctx.append_output("\t\t" + data)
 					elif data is Dictionary:
 						for key in data.keys():
-							pr.append("\t\t%s - %s" % [key, data[key]], Colors.GRAY)
+							pr.append("\t\t%s - %s" % [key, data[key]])
 							ctx.append_output(pr.get_string(true))
 					else:
 						ctx.append_output("\t\t" + str(data))

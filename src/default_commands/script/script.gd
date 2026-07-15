@@ -47,7 +47,7 @@ func _get_flags() -> Dictionary:
 	options.add_option("--class=", {
 		&"help": "Target a global (user) class by name instead of the current script.",
 		&"trailing_char": "",
-		&"flag_completion": {"type": FlagType.CLASS},
+		&"flag_completion": {"type": FlagType.USER_CLASS},
 	})
 	return options.get_options()
 

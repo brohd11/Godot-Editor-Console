@@ -408,8 +408,6 @@ const _BRACE_LITERAL := 0
 const _BRACE_BLOCK := 1
 
 static func _split_statements(line: String) -> PackedStringArray:
-	# build into a regular Array (pass-by-reference); PackedStringArray is
-	# copy-on-write, so a helper appending to it would not mutate the caller.
 	var out: Array = []
 	var cur := ""
 	var brace_stack: Array[int] = []
