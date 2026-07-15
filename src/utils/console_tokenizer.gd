@@ -100,6 +100,12 @@ func parse_command_string_execute(input_string: String, display:=false) -> Dicti
 	var arg_tok_data = _tokenize_string(args_str, false, display)
 	result.args = arg_tok_data.expanded
 	
+	# args are dropped if not added back. This is because this runs to expand before the actual
+	# context object is parsed. This could be an optimization, tokenizes twice currently
+	if not result.args.is_empty():
+		result.expanded.append("--")
+		result.expanded.append_array(result.args)
+	
 	if display:
 		if arg_tok_data.display != "":
 			result.display = "%s -- %s" % [command_tok_data.display, arg_tok_data.display]

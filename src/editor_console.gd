@@ -667,7 +667,7 @@ static func get_completion_for_input(input_text:String, params:={}):
 	var command_meta = options.get_options().get(UtilsLocal.Options.Keys.COMMAND_META, {})
 	var show_variables = command_meta.get(UtilsLocal.Options.Keys.SHOW_VARIABLES, false)
 	#show_variables = true #ALERT
-	if ctx.argument_index > -1:
+	if ctx.payload_arg_index > -1:
 		options.remove_option(UtilsLocal.Options.ARG_DELIMITER)
 		if show_variables:
 			var var_nms = console.variable_dict.keys()

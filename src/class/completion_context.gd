@@ -57,8 +57,6 @@ var exit_requested:=false
 
 # headless
 var os_mode:=false
-var print:= false
-var add_to_hist:=false
 #
 var raw_text:String
 var caret_col:int
@@ -66,11 +64,9 @@ var char_before_cursor:String
 var word_before_cursor:String
 var token_before_cursor:String
 
-var commands:Array
-var arguments:Array
-var display_text:String
+var payload_args:Array
+var payload_arg_index:int = -1
 
-var argument_index:int = -1
 
 
 func _init(text:="") -> void:
@@ -134,6 +130,7 @@ func completion_parse():
 	command_statements = [raw_text]
 	if not raw_text.contains(" | "): # set adjusted to caret, we can always work of adjusted
 		current_command_caret = caret_col
+		current_command_end = raw_text.length()
 	else:
 		var command_start = 0
 		command_statements = UString.string_safe_split(raw_text, " | ", true)
@@ -170,23 +167,22 @@ func completion_parse():
 	#print(current_token_data.commands)
 	#print(current_token_data.expanded)
 	
-	arguments = current_token_data.args
+	payload_args = current_token_data.args
 	var arg_delim_match = _arg_delim_regex.search(raw_text, current_command_start, current_command_end)
 	if arg_delim_match:
 		var delim_index = arg_delim_match.get_start(1)
 		var arg_string = raw_text.substr(delim_index + 2)
 		var adjusted_caret_idx = caret_col - (delim_index + 2)
 		var start_idx = 0
-		argument_index = arguments.size()
+		payload_arg_index = payload_args.size()
 		if char_before_cursor != " ": # if a space before, assume next arg
-			argument_index -= 1 # if it's actually in an arg, like string, this will be caught below
-			
-		for i in range(arguments.size()):
-			var arg = arguments[i]
+			payload_arg_index -= 1 # if it's actually in an arg, like string, this will be caught below
+		for i in range(payload_args.size()):
+			var arg = payload_args[i]
 			var arg_start = arg_string.find(arg, start_idx)
 			var arg_end = arg_start + arg.length()
 			if adjusted_caret_idx >= arg_start and adjusted_caret_idx <= arg_end:
-				argument_index = i
+				payload_arg_index = i
 			
 			start_idx = arg_end
 	
@@ -215,7 +211,6 @@ func execute_parse():
 	tokenizer.execute = true
 	var token_data = tokenizer.parse_command_string_execute(text_in)
 	unconsumed_tokens = token_data.expanded
-	arguments = token_data.args
 	execute = true
 
 func tokens_empty_and_execute() -> bool:
@@ -225,7 +220,7 @@ func tokens_empty() -> bool:
 	return unconsumed_tokens.is_empty()
 
 func in_arguments() -> bool:
-	return argument_index > -1
+	return payload_arg_index > -1
 
 func get_current_command():
 	return command_statements[current_command_statement_index]

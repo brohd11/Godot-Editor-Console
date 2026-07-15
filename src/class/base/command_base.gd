@@ -41,6 +41,9 @@ var consumed_tokens:Array[String] = []
 var positional_args:Array[String] = []
 var positional_arg_index = -1
 
+var payload:Array = []
+var payload_index = -1
+
 func _initialize(ctx:CompletionContext):
 	positional_args = []
 	consumed_tokens = []
@@ -147,8 +150,7 @@ func _route(ctx:CompletionContext): # shared by both passes
 		var option_data = _get_option_data(token, flags, commands)
 		if PRINT_DEBUG:
 			print("DATA::", option_data)
-		
-		if token.begins_with("--"):
+		if token.begins_with("--") and not token == "--":
 			if token in flags:
 				# if flag has a token to consume after, unhandled currently
 				_process_flag(full_token)
@@ -163,6 +165,7 @@ func _route(ctx:CompletionContext): # shared by both passes
 				selected = _get_command(token)
 			break
 		else:
+			positional_arg_index = 0 # set this to 0, -1 will be an invalid index or payload
 			for j in range(consumed, ctx.unconsumed_tokens.size()):
 				positional_count += 1
 			
@@ -188,41 +191,61 @@ func _route(ctx:CompletionContext): # shared by both passes
 	for j in range(consumed):
 		_consume_token(ctx)
 	
+	var in_payload = false
 	var unwrap_setting = _unwrap_quotes()
 	for j in range(positional_count):
 		var pos_arg = _consume_token(ctx)
-		var tok_b_curs = ctx.token_before_cursor
 		var is_string:bool = UString.is_string_or_string_name(pos_arg)
-		
+		var tok_b_curs = ctx.token_before_cursor
 		if PRINT_DEBUG:
 			print(":", ctx.char_before_cursor, ":", tok_b_curs.length(), ":", tok_b_curs, ":", pos_arg.length(), ":", pos_arg, ":")
 		
-		if not is_string and pos_arg.begins_with("--"):
+		var is_token_before_curs = tok_b_curs.replace(" ", "") == pos_arg.replace(" ", "")
+		var new_token_index = false
+		if is_token_before_curs:
+			new_token_index = ctx.char_before_cursor == " " and not UString.is_string_or_string_name(tok_b_curs) and not tok_b_curs.ends_with(" ")
+		
+		if in_payload:
+			if is_token_before_curs:
+				payload_index = j
+				if new_token_index:
+					payload_index += 1
+			if is_string:
+				pos_arg = _route_unwrap(pos_arg, unwrap_setting)
+			payload.append(pos_arg)
+			continue
+		elif not is_string and pos_arg.begins_with("--"):
 			var split = _split_flag(pos_arg)
 			if not split in flags:
 				ctx.append_error("Unrecognized flag: " + split)
 				return ExitCode.ERR
 			_process_flag(pos_arg)  # check flags after the positionals
 			continue
-		
-		if tok_b_curs.replace(" ", "") == pos_arg.replace(" ", ""):
-			positional_arg_index = j
-			
-			if ctx.char_before_cursor == " " and not UString.is_string_or_string_name(tok_b_curs) and not tok_b_curs.ends_with(" "):
-				positional_arg_index += 1
-		
-		
-		if unwrap_setting > 0 and pos_arg.length() > 1:
+		elif pos_arg == "--":
+			in_payload = true
+			positional_arg_index = -1
+			payload_index = 0
+			continue
+		else:
+			if is_token_before_curs:
+				positional_arg_index = j
+				if new_token_index:
+					positional_arg_index += 1
 			if is_string:
-				var quote_char = pos_arg[0]
-				if unwrap_setting == 2 or quote_char == '"':
-					pos_arg = UString.unquote(pos_arg)
-		
-		positional_args.append(pos_arg)
+				pos_arg = _route_unwrap(pos_arg, unwrap_setting)
+			
+			positional_args.append(pos_arg)
 	
 	if PRINT_DEBUG:
 		print("UNCONSUMED AFTER::", ctx.unconsumed_tokens)
 	return selected
+
+func _route_unwrap(string:String, unwrap_setting:int) -> String:
+	if unwrap_setting > 0 and string.length() > 1:
+		var quote_char = string[0]
+		if unwrap_setting == 2 or quote_char == '"':
+			string = UString.unquote(string)
+	return string
 
 func _consume_self(ctx:CompletionContext) -> ExitCode:
 	_consume_token(ctx)
