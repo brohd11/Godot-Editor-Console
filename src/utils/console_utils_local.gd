@@ -122,10 +122,11 @@ class Config:
 		if not FileAccess.file_exists(path):
 			DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 			return {}
-		var content = FileAccess.get_file_as_string(path)
 		var parser = YAMLParser.new()
 		var err = parser.parse_file(path)
 		if err != OK:
+			return {}
+		if parser.data == null:
 			return {}
 		return parser.data
 	
