@@ -7,6 +7,7 @@ Usage: test [--verbose] [optional: target_dir/...]"
 const ENTRY_FUNCS = ["run", "run_test", "run_tests"]
 
 var verbose_flag := false
+var report_invalid_test_flag := false
 
 static func get_command_name():
 	return "test"
@@ -23,11 +24,16 @@ func _get_flags() -> Dictionary:
 	options.add_option("--verbose", {
 		&"help": "Print the full test report, not just PASS/FAIL."
 	})
+	options.add_option("--report-invalid", {
+		&"help": "Report tests that have *_test.gd name, but don't have any test entry funcs."
+	})
 	return options.get_options()
 
 func _process_flag(flag:String):
 	if flag == "--verbose":
 		verbose_flag = true
+	elif flag == "--report-invalid":
+		report_invalid_test_flag = true
 
 func _execute(ctx:CompletionContext):
 	var target_dir = ctx.cwd
@@ -75,8 +81,9 @@ func _execute(ctx:CompletionContext):
 				break
 		
 		if test_func == "":
-			has_err = true
-			ctx.append_error("Could not run tests in: %s" % path)
+			if report_invalid_test_flag:
+				has_err = true
+				ctx.append_error("Could not run tests in: %s" % path)
 			continue
 		
 		ran_test = true
