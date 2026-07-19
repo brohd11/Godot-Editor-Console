@@ -714,7 +714,11 @@ func _get_cached(key:String):
 	if _cache.has(key):
 		return _cache[key]
 	if key == "files":
-		_cache[key] = UFile.get_files("res://")
+		var search = UFile.GetFiles.open("res://")
+		search.ignore_dir_names = [".git", "export_ignore"]
+		search.enter_gdignore = true # yes for now
+		var files = search.get_files()
+		_cache[key] = files
 	elif key == "dirs":
 		_cache[key] = UFile.scan_for_dirs("res://", false, false)
 	

@@ -76,7 +76,6 @@ func _execute(ctx:CompletionContext):
 		for dict in method_list:
 			if dict.name in ENTRY_FUNCS:
 				test_func = dict.name
-				print(dict)
 				is_static = bool(dict.flags & METHOD_FLAG_STATIC)
 				break
 		
