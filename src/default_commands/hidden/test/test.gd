@@ -51,7 +51,7 @@ func _execute(ctx:CompletionContext):
 	var search_dir = target_dir.trim_suffix("...")
 	var files = []
 	if target_provided and recurs:
-		files = UtilsRemote.UFile.scan_for_files(search_dir, ["gd"])
+		files = UtilsRemote.UFile.GetFiles.scan(search_dir, ["gd"])
 	else:
 		var names = DirAccess.get_files_at(search_dir)
 		for n in names:

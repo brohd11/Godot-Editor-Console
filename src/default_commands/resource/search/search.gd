@@ -49,7 +49,7 @@ func _execute(ctx:CompletionContext):
 		ctx.exit_code = ExitCode.FAIL
 		return
 	
-	var resources = UtilsRemote.UFile.scan_for_files(dir_flag, [])
+	var resources = UtilsRemote.UFile.GetFiles.scan(dir_flag, [])
 	for f in resources:
 		if content_flag:
 			if not f.get_extension() in _READABLE_EXTS:
