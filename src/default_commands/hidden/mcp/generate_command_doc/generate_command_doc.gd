@@ -4,7 +4,7 @@ extends EditorConsoleSingleton.CommandBase
 const _HELP = \
 "Generate a markdown command-tree doc (commands.md style) and print it."
 
-const NAMES_TO_SKIP = ["builtins", "plugin_exporter", "namespace"]
+const NAMES_TO_SKIP = ["builtins", "plugin_exporter", "namespace", "temp"]
 
 var write_flag:=false
 
@@ -29,7 +29,7 @@ func _process_flag(flag:String):
 
 func _execute(ctx:CompletionContext):
 	var ins = EditorConsoleSingleton.get_instance()
-	var md := "The console ships with these commands:\n"
+	var md := "The console has these commands built in:\n"
 
 	# Top level scopes, one '## <scope>' section each, sorted for stable output.
 	var scope_names = ins.scope_dict.keys()
@@ -38,7 +38,8 @@ func _execute(ctx:CompletionContext):
 		var scope = ins.scope_dict[scope_name]
 		var lines := []
 		_render(scope.get("script").new(), 0, lines)
-		md += "\n## %s\n\n```text\n%s\n```\n" % [scope_name, "\n".join(lines)]
+		if not lines.is_empty():
+			md += "\n## %s\n\n```text\n%s\n```\n" % [scope_name, "\n".join(lines)]
 
 	# Hidden builtins grouped under a single fenced block, each as a sibling root.
 	var hidden_names = ins.hidden_scope_dict.keys()
@@ -59,15 +60,14 @@ func _execute(ctx:CompletionContext):
 		
 		var f = FileAccess.open(plugin_path.path_join("export_ignore/doc/commands.md"), FileAccess.WRITE)
 		f.store_string(md)
-	
-	
+
 
 func _render(cmd, depth:int, lines:Array):
 	var name = cmd.get_command_name()
 	if name in NAMES_TO_SKIP:
 		return
 	
-	if name.begins_with("__"):
+	if name.begins_with("__"): # built in hiddens like '__function__'
 		return
 	var help = cmd.get_help_string()
 	if help != null and help.contains("\n"):
