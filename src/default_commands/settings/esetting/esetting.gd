@@ -36,8 +36,15 @@ func _execute(ctx:CompletionContext):
 	if positional_args.size() == 1:
 		ctx.append_output(str(settings.get_setting(name)))
 		return
-
+	var new_val = positional_args[1]
+	var converted = null
 	var current = settings.get_setting(name)
-	var converted = ConsoleTokenizer.Var.auto_convert(positional_args[1], typeof(current))
+	if new_val == "null":
+		ctx.append_output("null erases setting: %s -> null" % [current])
+	else:
+		converted = ConsoleTokenizer.Var.auto_convert(new_val, typeof(current))
+		if converted == null:
+			ctx.append_error("Could not convert: %s -> %s" % [new_val, typeof(current)])
+			return ExitCode.ERR
 	settings.set_setting(name, converted)
 	ctx.append_output("%s = %s" % [name, str(converted)])

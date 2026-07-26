@@ -25,8 +25,17 @@ func _execute(ctx:CompletionContext):
 		ctx.append_output(str(ProjectSettings.get_setting(name)))
 		return
 
-	var current = ProjectSettings.get_setting(name, null)
-	var converted = ConsoleTokenizer.Var.auto_convert(positional_args[1], typeof(current))
+	var new_val = positional_args[1]
+	var current = ProjectSettings.get_setting(name)
+	var converted = null
+	if new_val == "null":
+		ctx.append_output("null erases setting: %s -> null" % [current])
+	else:
+		converted = ConsoleTokenizer.Var.auto_convert(new_val, typeof(current))
+		if converted == null:
+			ctx.append_error("Could not convert: %s -> %s" % [new_val, typeof(current)])
+			return ExitCode.ERR
+	
 	ProjectSettings.set_setting(name, converted)
 	var err = ProjectSettings.save()
 	if err != OK:
