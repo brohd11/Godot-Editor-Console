@@ -10,7 +10,6 @@ const ConsoleOS = preload("res://addons/editor_console/src/default_commands/hidd
 
 
 const SyntaxHl = preload("res://addons/editor_console/src/utils/console_syntax.gd")
-const GdshHl = preload("res://addons/editor_console/src/utils/misc/gdsh_hl.gd")
 
 const ConsoleMainContainer = preload("res://addons/editor_console/src/container/main_container.gd")
 const ConsoleContainer = preload("res://addons/editor_console/src/container/console_container.gd")

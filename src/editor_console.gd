@@ -80,9 +80,6 @@ func _ready() -> void:
 func _ready_deferred():
 	_load_default_commands()
 	EditorNodeRef.call_on_ready(_start_up_commands)
-	
-	if EditorSet.get_enable_gdsh():
-		EditorInterface.get_script_editor().register_syntax_highlighter(UtilsLocal.GdshHl.new())
 
 func _start_up_commands():
 	var config = Config.get_merged_config()
@@ -728,14 +725,7 @@ func _get_cached(key:String):
 class EditorSet:
 	const CONSOLE_REPLACE_FILTER = &"plugin/editor_console/active_console_replace_filter"
 	const TRACK_UNDO_REDO = &"plugin/editor_console/track_undo_redo"
-	const ENABLE_GDSH = &"plugin/editor_console/enable_gdshell_highlighter"
 	
-	static func get_enable_gdsh():
-		var ed_set = EditorInterface.get_editor_settings()
-		if not ed_set.has_setting(ENABLE_GDSH):
-			ed_set.set_setting(ENABLE_GDSH, false)
-		return ed_set.get_setting(ENABLE_GDSH)
-		
 
 class Keys:
 	const NO_MATCHING_COMMAND = &"NO_MATCHING_COMMAND"
