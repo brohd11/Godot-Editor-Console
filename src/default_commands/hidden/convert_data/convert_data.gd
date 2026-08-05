@@ -177,7 +177,8 @@ func _convert_data(data:Variant, data_file:String, export_file:String, ctx:Compl
 	if json_flag:
 		success = UFile.write_to_json(data, export_file)
 	elif yaml_flag:
-		success = YAMLParser.dump_to_file(data, export_file)
+		var err = YAMLParser.dump_to_file(data, export_file)
+		success = err != OK
 	elif bin_flag:
 		var f = FileAccess.open(export_file, FileAccess.WRITE)
 		success = f.store_var(data)
