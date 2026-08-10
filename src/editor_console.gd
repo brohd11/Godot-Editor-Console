@@ -1,6 +1,6 @@
 class_name EditorConsoleSingleton #! singleton-module
-extends SingletonRefCount
-const SingletonRefCount = Singletons.RefCount
+extends "res://addons/addon_lib/brohd/singleton/singleton_ref_count.gd" #! ext Singletons.RefCount
+
 
 const PRINT_DEBUG = false # not PLUGIN_EXPORTED# or true
 
