@@ -408,7 +408,7 @@ class AutoCompletePopup extends ScrollContainer:
 		
 		if items.is_empty():
 			return
-		var sorted = UtilsRemote.UString.Filter.subsequence_sorted(items.values(), [word])
+		var sorted = UtilsRemote.Filter.subsequence_sorted(items.values(), [word])
 		if sorted.is_empty(): return
 		for s in sorted:
 			if s.begins_with(word):

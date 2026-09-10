@@ -11,9 +11,13 @@ const EditorColors = preload("uid://bhb1vgeh8ibjq") #! resolve ALibEditor.Colors
 const EditorIcons = preload("uid://viocyrti6wce") #! resolve ALibEditor.Singleton.EditorIcons
 const UClassDetail = preload("uid://gyx3o6jv751x") #! resolve ALibEditor.Utils.UClassDetail
 
-const UFile = preload("uid://gs632l1nhxaf") #! resolve ALibRuntime.Utils.UFile
+const UFile = preload("uid://bl33psa06nv1e") #! resolve ALibRuntime.Utils.UFile.Methods
+const GetFiles = preload("uid://b3p6nfmpcltt0") #! resolve ALibRuntime.Utils.UFile.GetFiles
 const UNode = preload("uid://dsywt12xnn7oh") #! resolve ALibRuntime.Utils.UNode
-const UString = preload("uid://cwootkivqiwq1") #! resolve ALibRuntime.Utils.UString
+const UString = preload("uid://bbk1yedqm7a6a") #! resolve ALibRuntime.Utils.UString.Methods
+const Pr = preload("uid://b7y5tr5s8mgri") #! resolve ALibRuntime.Utils.UString.PrintRich
+const Filter = preload("uid://b1j5snv8mpgob") #! resolve ALibRuntime.Utils.UString.Filter
+const UStrGDScriptParse = preload("uid://djphen6jtpagy") #! resolve ALibRuntime.Utils.UString.GDScriptParse
 const UResource = preload("uid://72uu8yngsoht") #! resolve ALibRuntime.Utils.UResource
 const UTexture = preload("uid://ddu76iygjkxih") #! resolve ALibRuntime.Utils.UTexture
 const UList = preload("uid://cpehya7u8ggby") #! resolve ALibRuntime.Utils.UList

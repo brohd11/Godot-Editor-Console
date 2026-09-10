@@ -9,7 +9,7 @@ const UTexture = UtilsRemote.UTexture
 const PopupHelper = UtilsRemote.PopupHelper
 const UNode = UtilsRemote.UNode
 const UList = UtilsRemote.UList
-const Pr = UtilsRemote.UString.PrintRich
+const Pr = UtilsRemote.Pr
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
 const Options = UtilsLocal.Options

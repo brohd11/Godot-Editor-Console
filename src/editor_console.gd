@@ -11,7 +11,8 @@ const RightClickHandler = UtilsRemote.RightClickHandler
 const BottomPanel = UtilsRemote.BottomPanel
 const UNode = UtilsRemote.UNode
 const UString = UtilsRemote.UString
-const Pr = UString.PrintRich
+const Pr = UtilsRemote.Pr
+const GetFiles = UtilsRemote.GetFiles
 
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
@@ -711,7 +712,7 @@ func _get_cached(key:String):
 	if _cache.has(key):
 		return _cache[key]
 	if key == "files":
-		var search = UFile.GetFiles.open("res://")
+		var search = GetFiles.open("res://")
 		search.ignore_dir_names = [".git", "export_ignore"]
 		search.enter_gdignore = true # yes for now
 		var files = search.get_files()

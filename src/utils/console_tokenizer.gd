@@ -10,7 +10,7 @@ const Execution = UtilsLocal.Execution
 
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 const UString = UtilsRemote.UString
-const Pr = UtilsRemote.UString.PrintRich
+const Pr = UtilsRemote.Pr
 const UClassDetail = UtilsRemote.UClassDetail
 const EditorColors = UtilsRemote.EditorColors
 

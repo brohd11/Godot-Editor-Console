@@ -3,7 +3,7 @@ const RightClickHandler = UtilsRemote.RightClickHandler
 const BottomPanel = UtilsRemote.BottomPanel
 const UNode = UtilsRemote.UNode
 const UString = UtilsRemote.UString
-const Pr = UString.PrintRich
+const Pr = UtilsRemote.Pr
 
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")

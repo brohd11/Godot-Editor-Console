@@ -6,7 +6,7 @@ const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 const UClassDetail = UtilsRemote.UClassDetail
 const UString = UtilsRemote.UString
-const Pr = UString.PrintRich
+const Pr = UtilsRemote.Pr
 
 const CALL = "EditorConsole/Call"
 const INFO = "EditorConsole/Info"

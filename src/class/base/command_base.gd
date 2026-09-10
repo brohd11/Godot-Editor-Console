@@ -2,7 +2,7 @@ const PRINT_DEBUG = false
 
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 const UString = UtilsRemote.UString
-const Pr = UString.PrintRich
+const Pr = UtilsRemote.Pr
 
 
 const USort = preload("uid://dtrbpu04wxss0") #! resolve ALibRuntime.Utils.USort
