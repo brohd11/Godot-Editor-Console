@@ -34,7 +34,7 @@ func _process_flag(flag:String):
 	elif flag == "--game":
 		game_flag = true
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var viewport:Viewport = _pick_viewport(ctx)
 	if not is_instance_valid(viewport):
 		return ExitCode.FAIL
@@ -61,7 +61,7 @@ func _execute(ctx:CompletionContext):
 	ctx.append_output(ProjectSettings.globalize_path(path))
 	return ExitCode.OK
 
-func _pick_viewport(ctx:CompletionContext) -> Viewport:
+func _pick_viewport(ctx:Context) -> Viewport:
 	if game_flag:
 		if not EditorInterface.is_playing_scene():
 			ctx.append_error("--game requires a running scene (none is playing).")

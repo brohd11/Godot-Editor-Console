@@ -36,7 +36,7 @@ func _process_flag(flag:String):
 	if flag == "--project":
 		project_flag = true
 
-func _get_completions(ctx:CompletionContext):
+func _get_completions(ctx:Completion):
 	if positional_args.size() == 0:
 		return get_flags(true)
 	
@@ -44,7 +44,8 @@ func _get_completions(ctx:CompletionContext):
 		var cmd = positional_args[0]
 		var options = EditorConsoleSingleton.get_completion_for_input(cmd, {
 			&"require_quotes": true,
-			&"show_flags": true
+			&"show_flags": true,
+			&"inherited_ctx": ctx
 		})
 		if not options.is_empty():
 			return options
@@ -59,10 +60,8 @@ func _get_target_positional_count() -> int:
 	
 	return 0
 
-func _unwrap_quotes():
-	return 0
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	if add_flag:
 		var target_cfg = 2 if project_flag else 1
 		var config = _get_config(target_cfg)

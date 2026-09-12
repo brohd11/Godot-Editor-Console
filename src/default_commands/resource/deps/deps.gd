@@ -13,7 +13,7 @@ static func get_self_command_data() -> Dictionary:
 		&"positional_count": 1,
 	})
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var path = positional_args[0]
 	if not FileAccess.file_exists(path):
 		ctx.append_error("File does not exist: " + path)

@@ -34,7 +34,7 @@ func _process_flag(flag:String):
 	elif flag.begins_with("--scene="):
 		scene_flag = _get_flag_value(flag)
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	if scene_flag != "":
 		if not FileAccess.file_exists(scene_flag):
 			ctx.append_error("Scene does not exist: " + scene_flag)

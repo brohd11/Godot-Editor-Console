@@ -1,6 +1,8 @@
 @tool
 extends Node
 
+const Sh = preload("res://addons/addon_lib/gdsh/gdsh.gd")
+
 const COMMAND_LIST_KEY = "command_list"
 
 ## Loopback TCP listener that runs editor_console commands sent by an external
@@ -19,10 +21,13 @@ var _server: TCPServer
 #region External control (moved from EditorConsoleSingleton)
 
 ## Run a console command line non-interactively and return captured output.
-## Uses Execution.execute_command_multiline, bypassing syntax highlighting,
-## and variable checking for the display line. Just raw execution.
+## Each request has a fresh configured session and captures only its submission.
 static func run_command_capture(text:String) -> Dictionary:
-	var ctx = EditorConsoleSingleton.get_main_ctx()
+	return _capture(text, EditorConsoleSingleton.get_main_ctx())
+
+
+static func _capture(text:String, session:EditorConsoleSingleton.Context) -> Dictionary:
+	var ctx = EditorConsoleSingleton.Context.new_ctx("Bridge request", session)
 	EditorConsoleSingleton.Execution.execute_command_multiline(text, ctx)
 	return {
 		"stdout": ctx.stdout,
@@ -176,30 +181,24 @@ func _handle_line(peer: StreamPeerTCP, line: String) -> void:
 const TO_IGNORE = ["help"]
 
 static func build_mcp_command_list() -> String:
-	var ins = EditorConsoleSingleton.get_instance()
-	var list = {}
-	for scope_name in ins.scope_dict.keys():
-		var scope = ins.scope_dict[scope_name]
-		var obj = scope.get("script")
-		_get_scope_commands(obj.new(), "", list)
-	
-	for scope_name in ins.hidden_scope_dict.keys():
-		var scope = ins.hidden_scope_dict[scope_name]
-		var obj = scope.get("script")
-		_get_scope_commands(obj.new(), "", list)
-	
-	var string = ""
-	for entry in list.keys():
-		if entry.begins_with("__") or entry in TO_IGNORE:
-			continue
-		if entry.begins_with("misc builtins"):
-			continue
-		string += entry + ": " + list[entry] + "\n"
-	
-	return string
+	return _command_list(EditorConsoleSingleton.get_instance().get_current_scope_data())
 
-static func _get_scope_commands(scope:EditorConsoleSingleton.CommandBase, current_path:String, list:Dictionary):
-	var path = current_path + " " + scope.get_command_name()
+
+static func _command_list(scopes:Dictionary) -> String:
+	var list = {}
+	for scope_name in scopes:
+		var command = scopes[scope_name].get("script")
+		if command is GDScript: command = command.new()
+		if command is Sh.CommandBase:
+			_get_scope_commands(command, "", list, scope_name)
+	var lines:PackedStringArray = []
+	for entry in list:
+		if not entry.begins_with("__") and not entry in TO_IGNORE:
+			lines.append(entry + ": " + list[entry])
+	return "\n".join(lines) + "\n"
+
+static func _get_scope_commands(scope:Sh.CommandBase, current_path:String, list:Dictionary, registered_name:String=""):
+	var path = current_path + " " + (registered_name if not registered_name.is_empty() else scope.get_command_name())
 	path = path.strip_edges()
 	var help = scope.get_help_string()
 	if help == null or help == "":

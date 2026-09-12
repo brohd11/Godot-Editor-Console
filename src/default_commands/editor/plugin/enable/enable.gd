@@ -19,7 +19,7 @@ static func get_self_command_data():
 		&"positional_count": 1
 	})
 
-func _get_completions(ctx:CompletionContext):
+func _get_completions(ctx:Completion):
 	var options = Options.new()
 	options.merge(_get_flags())
 	var valid_dir_arg = positional_args.size() > 0 and DirAccess.dir_exists_absolute("res://addons/".path_join(positional_args[0]))
@@ -51,7 +51,7 @@ func _process_flag(flag:String):
 		"--disable": disable_flag = true
 		"--toggle": toggle_flag = true
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var flag_count = int(enable_flag) + int(disable_flag) + int(toggle_flag)
 	if flag_count > 1:
 		ctx.append_error("Cannot provide more than one flag.")
@@ -72,7 +72,7 @@ func _execute(ctx:CompletionContext):
 		EditorInterface.set_plugin_enabled(plugin_name, false)
 		EditorInterface.set_plugin_enabled(plugin_name, true)
 
-func _valid_state(ctx:CompletionContext, plugin_name:String, target_state:bool):
+func _valid_state(ctx:Context, plugin_name:String, target_state:bool):
 	if EditorInterface.is_plugin_enabled(plugin_name) == target_state:
 		ctx.append_output("Plugin '%s' state already target: %s" % [plugin_name, target_state])
 		return false

@@ -35,7 +35,7 @@ func _process_flag(flag:String):
 	elif flag == "--ignore-case":
 		ignore_case_flag = true
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var pattern = positional_args[0]
 	var regex:RegEx
 	if regex_flag:

@@ -1,7 +1,7 @@
 extends EditorConsoleSingleton.ConsoleCommandSetBase
 
 const HIDDEN_DIR = "res://addons/editor_console/src/default_commands/hidden/"
-const BUILTINS_DIR = "res://addons/editor_console/src/default_commands/misc/builtins/"
+const EDITOR_COMMANDS_DIR = "res://addons/editor_console/src/default_commands/misc/editor_console/"
 const TEMP_DIR = "res://temp_console/"
 
 static func register_scopes():
@@ -24,7 +24,7 @@ static func register_scopes():
 
 static func register_hidden_scopes():
 	var data = {}
-	for cmd_dir in [HIDDEN_DIR, BUILTINS_DIR, TEMP_DIR]:
+	for cmd_dir in [HIDDEN_DIR, EDITOR_COMMANDS_DIR, TEMP_DIR]:
 		if not DirAccess.dir_exists_absolute(cmd_dir):
 			continue
 		for dir in DirAccess.get_directories_at(cmd_dir):

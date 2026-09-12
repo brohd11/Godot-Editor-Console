@@ -12,7 +12,7 @@ static func get_self_command_data() -> Dictionary:
 		&"help": _HELP,
 	})
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	if not EditorInterface.is_playing_scene():
 		ctx.append_output("No scene is currently playing.")
 		return

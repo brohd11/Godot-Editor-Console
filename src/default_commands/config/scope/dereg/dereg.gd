@@ -39,7 +39,7 @@ func _process_flag(flag:String):
 		dir_flag = true
 
 
-func _get_completions(_ctx:CompletionContext):
+func _get_completions(_ctx:Completion):
 	var target_config = UtilsLocal.Config.get_target_config(project_flag)
 	var options = Options.new()
 	var existing = []
@@ -57,7 +57,7 @@ func _get_completions(_ctx:CompletionContext):
 	options.merge(get_flags(true))
 	return options.get_options()
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	if int(set_flag) + int(dir_flag) > 1:
 		ctx.append_error("Can only use one flag at a time.")
 		ctx.exit_code = ExitCode.FAIL

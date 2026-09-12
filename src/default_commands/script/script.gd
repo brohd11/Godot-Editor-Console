@@ -61,7 +61,7 @@ func _process_flag(flag:String):
 		var val = _get_flag_value(flag)
 		_set_script_access_path(val)
 
-func _consume_self(ctx:CompletionContext) -> ExitCode:
+func _consume_self(ctx:Context) -> ExitCode:
 	script_access_path = _consume_token(ctx)
 	if ctx.stdin != "":
 		script_access_path = ctx.stdin.strip_edges()
@@ -73,7 +73,7 @@ func _set_script_access_path(new_path:String):
 	script_access_path = new_path
 	_ctx_obj.data["script"] = ScriptUtil.resolve_access_path(script_access_path)
 
-func _get_completions(ctx:CompletionContext):
+func _get_completions(ctx:Completion):
 	var options = Options.new()
 	var flag_completion = _get_flag_type_completions(ctx)
 	if flag_completion != null:
@@ -86,17 +86,17 @@ func _get_completions(ctx:CompletionContext):
 	if not cursor_on_access:
 		var commands = get_commands(true)
 		commands.merge(get_flags(true))
-		if ctx.current_command_statement_index > 0:
+		if "|" in ctx.raw_text.left(ctx.raw_text.rfind(ctx.get_current_command())):
 			commands.erase("format") # assumes something piping in, remove format
 		return commands
 	options.merge(get_completion_static(self, ctx, script_access_path))
 	return options.get_options()
 
-static func get_completion_static(command_obj, ctx:CompletionContext, target_access_path): # command_obj not used, should be ok to remove?
+static func get_completion_static(command_obj, ctx:Completion, target_access_path): # command_obj not used, should be ok to remove?
 	var options = Options.new()
 	var cursor_on_access = ctx.token_before_cursor == target_access_path and ctx.char_before_cursor != " "
 	
-	var target_script = ScriptUtil.get_script_from_ctx(ctx)
+	var target_script = ScriptUtil.get_script_from_ctx(ctx.context)
 	if not is_instance_valid(target_script):
 		if not cursor_on_access:
 			return {}
@@ -119,7 +119,7 @@ static func get_commands_static():
 		opt.add_command_script(command)
 	return opt.get_options()
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	if text_flag:
 		if script_access_path == "script":
 			var current_editor = ScriptEditorRef.get_current_code_edit()

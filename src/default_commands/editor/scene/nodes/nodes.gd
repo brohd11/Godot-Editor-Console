@@ -52,7 +52,7 @@ func _process_flag(flag:String):
 		selected_flag = true
 
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var edited_root = EditorInterface.get_edited_scene_root()
 	if not is_instance_valid(edited_root):
 		return

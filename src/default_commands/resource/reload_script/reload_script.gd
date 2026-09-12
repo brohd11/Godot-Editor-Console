@@ -18,7 +18,7 @@ func _get_target_positional_count() -> int:
 		return 1
 	return 0
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var paths = []
 	if positional_args.size() == 1:
 		paths.append(positional_args[0])

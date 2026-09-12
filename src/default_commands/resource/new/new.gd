@@ -29,7 +29,7 @@ func _process_flag(flag:String):
 	if flag.begins_with("--script="):
 		script_flag = _get_flag_value(flag)
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var type = positional_args[0]
 	var dest = positional_args[1]
 

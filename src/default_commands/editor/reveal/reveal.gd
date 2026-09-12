@@ -14,7 +14,7 @@ static func get_self_command_data() -> Dictionary:
 		&"positional_count": "min:0,max:1",
 	})
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var path := ""
 	if not positional_args.is_empty():
 		path = positional_args[0]

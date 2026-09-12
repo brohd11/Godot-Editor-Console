@@ -15,7 +15,7 @@ static func get_self_command_data() -> Dictionary:
 		&"positional_count": "min:1,max:2",
 	})
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var name = positional_args[0]
 
 	if positional_args.size() == 1:
@@ -31,7 +31,7 @@ func _execute(ctx:CompletionContext):
 	if new_val == "null":
 		ctx.append_output("null erases setting: %s -> null" % [current])
 	else:
-		converted = ConsoleTokenizer.Var.auto_convert(new_val, typeof(current))
+		converted = Value.Var.auto_convert(new_val, typeof(current))
 		if converted == null:
 			ctx.append_error("Could not convert: %s -> %s" % [new_val, typeof(current)])
 			return ExitCode.ERR

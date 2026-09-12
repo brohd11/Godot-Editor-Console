@@ -38,7 +38,7 @@ func _process_flag(flag:String):
 	elif flag.begins_with("--dir="):
 		dir_flag = _get_flag_value(flag)
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var search_term = positional_args[0]
 	
 	if dir_flag == "":

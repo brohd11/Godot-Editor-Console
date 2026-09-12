@@ -1,13 +1,20 @@
 extends EditorConsoleSingleton.CommandBase
 
-
 const _HELP = \
 "This is a command created with the 'new' command, define help for this command!"
 
-static func get_command_name():
+
+static func get_command_name() -> String:
 	return "%s"
 
-static func get_self_command_data():
+static func get_self_command_data() -> Dictionary:
 	return _command_data({
 		&"help": _HELP,
 	})
+
+func _execute(ctx:Context) -> int:
+	ctx.append_output("Command executed.")
+	return ExitCode.OK
+
+func _get_completions(completion:Completion):
+	return super._get_completions(completion)

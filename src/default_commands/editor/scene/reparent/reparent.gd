@@ -14,7 +14,7 @@ static func get_self_command_data() -> Dictionary:
 		&"positional_count": 1,
 	})
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var root = EditorInterface.get_edited_scene_root()
 	if not is_instance_valid(root):
 		ctx.append_error("No edited scene open.")
@@ -52,7 +52,7 @@ func _execute(ctx:CompletionContext):
 
 	ctx.append_output("Reparented %s node(s) under %s." % [count, target.name])
 
-func _resolve_nodes(ctx:CompletionContext, root:Node) -> Array:
+func _resolve_nodes(ctx:Context, root:Node) -> Array:
 	var nodes := []
 	if ctx.stdin.strip_edges() != "":
 		for line in ctx.stdin.split("\n", false):

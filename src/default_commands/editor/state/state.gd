@@ -25,7 +25,7 @@ func _process_flag(flag:String):
 	if flag == "--json":
 		json_flag = true
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var data = _gather()
 	if json_flag:
 		ctx.append_output(JSON.stringify(data, "  "))

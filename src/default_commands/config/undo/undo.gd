@@ -18,7 +18,7 @@ static func get_self_command_data() -> Dictionary:
 		&"positional_count": "min:0,max:1",
 	})
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var inst = EditorConsoleSingleton.get_instance()
 	if inst == null or not is_instance_valid(inst):
 		ctx.append_error("Console singleton unavailable.")

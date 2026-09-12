@@ -14,7 +14,7 @@ static func get_self_command_data():
 		&"positional_count": 1,
 	})
 
-func _get_completions(ctx:CompletionContext):
+func _get_completions(ctx:Completion):
 	if positional_arg_index < 1:
 		var extensions = ["txt", "gdsh", ""]
 		var completions = EditorConsoleSingleton.get_file_paths()
@@ -27,7 +27,7 @@ func _get_completions(ctx:CompletionContext):
 	
 	return {}
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var file_path = positional_args[0]
 	var out = EditorConsoleSingleton.run_gdsh(file_path)
 	ctx.stdout = out.stdout

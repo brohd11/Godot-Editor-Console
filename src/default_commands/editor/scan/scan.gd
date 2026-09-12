@@ -25,7 +25,7 @@ func _process_flag(flag:String):
 	if flag == "--focus":
 		focus_flag = true
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var fs = EditorInterface.get_resource_filesystem()
 	if not is_instance_valid(fs):
 		ctx.append_error("Could not access the resource filesystem.")

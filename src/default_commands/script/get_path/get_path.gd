@@ -14,7 +14,7 @@ static func get_self_command_data():
 		&"help": _HELP,
 	})
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var script = ScriptUtil.get_script_from_ctx(ctx)
 	if not is_instance_valid(script):
 		ctx.append_error("Could not get script.")

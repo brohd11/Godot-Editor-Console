@@ -3,9 +3,8 @@ const UString = UtilsRemote.UString
 const UClassDetail = UtilsRemote.UClassDetail
 
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")
-const ConsoleTokenizer = UtilsLocal.ConsoleTokenizer
 const Options = UtilsLocal.Options
-const CompletionContext = UtilsLocal.CompletionContext
+const Context = UtilsLocal.Context
 
 const CONSOLE_METHODS = ["parse", "get_completion", "execute", "complete"]
 
@@ -17,7 +16,10 @@ static func get_usage_string(preamble:String, commands:String):
 	return preamble + "\n" + USAGE_TEMPLATE % [commands, commands]
 
 static func resolve_access_path(access_path:String):
-	var current_script = EditorInterface.get_script_editor().get_current_script()
+	var current_script:Script
+	if UString.get_member_access_front(access_path) == "script":
+		if not Engine.is_editor_hint(): return null
+		current_script = EditorInterface.get_script_editor().get_current_script()
 	if access_path == "script":
 		return current_script
 	
@@ -56,7 +58,7 @@ static func resolve_access_path(access_path:String):
 	return final_script
 
 
-static func get_methods_from_ctx(ctx:CompletionContext, show_private:bool, static_only:=false, hide_console_methods:=true):
+static func get_methods_from_ctx(ctx:Context, show_private:bool, static_only:=false, hide_console_methods:=true):
 	return get_method_completions(ctx.data.get("script"),  show_private, static_only, hide_console_methods)
 	
 static func get_method_completions(script:Script, show_private:bool, static_only:=false, hide_console_methods:=true):
@@ -88,5 +90,5 @@ static func get_method_completions(script:Script, show_private:bool, static_only
 	
 	return options.get_options()
 
-static func get_script_from_ctx(ctx:CompletionContext):
+static func get_script_from_ctx(ctx:Context):
 	return ctx.data.get("script")

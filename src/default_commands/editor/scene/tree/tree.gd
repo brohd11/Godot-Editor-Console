@@ -52,7 +52,7 @@ func _process_flag(flag:String):
 	elif flag == "--ignore-owner":
 		ignore_owner_flag = true
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	scene_root = EditorInterface.get_edited_scene_root()
 	if not is_instance_valid(scene_root):
 		ctx.append_error("No edited scene open.")
@@ -84,7 +84,7 @@ func _passes_filter(n:Node) -> bool:
 			return false
 	return true
 
-func _print_pretty(ctx:CompletionContext, node:Node, depth:int):
+func _print_pretty(ctx:Context, node:Node, depth:int):
 	if _passes_filter(node):
 		var pr = Pr.new()
 		pr.append("  ".repeat(depth))

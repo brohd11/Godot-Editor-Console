@@ -24,10 +24,13 @@ const ConsoleContainer = UtilsLocal.ConsoleContainer
 
 const ConsoleCommandSetBase = UtilsLocal.ConsoleCommandSetBase
 const CommandBase = UtilsLocal.CommandBase
-const CompletionContext = UtilsLocal.CompletionContext
+const Context = UtilsLocal.Context
+const Completion = UtilsLocal.Completion
+const GDSh = preload("res://addons/addon_lib/gdsh/gdsh.gd")
 const Execution = UtilsLocal.Execution
 
 const ScriptEditorContext = preload("res://addons/editor_console/src/editor_plugins/script_editor.gd")
+const CallableCommand = preload("res://addons/editor_console/src/class/base/callable_command.gd")
 const ConsoleBridge = preload("res://addons/editor_console/src/bridge/console_bridge.gd")
 
 
@@ -137,7 +140,7 @@ static func register_temp_scope(scope_name:String, object_or_callable:Variant) -
 	var ins = get_instance()
 	var data = {}
 	if object_or_callable is Callable:
-		data[ScopeDataKeys.CALLABLE] = object_or_callable
+		data[ScopeDataKeys.SCRIPT] = CallableCommand.new(object_or_callable)
 	elif object_or_callable is GDScript or object_or_callable.get_class() == "RefCounted":
 		data[ScopeDataKeys.SCRIPT] = object_or_callable
 	else:
@@ -162,6 +165,7 @@ static func remove_temp_scope(scope_name:String): # for plugins
 func _load_default_commands():
 	scope_dict.clear()
 	hidden_scope_dict.clear()
+	hidden_scope_dict.merge(GDSh.Load.load_builtins())
 	variable_dict.clear()
 	
 	_cache.erase(ConsoleBridge.COMMAND_LIST_KEY)
@@ -178,13 +182,15 @@ func _load_default_commands():
 		if not FileAccess.file_exists(script_path):
 			printerr("Could not find script: %s" % script_path)
 			continue
-		var script = load(script_path)
+		var script = load_command(script_path)
 		scope_dict[scope] = {ScopeDataKeys.SCRIPT: script}
 	
 	var sets = config.get_section(Config.SCOPE_SET, [])
 	for script_path in sets:
 		_get_scope_set_data(script_path)
 	
+	for directory in config.get_section(Config.COMMAND_DIRS, []):
+		scope_dict.merge(GDSh.Load.load_directory(directory), true)
 	update_consoles()
 	return true
 
@@ -291,10 +297,10 @@ static func remove_command_dir(dir_path:String, project:bool=false):
 
 func get_scope_script(scope_name):
 	var scope = null
-	if hidden_scope_dict.has(scope_name):
-		scope = hidden_scope_dict[scope_name]
-	elif scope_dict.has(scope_name):
+	if scope_dict.has(scope_name):
 		scope = scope_dict[scope_name]
+	elif hidden_scope_dict.has(scope_name):
+		scope = hidden_scope_dict[scope_name]
 	if scope == null: return
 	return scope.get(ScopeDataKeys.SCRIPT)
 
@@ -311,7 +317,7 @@ func _get_scope_set_data(path_or_script):
 	
 	if UNode.has_static_method_compat("register_hidden_scopes", script):
 		var register_hidden_scopes = script.register_hidden_scopes()
-		hidden_scope_dict.merge(_process_scope_data(register_hidden_scopes))
+		hidden_scope_dict.merge(_process_scope_data(register_hidden_scopes), true)
 	
 	if UNode.has_static_method_compat("register_variables", script):
 		var register_variables = script.register_variables()
@@ -339,7 +345,7 @@ func _process_scope_data(scope_data_dict:Dictionary) -> Dictionary:
 		
 		temp_dict[scope] = {}
 		if scope_callable != null:
-			temp_dict[scope][ScopeDataKeys.CALLABLE] = scope_callable
+			temp_dict[scope][ScopeDataKeys.SCRIPT] = CallableCommand.new(scope_callable)
 		elif scope_script != null:
 			temp_dict[scope][ScopeDataKeys.SCRIPT] = scope_script
 		
@@ -347,65 +353,20 @@ func _process_scope_data(scope_data_dict:Dictionary) -> Dictionary:
 
 func get_current_scope_data():
 	var dict = {}
-	dict.merge(scope_dict.duplicate())
 	dict.merge(hidden_scope_dict.duplicate())
+	dict.merge(scope_dict.duplicate(), true)
 	return dict
 
 
-#! keys parent_ctx:CompletionContext print:bool add_to_hist:bool os_mode:bool
+#! keys parent_ctx:Context print:bool add_to_hist:bool os_mode:bool
 #! keys console_container:ConsoleContainer
 static func execute_interactive(input_text:String, params:={}):
-	var console_container:ConsoleContainer = params.get(&"console_container")
-	var print_to_log = params.get(&"print", false)
-	var add_to_hist = params.get(&"add_to_hist", false)
-	var active_ctx = params.get(&"parent_ctx")
-	if not is_instance_valid(active_ctx):
-		active_ctx = CompletionContext.new_ctx(input_text, null, true)
-	
-	var full_display = ""
-	var split_delim = UString.string_safe_split(input_text, ";")
-	for i in range(split_delim.size()):
-		var line:String = split_delim[i]
-		var expand_data:Dictionary = Execution.expand_commands(line, active_ctx, true)
-		if active_ctx.exit_requested:
-			return # expand can return an error
-		
-		var expanded_commands:Array = expand_data.command_statements
-		if expanded_commands.size() == 1 and expanded_commands[0] == "":
-			continue
-		
-		full_display += expand_data.display
-		if i < split_delim.size() - 1:
-			full_display += "; "
-	
-	if is_instance_valid(console_container):
-		if print_to_log and input_text.strip_edges() != "os":
-			var display = ""
-			if not active_ctx.os_mode: # need to deal with the console container
-				display = "%s %s" % [console_container.get_console_label_string(false), full_display]
-			else:
-				display = "%s %s" % [console_container.get_console_label_string(true), input_text.strip_edges()]
-			
-			console_container.print_to_console(display)
-		
-		if add_to_hist:
-			console_container.add_to_history(input_text)
-	
-	
-	Execution.execute_command_multiline(input_text, active_ctx)
-	
-	active_ctx.strip_output_newlines()
-	active_ctx.strip_error_newlines()
-	
-	if is_instance_valid(console_container) and print_to_log:
-		if not active_ctx.stdout.is_empty():
-			console_container.print_to_console(active_ctx.stdout)
-		if not active_ctx.stderr.is_empty():
-			console_container.print_to_console("stderr:")
-			console_container.print_to_console(active_ctx.stderr)
-	else:
-		active_ctx.clean_output()
-
+	var container = params.get(&"console_container")
+	if is_instance_valid(container):
+		return container.console.execute(input_text)
+	var ctx = params.get(&"parent_ctx")
+	if ctx == null: ctx = get_main_ctx()
+	return Execution.execute_command_multiline(input_text, ctx)
 
 
 func _add_console_line_edit():
@@ -518,7 +479,7 @@ func update_consoles():
 		container.new_ctx() # this 
 
 
-static func run_gdsh(file_path:String, main_ctx:CompletionContext=null):
+static func run_gdsh(file_path:String, main_ctx:Context=null):
 	if not is_instance_valid(main_ctx):
 		main_ctx = get_main_ctx()
 
@@ -531,12 +492,15 @@ static func run_gdsh(file_path:String, main_ctx:CompletionContext=null):
 
 
 func get_gdrc():
-	var main_ctx = CompletionContext.new()
+	var main_ctx = Context.new()
 	main_ctx.title = "MainCTX"
+	main_ctx.cwd = ProjectSettings.globalize_path("res://")
 	main_ctx.execute = true
 	
 	main_ctx.scopes = scope_dict.duplicate()
-	main_ctx.scopes.merge(hidden_scope_dict.duplicate())
+	main_ctx.scopes_hidden.merge(hidden_scope_dict.duplicate(), true)
+	main_ctx.scope_resolver = _resolve_editor_scope
+	main_ctx.collect_raw_commands()
 	
 	var config = Config.get_merged_config()
 	main_ctx.aliases = config.get_section(Config.ALIAS, {}).duplicate()
@@ -571,124 +535,23 @@ func get_gdrc():
 
 static func get_main_ctx():
 	var ins = get_instance()
-	#var ctx = CompletionContext.new()
+	#var ctx = Context.new()
 	var gdrc = ins.get_gdrc()
 	
 	return gdrc
 
 #! keys require_quotes:bool current_command:CommandBase show_commands:bool show_flags:bool line_edit:CodeEdit
-#! keys inherited_ctx:CompletionContext
+#! keys inherited_ctx:Context
 static func get_completion_for_input(input_text:String, params:={}):
-	if params.get(&"require_quotes", false):
-		if not UString.is_string_or_string_name(input_text) or not input_text[0] == '"':
-			return {} # single quotes not allowed, why?
-	
-	var console = get_instance()
-	
-	input_text = UString.unquote(input_text)
-	
-	var current_command = params.get(&"current_command")
-	var show_commands = params.get(&"show_commands", true)
-	var show_flags = params.get(&"show_flags", true)
-	
-	var main = params.get(&"ctx")
-	if not is_instance_valid(main):
-		main = get_main_ctx()
-	
-	var ctx = CompletionContext.new_ctx(input_text, main)
-	ctx.execute = false # ctx should not be execute for a completion
-	
-	if params.has(&"line_edit"):
-		ctx.line_edit = params.line_edit
-	
-	ctx.completion_parse()
-	
-	if params.has(&"inherited_ctx"):
-		var inh_ctx:CompletionContext = params.inherited_ctx
-		ctx.word_before_cursor = inh_ctx.word_before_cursor
-		ctx.char_before_cursor = inh_ctx.char_before_cursor
-	
-	var options = CommandBase.Options.new()
-	if ctx.token_before_cursor.begins_with("@"): # list aliases
-		for k in ctx.aliases.keys():
-			var val = UtilsLocal.ConsoleTokenizer.clean_alias_token(ctx.aliases[k])
-			options.add_option(k + " = [%s]" % val, {
-				&"insert": k
-			})
-		return options.get_options()
-	
-	
-	var first_word:String = ""
-	if ctx.unconsumed_tokens.size() > 0:
-		first_word = ctx.unconsumed_tokens[0]
-	
-	if first_word.find(".") > -1:
-		var front = UtilsRemote.UString.get_member_access_front(first_word)
-		first_word = front
-	
-	var scope_script = console.get_scope_script(first_word)
-	if not is_instance_valid(scope_script) and UtilsRemote.UClassDetail.get_global_class_path(first_word) != "":
-		scope_script = console.get_scope_script("global")
-	
-	if not (is_instance_valid(scope_script)):
-		if ctx.functions.has(first_word):
-			return {} # would need some way to get completion from function
-		
-		for scope:String in console.scope_dict.keys():
-			options.add_option(scope)
-		
-		for f in ctx.functions.keys():
-			options.add_option(f + "[func]", {
-				&"insert": f
-			})
-		
-		if is_instance_valid(current_command): # this would be in the context of a quoted command, should only be on first word
-			options.merge(current_command.get_flags(true))
-		return options.get_options()
-	
-	#if ctx.word_before_cursor == first_word:
-		#return {} # whats this for? From original completion logic..
-	
-	var ins = scope_script.new()
-	var completion = ins.complete(ctx)
-	if completion == null:
-		return {}
-	elif completion is Dictionary:
-		pass
-	elif completion.has_method("get_options"):
-		completion = completion.get_options()
-	else:
-		printerr("EditorConsoleSingleton::get_completion_for_input - Unhandled completion result: ", completion)
-		return {}
-	
-	
-	options.set_options(completion)
-	
-	var command_meta = options.get_options().get(UtilsLocal.Options.Keys.COMMAND_META, {})
-	var show_variables = command_meta.get(UtilsLocal.Options.Keys.SHOW_VARIABLES, false)
-	#show_variables = true #ALERT
-	if ctx.payload_arg_index > -1:
-		options.remove_option(UtilsLocal.Options.ARG_DELIMITER)
-		if show_variables:
-			var var_nms = console.variable_dict.keys()
-			#var var_nms = ctx.variables.keys() # this will needs some work!
-			if var_nms.size() > 0:
-				options.add_separator("Variables")
-			for nm in var_nms:
-				options.add_option(nm)
-		
-	
-	var options_dict = options.get_options()
-	for option in options_dict.keys():
-		var data = options_dict[option]
-		if data.has(&"get_command"):
-			if not show_commands:
-				options_dict.erase(option)
-		else:
-			if not show_flags:
-				options_dict.erase(option)
-	
-	return options_dict
+	var inherited = params.get(&"inherited_ctx")
+	var ctx = params.get(&"ctx")
+	if inherited is Completion: ctx = inherited.context
+	if ctx == null: ctx = get_main_ctx()
+	var text = UString.unquote(input_text)
+	var completion = Completion.new(text, ctx)
+	completion.show_commands = params.get(&"show_commands", true)
+	completion.show_flags = params.get(&"show_flags", true)
+	return completion.get_completions()
 
 
 static func load_command(path:String) -> Resource:
@@ -696,9 +559,6 @@ static func load_command(path:String) -> Resource:
 		return ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE_DEEP)
 	else:
 		return load(path)
-
-static func ensure_fresh_script(script:GDScript) -> Resource:
-	return UtilsRemote.UResource.ensure_fresh_load(script)
 
 static func get_file_paths():
 	return get_instance()._get_cached("files")
@@ -747,3 +607,16 @@ static func new_console(window:=false):
 	
 	EditorInterface.get_base_control().add_child(win)
 	return win
+
+
+static func _resolve_editor_scope(name:String, ctx:Context):
+	var front = UString.get_member_access_front(name)
+	if front != name and ctx.scopes.has(front): return ctx.scopes[front]
+	if UtilsRemote.UClassDetail.get_global_class_path(front) != "":
+		return ctx.scopes_hidden.get("global")
+	return null
+
+
+static func get_console_host(ctx:Context):
+	var reference = ctx.host_data.get("console")
+	return reference.get_ref() if reference is WeakRef else null

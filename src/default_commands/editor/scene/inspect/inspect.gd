@@ -28,7 +28,7 @@ func _process_flag(flag:String):
 	if flag == "--methods":
 		methods_flag = true
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var obj = _resolve_object(ctx)
 	if not is_instance_valid(obj):
 		ctx.append_error("Nothing to inspect (provide a path, pipe one in, or select an object in the inspector).")
@@ -54,7 +54,7 @@ func _execute(ctx:CompletionContext):
 		for m in obj.get_method_list():
 			ctx.append_output("  " + m.get("name", ""))
 
-func _resolve_object(ctx:CompletionContext):
+func _resolve_object(ctx:Context):
 	var path := ""
 	if not positional_args.is_empty():
 		path = positional_args[0]

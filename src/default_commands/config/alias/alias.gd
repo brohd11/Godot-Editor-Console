@@ -40,10 +40,10 @@ func _process_flag(flag:String):
 	elif flag == "--project":
 		project_flag = true
 
-func _get_completions(ctx:CompletionContext):
+func _get_completions(ctx:Completion):
 	if positional_args.size() > 1 and positional_arg_index == 1:
 		var pos_arg = positional_args[positional_arg_index]
-		if add_flag and UString.is_string_or_string_name(pos_arg):
+		if add_flag:
 			return EditorConsoleSingleton.get_completion_for_input(positional_args[positional_arg_index], {
 				&"require_quotes": true,
 				&"inherited_ctx": ctx,
@@ -65,8 +65,6 @@ func _get_completions(ctx:CompletionContext):
 	
 	return options.get_options()
 
-func _unwrap_quotes():
-	return 0
 
 func _get_target_positional_count() -> int:
 	if add_flag:
@@ -76,7 +74,7 @@ func _get_target_positional_count() -> int:
 	else:
 		return 1
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	if add_flag and remove_flag:
 		ctx.append_error("--add and --rm flags are mutually exclusive.")
 		return ExitCode.FAIL
@@ -97,27 +95,9 @@ func _execute(ctx:CompletionContext):
 			ctx.append_error("Alias already exists: " + alias_data.get(target_alias_name))
 			return ExitCode.FAIL
 		
-		var is_literal = false
-		var value = positional_args[1]
-		if UString.is_string_or_string_name(value):
-			if value[0] == '"':
-				value = UString.unquote(value)
-			elif value[0] == "'":
-				is_literal = true
-				value = "@literal" + value
-				
-		alias_data[target_alias_name] = value
+		alias_data[target_alias_name] = positional_args[1]
 		target_config.write()
-		
-		if is_literal:
-			target_config = _get_target_config()
-			alias_data = target_config.get_section(Config.ALIAS)
-			
-			var reloaded = alias_data.get(target_alias_name)
-			reloaded = ConsoleTokenizer.clean_alias_token(reloaded)
-			ctx.append_output("Single quote wrapped string prefixed with '@literal' in yaml.\nContents will be requoted on de-serialization.")
-			ctx.append_output(reloaded)
-		
+
 	elif remove_flag:
 		if not exists:
 			ctx.append_error("Alias doesn't exist: " + target_alias_name)

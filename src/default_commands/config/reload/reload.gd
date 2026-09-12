@@ -14,7 +14,7 @@ static func get_self_command_data():
 	})
 
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	UtilsLocal.Config.load_config()
 	ctx.append_output("Config reloaded.")
 	var success = EditorConsoleSingleton.get_instance()._load_default_commands()

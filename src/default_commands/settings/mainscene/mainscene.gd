@@ -17,7 +17,7 @@ static func get_self_command_data() -> Dictionary:
 		&"positional_count": "min:0,max:1",
 	})
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	if positional_args.is_empty():
 		var current = ProjectSettings.get_setting(_SETTING, "")
 		if current == "":

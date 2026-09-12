@@ -2,24 +2,21 @@
 const ConsoleCommandSetBase = preload("uid://bu27r1hpnfinp") # console_command_set_base.gd
 
 const CommandBase = preload("res://addons/editor_console/src/class/base/command_base.gd")
-const Options = preload("res://addons/editor_console/src/class/base/command_options.gd")
+const Options = preload("res://addons/addon_lib/gdsh/options.gd")
 
 
 const DefaultCommands = preload("res://addons/editor_console/src/default_commands/default.gd")
-const ConsoleOS = preload("res://addons/editor_console/src/default_commands/hidden/os/os.gd")
+const ConsoleOS = preload("res://addons/editor_console/src/default_commands/misc/editor_console/os/os.gd")
 
 
-const SyntaxHl = preload("res://addons/editor_console/src/utils/console_syntax.gd")
 
 const ConsoleMainContainer = preload("res://addons/editor_console/src/container/main_container.gd")
 const ConsoleContainer = preload("res://addons/editor_console/src/container/console_container.gd")
-const ConsoleLineEdit = preload("res://addons/editor_console/src/container/line_edit.gd")
 
-const CompletionContext = preload("res://addons/editor_console/src/class/completion_context.gd")
+const Context = preload("res://addons/addon_lib/gdsh/context.gd")
+const Completion = preload("res://addons/addon_lib/gdsh/completion.gd")
 const ConsoleUndo = preload("res://addons/editor_console/src/class/undo/console_undo.gd")
-const ConsoleTokenizer = preload("res://addons/editor_console/src/utils/console_tokenizer.gd")
-const Execution = preload("res://addons/editor_console/src/class/execution/execution.gd")
-const Function = preload("res://addons/editor_console/src/default_commands/hidden/function/function.gd")
+const Execution = preload("res://addons/addon_lib/gdsh/execute.gd")
 
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 const UString = UtilsRemote.UString

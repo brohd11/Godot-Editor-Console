@@ -8,7 +8,7 @@ static func get_self_command_data() -> Dictionary:
 		&"help": "Open a color picker in a window, selecting a color copies the html string to clipboard"
 	})
 
-func _execute(_ctx:CompletionContext):
+func _execute(_ctx:Context):
 	_color_picker()
 
 static func _color_picker():

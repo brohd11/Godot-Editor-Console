@@ -24,7 +24,7 @@ func _process_flag(flag:String):
 	if flag == "--select":
 		select_flag = true
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var root = EditorInterface.get_edited_scene_root()
 	if not is_instance_valid(root):
 		ctx.append_error("No edited scene open.")

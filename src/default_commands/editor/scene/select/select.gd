@@ -15,7 +15,7 @@ static func get_self_command_data():
 		&"help": _HELP,
 	})
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	
 	var edited_root = EditorInterface.get_edited_scene_root()
 	if not is_instance_valid(edited_root):

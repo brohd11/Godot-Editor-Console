@@ -1,45 +1,97 @@
 # Godot Editor Console
 
-This plugin adds a console button next to the filter in the Output bottom panel. You can also instance a console from the tool menu.
+Godot 4.6+
 
-Basic nested commands can be achieved by just following the recommended directory structure. This introduces a bit of boiler plate file management, but simplifies command flow and auto completion. See the 'Scripting' section below for advanced usage notes.
+Editor Console adds a console to the Output panel, plus standalone
+windows through the tool menu.
+
+Provides editor/resource/script commands, undo integration,
+configuration and startup scripts, global-class calls, OS mode, and the optional
+MCP bridge. GDSh remains usable independently of the editor plugin.
+
+## Commands
+
+Execution engine is [gdsh](https://github.com/brohd11/godot-gdsh.git)
+
+GDSh commands are available directly and through `builtins`, which will list the available commands in autocomplete:
 
 ```text
-📁 top_command
- ├── 📄 top_command.gd
- ├── 📁 sub_command
- │   └── 📄 sub_command.gd 
- └── 📁 sub_command2
-     └── 📄 sub_command2.gd
+echo hello
+builtins echo hello
+source res://example.gdsh
 ```
 
-Create your top most command that will be registered with the console in a "plugin.gd". When the plugin enters the tree, you can register the command with `EditorConsoleSingleton.register_temp_scope("my_cmd", ConsoleCommand)`. `my_cmd` is how you will call your command in the console. `ConsoleCommand` is a refrence to the command script, typically a preload. 
+Editor console included commands are grouped under `misc editor_console` and can also be accessed directly:
 
-Commands can also be registered via the console without a plugin using the `config scope reg` command. This is written to either the project or global config file, and will be loaded everytime you load the editor until you deregister it.
+```text
+misc editor_console ls
+ls
+editor scene tree | count
+```
 
-Sub commands should be in a folder, and should have the same file name as the folder. Files not in a folder are ignored, these could be shared utilities, notes, etc.
+## OS mode
 
-Once your top level command is registered, all subcommands will automatically be routed to and be suggested in autocomplete.
+Enter bare `os` to toggle OS mode for the current console. Its prompt shows
+`user@host`, the working directory, and `$`. Enter `os` again to return to GDSh.
+`os <command>` outside that mode invokes an OS command once:
 
-By default the console will parse the input text and each command will consume tokens and select the next command until there are no more tokens, or an unrecognized token. At this point the command will attempt to execute. See [command example](export_ignore/doc/command_base.md) for a deeper explanation as well as a list of functions that can be overidden to customize behaviour.
+```text
+os printf 'one\ntwo\n' | count
+```
 
-Base commands can be found [here](export_ignore/doc/commands.md). Adding `--help` after any token will print help for that token if defined.
+Here `printf` runs in the system shell and `count` runs in GDSh. In persistent OS
+mode, a submitted line's pipes and operators belong to the system shell.
+Standalone `cd` updates the console working directory; `clear` and
+`clear --history` operate on the current console.
 
-## Scripting
-While simple commands are great for triggering small tasks, commands can be combined using their stdin and stdout, as well as exit codes.
+OS inputs have two expansion layers:
 
+| Syntax | Meaning |
+| --- | --- |
+| `$name` | GDSh variable; missing names expand to empty |
+| `$$name` | Pass `$name` to the system shell |
+| `$(commands)` | GDSh command substitution |
+| `$$(commands)` | Pass `$(commands)` and its body to the shell |
+| `'literal text'` | Preserve literal contents, including dollar signs |
 
-I'm calling this GDShell(gdsh), because the format is pretty similar to bash. [Example File](export_ignore/doc/example.gdsh)
-You can define functions and variables, use conditions and loops, even run or source other scripts.
+Double quotes allow expansion while preserving a single argument. GDSh values
+are quoted before being passed to the shell; their contents do not become shell
+syntax. Unquoted GDSh command substitutions retain GDSh's whitespace splitting.
+Aliases also expand before OS execution.
 
-The composble nature of the commands means you can get alot of use out of simple tools.
+The current shells are zsh on macOS, bash on Linux, and cmd.exe on
+Windows. Native shell syntax is platform-specific (`$name`/`$(...)` are POSIX shell
+forms); Windows `%NAME%` syntax remains available. Process status and separate
+stdout/stderr are returned to GDSh.
 
-## MCP
-There is an optional Go MCP server that you can use to connect agents to the console. Because of the similar nature to bash, and having help text readily available through "token --help", they seem to be able to figure out the commands fairly quickly.
+## Configuration and integration
 
-[MCP Server](https://github.com/brohd11/Godot-Editor-Console-MCP)
+Project/global configuration, `.gdrc`, startup commands, scope registrations,
+and script-editor actions remain supported. Each interactive console keeps its
+own session. `new_ctx` or configuration reload rebuilds it from configuration.
+MCP calls use fresh configured sessions and return `stdout`, `stderr`, and
+`exit_code` for the requested submission.
 
+Custom commands now use GDSh's separate `Context` and `Completion` types.
+See [command authoring](export_ignore/doc/command_base.md) and the
+[command overview](export_ignore/doc/commands.md). The editor command base extends
+GDSh's base and keeps editor-specific helpers. GDSh is also available directly
+through `EditorConsoleSingleton.GDSh`.
 
+## Packaging and validation
 
-## Using it with your Plugin
-The plugin is "portable", meaning you can include it as a sub-plugin easily. Due to the duck typed singleton design, multiple plugins can have their own copy of the source and interact with a shared instance. This is made easy using [Plugin Exporter](https://github.com/brohd11/Godot-Plugin-Exporter). The console plugin will be packaged in with your plugin package, class_names will be stripped from all the files, instead using preload to reference the classes. There will be no name clashes between plugins.
+Include the GDSh module with its builtin scripts, font, and font license. Builtin
+scripts are explicit preload dependencies so plugin exports can relocate them.
+The runtime module has no editor dependency. Godot resource exports must include
+dynamically discovered editor command scripts; use all resources and include
+`*.gdsh` for shell scripts. The optional Plugin Exporter can bundle the console
+and resolve its dependency paths for use as a sub-plugin.
+
+Run the isolated integration checks from the project root:
+
+```sh
+python3 tests/editor_console/run_headless.py --godot godot
+python3 tests/gdsh/run_headless.py --godot godot --export
+```
+
+The optional Go MCP server is described in [its repository](https://github.com/brohd11/Godot-Editor-Console-MCP).

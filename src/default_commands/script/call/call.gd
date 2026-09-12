@@ -38,7 +38,7 @@ func _process_flag(flag:String):
 	elif flag == "--default":
 		create_default = true
 
-func _get_completions(ctx:CompletionContext):
+func _get_completions(ctx:Completion):
 	if ctx.in_arguments():
 		var dict = {} # possibly add something to check arg types?
 		Options.add_show_variables_to_dict(dict)
@@ -47,14 +47,14 @@ func _get_completions(ctx:CompletionContext):
 	if not _positional_arg_index_valid():
 		return {}
 	
-	if not is_instance_valid(ScriptUtil.get_script_from_ctx(ctx)):
+	if not is_instance_valid(ScriptUtil.get_script_from_ctx(ctx.context)):
 		return {}
 	
 	var flags = get_flags(true)
 	
-	var methods = ScriptUtil.get_methods_from_ctx(ctx, show_private, true)
-	if not ctx.unconsumed_tokens.is_empty():
-		var current_name = ctx.unconsumed_tokens.pop_front()
+	var methods = ScriptUtil.get_methods_from_ctx(ctx.context, show_private, true)
+	if not ctx.context.unconsumed_tokens.is_empty():
+		var current_name = ctx.context.unconsumed_tokens.pop_front()
 		if current_name in methods:
 			return {}
 	
@@ -69,7 +69,7 @@ func _get_completions(ctx:CompletionContext):
 	
 	return methods
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var method_name = positional_args[0]
 	var script = ScriptUtil.get_script_from_ctx(ctx)
 	if not is_instance_valid(script):
@@ -84,7 +84,7 @@ func _execute(ctx:CompletionContext):
 	return call_method(ctx, script, method_name)
 
 
-func call_method(ctx:CompletionContext, script:Script, method_name:String):
+func call_method(ctx:Context, script:Script, method_name:String):
 	if not script.has_method(method_name):
 		ctx.append_error("Static method '%s' not in script." % method_name)
 		return ExitCode.ERR

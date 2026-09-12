@@ -23,7 +23,7 @@ func _process_flag(flag:String):
 	if flag == "--no-save":
 		no_save_flag = true
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var save := not no_save_flag
 	ctx.append_output("Restarting editor (%s open scenes)..." % ("saving" if save else "discarding unsaved changes in"))
 	EditorInterface.restart_editor(save)

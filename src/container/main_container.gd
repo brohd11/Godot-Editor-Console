@@ -25,19 +25,12 @@ func _ready() -> void:
 	add_child(_content_vbox)
 	_content_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	
-	rich_text_label = RichTextLabel.new()
-	rich_text_label.selection_enabled = true
-	rich_text_label.context_menu_enabled = true
-	_content_vbox.add_child(rich_text_label)
-	rich_text_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	rich_text_label.bbcode_enabled = true
-	
 	line_edit_container = ConsoleContainer.new()
-	line_edit_container.rich_text_label = rich_text_label # set before ready
-	
+	line_edit_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_content_vbox.add_child(line_edit_container)
+	rich_text_label = line_edit_container.rich_text_label
 	
-	
+
 	#_content_vbox.add_spacer(false).size_flags_vertical = Control.SIZE_SHRINK_END
 
 

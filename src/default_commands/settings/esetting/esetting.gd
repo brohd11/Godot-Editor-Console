@@ -15,7 +15,7 @@ static func get_self_command_data() -> Dictionary:
 		&"positional_count": "min:1,max:2",
 	})
 
-func _get_completions(_ctx:CompletionContext):
+func _get_completions(_ctx:Completion):
 	if not _positional_arg_index_valid():
 		return {}
 	var settings = EditorInterface.get_editor_settings()
@@ -26,7 +26,7 @@ func _get_completions(_ctx:CompletionContext):
 			options.add_option(name, {&"trailing_char": " "})
 	return options.get_options()
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var settings = EditorInterface.get_editor_settings()
 	var name = positional_args[0]
 	if not settings.has_setting(name):
@@ -42,7 +42,7 @@ func _execute(ctx:CompletionContext):
 	if new_val == "null":
 		ctx.append_output("null erases setting: %s -> null" % [current])
 	else:
-		converted = ConsoleTokenizer.Var.auto_convert(new_val, typeof(current))
+		converted = Value.Var.auto_convert(new_val, typeof(current))
 		if converted == null:
 			ctx.append_error("Could not convert: %s -> %s" % [new_val, typeof(current)])
 			return ExitCode.ERR

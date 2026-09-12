@@ -34,19 +34,17 @@ func _process_flag(flag:String):
 	elif flag == "--edit":
 		open_flag = true
 
-func _get_completions(_ctx:CompletionContext):
+func _get_completions(_ctx:Completion):
 	if positional_args.size() > 0 and positional_arg_index <= 0:
-		if UString.is_string_or_string_name(positional_args[0]):
+		if not positional_args[0].is_empty():
 			return EditorConsoleSingleton.get_completion_for_input(positional_args[0], {
 				&"show_flags": false,
-				&"require_quotes": true,
+				&"inherited_ctx": _ctx,
 			})
 	return get_flags(true)
 
-func _unwrap_quotes():
-	return 0
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	
 	var new_command_name:String = UString.unquote(positional_args[1])
 	if new_command_name.get_extension() != "":
@@ -102,7 +100,7 @@ func _execute(ctx:CompletionContext):
 			EditorConsoleSingleton.register_persistent_scope(new_command_name, new_command_path)
 	return ExitCode.OK
 
-func _get_new_command_dir(ctx:CompletionContext) -> String:
+func _get_new_command_dir(ctx:Context) -> String:
 	var command_path:String = UString.unquote(positional_args[0]).strip_edges()
 	if command_path == "hidden":
 		return HIDDEN_DIR
@@ -150,15 +148,16 @@ func _get_new_command_dir(ctx:CompletionContext) -> String:
 func _get_template():
 	return """extends EditorConsoleSingleton.CommandBase
 
-
-const _HELP = \\
-"This is a command created with the 'new' command, define help for this command!"
-
-static func get_command_name():
+static func get_command_name() -> String:
 	return "%s"
 
-static func get_self_command_data():
-	return _command_data({
-		&"help": _HELP,
-	})
+static func get_self_command_data() -> Dictionary:
+	return _command_data({&"help": "Describe this command."})
+
+func _execute(ctx:Context) -> int:
+	ctx.append_output("Command executed.")
+	return ExitCode.OK
+
+func _get_completions(completion:Completion):
+	return super._get_completions(completion)
 """

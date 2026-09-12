@@ -33,7 +33,7 @@ func _process_flag(flag:String):
 	elif flag == "--no-open":
 		no_open_flag = true
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var cls = positional_args[0]
 	if not ClassDB.class_exists(cls):
 		ctx.append_error("Not a class: " + cls)

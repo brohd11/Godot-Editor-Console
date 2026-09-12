@@ -27,7 +27,7 @@ func _process_flag(flag:String):
 	if flag == "--subresources":
 		subresources_flag = true
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var src = positional_args[0]
 	var dest = positional_args[1]
 

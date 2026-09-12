@@ -44,7 +44,7 @@ func _get_target_positional_count() -> int:
 	else:
 		return 2
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	if int(set_flag) + int(dir_flag) > 1:
 		ctx.append_error("Can only use one flag at a time.")
 		ctx.exit_code = ExitCode.FAIL

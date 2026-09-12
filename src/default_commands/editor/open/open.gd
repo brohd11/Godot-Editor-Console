@@ -27,7 +27,7 @@ func _process_flag(flag:String):
 	if flag == "--inspect":
 		inspect_flag = true
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var path := ""
 	if not positional_args.is_empty():
 		path = positional_args[0]

@@ -1,3 +1,7 @@
+Editor Console uses GDSh for shell builtins. Its additional utilities are under
+`misc editor_console` and remain directly callable as hidden root commands.
+`builtins` is GDSh's namespace. Run `help` or `<command> --help` for current metadata.
+
 The console has these commands built in:
 
 ## config

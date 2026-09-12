@@ -12,10 +12,10 @@ static func get_self_command_data() -> Dictionary:
 	})
 
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	_resolve_const(ScriptEditorRef.get_current_code_edit(), ctx)
 
-static func _resolve_const(script_editor:CodeEdit, ctx:CompletionContext):
+static func _resolve_const(script_editor:CodeEdit, ctx:Context):
 	var current_script_path = ScriptEditorRef.get_current_script().resource_path
 	var current_script_dir = current_script_path.get_base_dir()
 	var completed_preloads := {}
@@ -94,7 +94,7 @@ static func _resolve_const(script_editor:CodeEdit, ctx:CompletionContext):
 				pending_preloads.append(stripped)
 
 
-static func process_pending(script_editor:CodeEdit, line_number:int, pending:Array, completed:Dictionary, ctx:CompletionContext):
+static func process_pending(script_editor:CodeEdit, line_number:int, pending:Array, completed:Dictionary, ctx:Context):
 	var pending_stripped = pending.pop_front()
 	var pending_const_data = GDScriptParse.get_var_or_const_info(pending_stripped)
 	var const_name = pending_const_data[0]
@@ -135,7 +135,7 @@ static func dump_file(script_editor:CodeEdit, line_number:int, type_path:String,
 	script_editor.end_action()
 
 
-static func check_history(name:String, assignment:String, completed:Dictionary, ctx:CompletionContext):
+static func check_history(name:String, assignment:String, completed:Dictionary, ctx:Context):
 	if completed.has(name):
 		if completed[name] != assignment:
 			ctx.append_error("Imported class doesn't name clash, not of same type.")

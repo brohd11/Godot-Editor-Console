@@ -28,7 +28,7 @@ func _process_flag(flag:String):
 	if flag.begins_with("--as="):
 		as_flag = _get_flag_value(flag)
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var root = EditorInterface.get_edited_scene_root()
 	if not is_instance_valid(root):
 		ctx.append_error("No edited scene to save.")

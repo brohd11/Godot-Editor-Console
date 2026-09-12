@@ -36,7 +36,7 @@ func _process_flag(flag:String):
 	if flag.begins_with("--path="):
 		path_flag = _get_flag_value(flag)
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	if FileAccess.file_exists(path_flag):
 		ctx.append_output(path_flag)
 	else:

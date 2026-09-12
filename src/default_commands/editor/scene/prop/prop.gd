@@ -18,7 +18,7 @@ static func get_self_command_data() -> Dictionary:
 		&"positional_count": "min:1,max:2",
 	})
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var root = EditorInterface.get_edited_scene_root()
 	if not is_instance_valid(root):
 		ctx.append_error("No edited scene open.")
@@ -46,7 +46,7 @@ func _execute(ctx:CompletionContext):
 		# if not in the node, what to do? it sets it to null right now
 		var current = n.get_indexed(prop_path)
 		var t = typeof(current)
-		var converted = ConsoleTokenizer.Var.auto_convert(positional_args[1], t, base_instance_type)
+		var converted = Value.Var.auto_convert(positional_args[1], t, base_instance_type)
 		a.do_method(n, &"set_indexed", [prop_path, converted])
 		a.undo_method(n, &"set_indexed", [prop_path, current])
 	a.commit()
@@ -56,7 +56,7 @@ func _execute(ctx:CompletionContext):
 		ctx.append_output("%s.%s = %s" % [node_path, prop_name, str(n.get_indexed(prop_path))])
 
 
-func _resolve_nodes(ctx:CompletionContext, root:Node) -> Array:
+func _resolve_nodes(ctx:Context, root:Node) -> Array:
 	var nodes := []
 	var stdin = ctx.stdin.strip_edges()
 	if stdin != "":

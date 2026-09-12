@@ -15,7 +15,7 @@ static func get_self_command_data() -> Dictionary:
 		&"positional_count": 1,
 	})
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var arg = positional_args[0]
 
 	if arg.begins_with("uid://"):

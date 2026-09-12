@@ -32,22 +32,22 @@ func _process_flag(flag:String):
 	if flag == "--private":
 		show_private = true
 
-func _get_completions(ctx:CompletionContext):
+func _get_completions(ctx:Completion):
 	var flags = get_flags(true)
 	
-	if not is_instance_valid(ScriptUtil.get_script_from_ctx(ctx)):
+	if not is_instance_valid(ScriptUtil.get_script_from_ctx(ctx.context)):
 		return {}
 	
-	var methods = ScriptUtil.get_methods_from_ctx(ctx, show_private, false, false)
-	if not ctx.unconsumed_tokens.is_empty():
-		var current_name = ctx.unconsumed_tokens.pop_front()
+	var methods = ScriptUtil.get_methods_from_ctx(ctx.context, show_private, false, false)
+	if not ctx.context.unconsumed_tokens.is_empty():
+		var current_name = ctx.context.unconsumed_tokens.pop_front()
 		if current_name in methods:
 			return {}
 	
 	methods.merge(flags)
 	return methods
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var method_name = positional_args[0]
 	var script = ScriptUtil.get_script_from_ctx(ctx)
 	var methods = ScriptUtil.get_methods_from_ctx(ctx, show_private, false, false)
@@ -58,7 +58,7 @@ func _execute(ctx:CompletionContext):
 	return list_args(script, method_name, ctx)
 
 
-static func list_args(script:Script, method_name:String, ctx:CompletionContext):
+static func list_args(script:Script, method_name:String, ctx:Context):
 	var property_info = UClassDetail.get_member_info_by_path(script, method_name)
 	if property_info is not Dictionary:
 		ctx.append_error("Could not get method '%s' in script: %s" % [method_name, script])

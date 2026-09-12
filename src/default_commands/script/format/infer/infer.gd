@@ -15,7 +15,7 @@ static func get_self_command_data() -> Dictionary:
 		&"help": _HELP,
 	})
 
-func _execute(_ctx:CompletionContext) -> ExitCode:
+func _execute(_ctx:Context) -> ExitCode:
 	format_script_type_hint()
 	return ExitCode.OK
 

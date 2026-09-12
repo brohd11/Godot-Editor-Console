@@ -89,7 +89,7 @@ func _process_flag(flag:String):
 		target_all_flag = false
 
 
-func _execute(ctx:CompletionContext):
+func _execute(ctx:Context):
 	var script = ScriptUtil.get_script_from_ctx(ctx)
 	var script_name = UClassDetail.get_global_class_name(script.resource_path)
 	if script_name == "":
@@ -97,7 +97,7 @@ func _execute(ctx:CompletionContext):
 	return list_members(ctx, script_name, script)
 
 
-func list_members(ctx:CompletionContext, script_name:String, script:Script) -> int:
+func list_members(ctx:Context, script_name:String, script:Script) -> int:
 	var print_pretty = pretty_flag
 	var print_data = data_flag
 	var inherited = inh_flag
@@ -157,7 +157,7 @@ static func _get_members(script:GDScript, flag:String, inherited:bool):
 				return {}
 
 
-func _add_to_members_to_output(ctx:CompletionContext, members:Dictionary, pr:Pr):
+func _add_to_members_to_output(ctx:Context, members:Dictionary, pr:Pr):
 	if members.is_empty():
 		var err_color = Colors.VAR_RED if pretty_flag else Color.TRANSPARENT
 		pr.append("\tNone in script.", err_color)
