@@ -46,7 +46,7 @@ func _execute(ctx:Context):
 		# if not in the node, what to do? it sets it to null right now
 		var current = n.get_indexed(prop_path)
 		var t = typeof(current)
-		var converted = Value.Var.auto_convert(positional_args[1], t, base_instance_type)
+		var converted = Utils.Value.convert(positional_args[1], t, base_instance_type)
 		a.do_method(n, &"set_indexed", [prop_path, converted])
 		a.undo_method(n, &"set_indexed", [prop_path, current])
 	a.commit()

@@ -89,5 +89,4 @@ func call_method(ctx:Context, script:Script, method_name:String):
 		ctx.append_error("Static method '%s' not in script." % method_name)
 		return ExitCode.ERR
 	var callable = script.get(method_name)
-	_call_method(ctx, callable, payload, create_default)
-	return ExitCode.OK
+	return ExitCode.OK if _call_method(ctx, callable, payload, create_default) else ExitCode.FAIL

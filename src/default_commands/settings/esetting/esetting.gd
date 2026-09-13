@@ -42,7 +42,7 @@ func _execute(ctx:Context):
 	if new_val == "null":
 		ctx.append_output("null erases setting: %s -> null" % [current])
 	else:
-		converted = Value.Var.auto_convert(new_val, typeof(current))
+		converted = Utils.Value.convert(new_val, typeof(current))
 		if converted == null:
 			ctx.append_error("Could not convert: %s -> %s" % [new_val, typeof(current)])
 			return ExitCode.ERR
