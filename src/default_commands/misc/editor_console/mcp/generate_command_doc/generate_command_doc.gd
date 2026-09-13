@@ -4,7 +4,7 @@ extends EditorConsoleSingleton.CommandBase
 const _HELP = \
 "Generate a markdown command-tree doc (commands.md style) and print it."
 
-const NAMES_TO_SKIP = ["builtins", "plugin_exporter", "namespace", "temp"]
+const NAMES_TO_SKIP = ["builtins", "hidden", "utils", "plugin_exporter", "namespace", "temp"]
 
 var write_flag:=false
 
@@ -41,7 +41,7 @@ func _execute(ctx:Context):
 		if not lines.is_empty():
 			md += "\n## %s\n\n```text\n%s\n```\n" % [scope_name, "\n".join(lines)]
 
-	# Hidden builtins grouped under a single fenced block, each as a sibling root.
+	# Hidden commands grouped under a single fenced block, each as a sibling root.
 	var hidden_names = ins.hidden_scope_dict.keys()
 	hidden_names.sort()
 	var builtin_lines := []

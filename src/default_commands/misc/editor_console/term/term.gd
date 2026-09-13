@@ -11,6 +11,7 @@ static func get_command_name() -> String:
 
 static func get_self_command_data() -> Dictionary:
 	return _command_data({
+		&"discoverable": false,
 		&"help": _HELP,
 		&"positional_count": "min:0,max:1",
 		&"allow_positional_paths": true,

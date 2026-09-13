@@ -178,7 +178,7 @@ func _handle_line(peer: StreamPeerTCP, line: String) -> void:
 
 #region list_commands - here to keep mcp logic together
 
-const TO_IGNORE = ["help"]
+const TO_IGNORE = ["help", "hidden"] # hidden only re-lists other scopes
 
 static func build_mcp_command_list() -> String:
 	return _command_list(EditorConsoleSingleton.get_instance().get_current_scope_data())

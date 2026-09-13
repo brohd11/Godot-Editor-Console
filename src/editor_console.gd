@@ -501,6 +501,11 @@ func get_gdrc():
 	main_ctx.scopes_hidden.merge(hidden_scope_dict.duplicate(), true)
 	main_ctx.scope_resolver = _resolve_editor_scope
 	main_ctx.collect_raw_commands()
+	# GDSh.Utils host hooks: editor file caches and FileSystem dock refresh for portable utilities.
+	main_ctx.host_data["file_paths"] = func(directories:bool): return get_dir_paths() if directories else get_file_paths()
+	main_ctx.host_data["filesystem_changed"] = func(): EditorInterface.get_resource_filesystem().scan()
+	# `clear` without an interactive console (MCP/bridge) clears the editor log; consoles replace this.
+	main_ctx.host_data["clear_callback"] = func(_ctx, _history): clear_button.pressed.emit()
 	
 	var config = Config.get_merged_config()
 	main_ctx.aliases = config.get_section(Config.ALIAS, {}).duplicate()

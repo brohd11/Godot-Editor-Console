@@ -1,6 +1,7 @@
-Editor Console uses GDSh for shell builtins. Its additional utilities are under
-`misc editor_console` and remain directly callable as hidden root commands.
-`builtins` is GDSh's namespace. Run `help` or `<command> --help` for current metadata.
+Editor Console uses GDSh for shell builtins (`builtins`) and gdsh_lib utils for
+portable utilities (`utils`); editor-only utilities are under `misc editor_console`.
+All are also directly callable hidden root commands; `hidden` lists the namespaces.
+Run `help` or `<command> --help` for current metadata.
 
 The console has these commands built in:
 

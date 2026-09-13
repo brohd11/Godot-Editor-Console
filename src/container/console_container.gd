@@ -60,6 +60,7 @@ func apply_editor_styles() -> void:
 func new_ctx() -> void:
 	console_ctx = EditorConsoleSingleton.get_main_ctx()
 	console_ctx.host_data["console"] = weakref(self)
+	console_ctx.host_data["clear_callback"] = _clear_callback # Set before set_context, which keeps it.
 	console.set_context(console_ctx)
 
 func set_console_text(text:String) -> void:
@@ -80,6 +81,18 @@ func _execute_submission(text:String, result:Sh.Context) -> void:
 		result.last_status = result.exit_code
 	else:
 		Sh.Execute.execute_command_multiline(text, result)
+
+## `clear` builtin handler: this window's transcript, or the editor log when docked.
+func _clear_callback(_ctx:Sh.Context, history:bool) -> int:
+	if history:
+		console.clear_history()
+	var rich_text = get_rich_text()
+	if is_instance_valid(rich_text):
+		rich_text.clear()
+		rich_text.text = ""
+	else:
+		EditorConsoleSingleton.get_instance().clear_button.pressed.emit()
+	return 0
 
 func _make_completion(text:String, ctx:Sh.Context, caret:int) -> Sh.Completion:
 	return OSCompletion.new(text, ctx, caret) if os_mode else Sh.Completion.new(text, ctx, caret)

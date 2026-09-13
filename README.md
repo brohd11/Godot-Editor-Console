@@ -13,21 +13,23 @@ MCP bridge. GDSh remains usable independently of the editor plugin.
 
 Execution engine is [gdsh](https://github.com/brohd11/godot-gdsh.git)
 
-GDSh commands are available directly and through `builtins`, which will list the available commands in autocomplete:
+GDSh builtins and the console utilities are hidden root commands. Call them
+directly or through their namespace; `hidden ` lists the namespaces:
 
 ```text
 echo hello
 builtins echo hello
-source res://example.gdsh
-```
-
-Editor console included commands are grouped under `misc editor_console` and can also be accessed directly:
-
-```text
-misc editor_console ls
 ls
+utils ls
+misc editor_console os printf hi
 editor scene tree | count
 ```
+
+Portable utilities (`cat`, `ls`, `grep`, `class`, ...) come from
+[gdsh_lib utils](../addon_lib/gdsh_lib/utils/README.md), which runtime consoles
+can load without the editor. Editor-only utilities (`os`, `term`, `global`,
+`mcp`, ...) are grouped under `misc editor_console`. `clear [--history]` clears
+the console you typed it in, or the editor log from MCP.
 
 ## OS mode
 
@@ -80,8 +82,9 @@ through `EditorConsoleSingleton.GDSh`.
 
 ## Packaging and validation
 
-Include the GDSh module with its builtin scripts, font, and font license. Builtin
-scripts are explicit preload dependencies so plugin exports can relocate them.
+Include the GDSh module with its builtin scripts, font, and font license, and the
+gdsh_lib utils directory. Builtin scripts, and the utils through their
+`manifest.gd`, are explicit preload dependencies so plugin exports can relocate them.
 The runtime module has no editor dependency. Godot resource exports must include
 dynamically discovered editor command scripts; use all resources and include
 `*.gdsh` for shell scripts. The optional Plugin Exporter can bundle the console

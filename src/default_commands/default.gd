@@ -3,6 +3,9 @@ extends EditorConsoleSingleton.ConsoleCommandSetBase
 const HIDDEN_DIR = "res://addons/editor_console/src/default_commands/hidden/"
 const EDITOR_COMMANDS_DIR = "res://addons/editor_console/src/default_commands/misc/editor_console/"
 const TEMP_DIR = "res://temp_console/"
+## Portable GDSh utilities. The manifest preload keeps them in plugin exports, and its
+## (export-rewritten) path locates the directory.
+const UtilsManifest = preload("res://addons/addon_lib/gdsh_lib/utils/manifest.gd")
 
 static func register_scopes():
 	var paths = [
@@ -23,7 +26,9 @@ static func register_scopes():
 
 
 static func register_hidden_scopes():
-	var data = {}
+	# Editor directories load afterwards, so they can override a utility.
+	var manifest:Resource = UtilsManifest # A typed variable reads the script resource, not a class member.
+	var data = GDShLoad.load_directory(manifest.resource_path.get_base_dir())
 	for cmd_dir in [HIDDEN_DIR, EDITOR_COMMANDS_DIR, TEMP_DIR]:
 		if not DirAccess.dir_exists_absolute(cmd_dir):
 			continue

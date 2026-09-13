@@ -9,6 +9,7 @@ static func get_command_name() -> String:
 
 static func get_self_command_data() -> Dictionary:
 	return _command_data({
+		&"discoverable": false,
 		&"help": "Run an OS command. $name/$(...) expand in GDSh; $$name/$$(...) pass to the shell. Bare os toggles interactive OS mode.",
 		&"raw": true,
 	})
