@@ -98,7 +98,8 @@ func _execute(ctx:Context):
 		if not is_static:
 			call_obj = script.new()
 		
-		var res = call_obj.call(test_func)
+		# Awaited: suites may wait for frames (synchronous entries return immediately).
+		var res = await call_obj.call(test_func)
 		var exit = res.get("result", false)
 		if res.has("success"):
 			exit = res["success"]
