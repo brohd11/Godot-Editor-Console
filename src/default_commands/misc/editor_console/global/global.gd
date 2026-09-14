@@ -21,21 +21,17 @@ static func get_self_command_data() -> Dictionary:
 
 func _consume_self(ctx:Context) -> ExitCode:
 	var class_nm = _consume_token(ctx)
+	# With nothing left to route, execution falls through to _execute, which prints help.
 	if class_nm == "global":
-		if ctx.tokens_empty_and_execute():
-			return ExitCode.HELP
-		elif ctx.tokens_empty() or ctx.unconsumed_tokens.front() in get_commands():
+		if ctx.tokens_empty() or ctx.unconsumed_tokens.front() in get_commands():
 			return ExitCode.OK
-		
+
 		class_nm = _consume_token(ctx)
-	
+
 	var script = ScriptUtil.resolve_access_path(class_nm)
 	if script != null:
 		global_access_path = class_nm
 		ctx.data["script"] = script
-	
-	if ctx.tokens_empty_and_execute():
-		return ExitCode.HELP
 	return ExitCode.OK
 
 func _get_help(what:String):

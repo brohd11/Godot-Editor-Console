@@ -2,7 +2,7 @@ extends EditorConsoleSingleton.CommandBase
 
 
 const _HELP = \
-"Commands on the current edited scene (add/prop/tree/…). Path-selected scene files are file ops (see 'resource')."
+"Edited scene commands (new/save/reload/root/select). For node commands, pipe 'editor scene root' or 'editor scene select' into 'tree'."
 
 static func get_command_name():
 	return "scene"

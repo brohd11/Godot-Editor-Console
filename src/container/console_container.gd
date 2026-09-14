@@ -34,6 +34,7 @@ func _ready() -> void:
 	_normal_highlighter = Sh.Console.Highlighter.new()
 	_normal_highlighter.highlight_globals = true
 	console.set_highlighter(_normal_highlighter)
+	console.context_factory = _build_ctx
 	new_ctx()
 	if is_editor:
 		console.hide()
@@ -58,10 +59,14 @@ func apply_editor_styles() -> void:
 	line_edit.add_theme_constant_override("caret_width", 8)
 
 func new_ctx() -> void:
+	console.reset_context()
+
+## Console session factory, also used by the `new_ctx` builtin.
+func _build_ctx() -> Sh.Context:
 	console_ctx = EditorConsoleSingleton.get_main_ctx()
 	console_ctx.host_data["console"] = weakref(self)
 	console_ctx.host_data["clear_callback"] = _clear_callback # Set before set_context, which keeps it.
-	console.set_context(console_ctx)
+	return console_ctx
 
 func set_console_text(text:String) -> void:
 	line_edit.text = text
@@ -73,9 +78,7 @@ func _execute_submission(text:String, result:Sh.Context) -> void:
 		console.set_highlighter(null if os_mode else _normal_highlighter)
 		# The prompt still shows the mode the toggle was typed in.
 		print_to_console(console.prompt_label.text + (" Entered OS mode." if os_mode else " Exited OS mode."))
-	elif text == "new_ctx":
-		new_ctx()
-	elif os_mode and not (text == "clear" or text.begins_with("clear ")):
+	elif os_mode and not text.get_slice(" ", 0) in ["clear", "new_ctx"]:
 		var command = text.trim_prefix("os ")
 		result.exit_code = Adapter.execute(command, result)
 		result.last_status = result.exit_code

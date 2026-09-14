@@ -49,6 +49,8 @@ var _console_replace_filter:bool=false
 # When true, mutating scene commands register on the editor undo stack (Ctrl+Z).
 # When false they apply directly with no undo entry. Toggle via `config undo on|off`.
 var undo_tracking:bool = true
+# One compound undo buffer for every console and bridge request (`undoredo --compound`).
+var undo_session := Context.Undo.Session.new()
 
 var _cache:= {}
 var _bridge:ConsoleBridge
@@ -504,6 +506,10 @@ func get_gdrc():
 	# GDSh.Utils host hooks: editor file caches and FileSystem dock refresh for portable utilities.
 	main_ctx.host_data["file_paths"] = func(directories:bool): return get_dir_paths() if directories else get_file_paths()
 	main_ctx.host_data["filesystem_changed"] = func(): EditorInterface.get_resource_filesystem().scan()
+	# GDSh undo: changes go on the editor undo stack unless `config undo off`.
+	main_ctx.host_data["undo_redo"] = func(): return EditorInterface.get_editor_undo_redo() if undo_tracking else null
+	# The main ctx is rebuilt per request, so the singleton keeps the compound buffer.
+	main_ctx.host_data["undo_session"] = undo_session
 	# `clear` without an interactive console (MCP/bridge) clears the editor log; consoles replace this.
 	main_ctx.host_data["clear_callback"] = func(_ctx, _history): clear_button.pressed.emit()
 	

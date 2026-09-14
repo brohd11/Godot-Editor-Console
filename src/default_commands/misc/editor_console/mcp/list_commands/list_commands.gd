@@ -8,12 +8,14 @@ const PREAMBLE = \
 "Editor console — commands compose like a Unix shell.
 - Pipe with | ; chain with && / || / ; ; multi-line gdsh scripts supported.
 - Many commands read targets from stdin (node paths or res:// paths, one per line)
-  and emit the same, so they chain: editor scene tree | editor scene prop position
+  and emit the same, so they chain: editor scene select | tree prop position
 - OS commands can be ran by prefixing with 'os', everything until the end of the line or the next pipe '|'
   will be ran verbatim through bash(mac, linux) or cmd.exe and output returned
 - Bash style variables and command substitution is available
-- With no stdin, node commands act on the current selection / edited scene.
+- 'tree' node commands (nodes/add/prop/free/...) take absolute node paths on stdin and print absolute paths.
+  Start a chain with 'editor scene root' or 'editor scene select' ('tree root' is the editor window itself).
 - Output goes to stdout; errors and usage go to stderr.
+- Scene changes are undoable from the console: 'editor undo' / 'editor redo' (optional count).
 - After editing project files on disk from outside the editor, run 'editor scan' so
   added/removed files register. The editor does NOT auto-reload changes while it is
   unfocused (e.g. while you work in the terminal).

@@ -29,30 +29,21 @@ editor # Editor control commands (play, open, scan, …).
 	└── play # Run the project.
 	└── plugin # Manage plugins in addons folder.
 		└── enable # Enable/disable plugin state.
+	└── redo # Redo the next action(s) in the edited scene's history, or the global history with --global.
 	└── restart # Restart the Godot editor.
 	└── reveal # Reveal a path in the FileSystem dock.
 	└── scan # Rescan the project filesystem (picks up files added/removed outside the editor).
-	└── scene # Commands on the current edited scene (add/prop/tree/…). Path-selected scene files are file ops (see 'resource').
-		└── add # Add a new node to the edited scene.
-		└── attach # Attach a script to nodes. Targets come from stdin (node paths) or the selection.
-		└── delete # Delete nodes from the edited scene. Node paths come from stdin (one per line),
-		└── group # Manage groups on nodes. Targets come from stdin (node paths) or the selection.
-		└── inspect # List the properties of a node or resource.
-		└── instance # Instance a scene as a child of the selected node (or the scene root).
+	└── scene # Edited scene commands (new/save/reload/root/select). For node commands, pipe 'editor scene root' or 'editor scene select' into 'tree'.
 		└── new # Create a new scene file with a root node of the given class, and open it.
-		└── nodes # Get nodes in the edited scene.
-		└── pack # Pack the edited scene (or a subtree) into a PackedScene file.
-		└── prop # Get or set a property on nodes. Targets come from stdin (node paths, one per line);
 		└── reload # Reload the currently edited scene from disk, discarding unsaved changes.
-		└── rename # Rename a node. The target node path comes from stdin (or the single selected node).
-		└── reparent # Reparent nodes under a target node (keeps global transform).
+		└── root # Print the edited scene root's absolute node path, to start a 'tree' command chain.
 		└── save # Save the currently edited scene.
-		└── select # Select nodes in the edited scene. Node paths come from stdin (one per line).
-		└── tree # Print the node tree of the edited scene.
+		└── select # Print the selected node paths, or select/deselect the node paths from stdin.
 	└── screenshot # Capture the editor to a PNG and print its absolute path (so an agent can read it back).
 	└── search # Search file contents across the project.
 	└── state # Print a snapshot of the editor's current state (orientation for an agent):
 	└── stop # Stop the running project.
+	└── undo # Undo the last action(s) in the edited scene's history, or the global history with --global.
 ```
 
 ## misc
@@ -92,6 +83,24 @@ settings # Get or set editor/project settings.
 	└── esetting # Get or set an editor setting (EditorSettings).
 	└── mainscene # Get or set the project's main scene.
 	└── psetting # Get or set a project setting (ProjectSettings).
+```
+
+## tree
+
+```text
+tree # Read and change nodes in the SceneTree. Commands take absolute node paths on stdin, one per line,
+	└── add # Add a new node under each stdin node and print the new absolute paths.
+	└── attach # Attach a script to the stdin nodes.
+	└── free # Remove the stdin nodes from the tree (undoable when the host provides undo, otherwise freed).
+	└── group # Manage groups on the stdin nodes.
+	└── inspect # List the properties of the stdin nodes, or of a resource given by path.
+	└── instance # Instance a scene under each stdin node and print the new absolute paths.
+	└── nodes # List the children of each stdin node, or all descendants with --recursive, one absolute path per line.
+	└── pack # Save the first stdin node's subtree as a PackedScene file and print the file path (pipe into 'open').
+	└── prop # Get or set a property on the stdin nodes.
+	└── rename # Rename the one stdin node and print its new absolute path.
+	└── reparent # Move the stdin nodes under a new parent (keeps global transform) and print their new absolute paths.
+	└── root # Print the SceneTree root path (/root), to start a tree command chain.
 ```
 
 ## Builtins

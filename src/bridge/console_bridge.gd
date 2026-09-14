@@ -29,9 +29,10 @@ static func run_command_capture(text:String) -> Dictionary:
 static func _capture(text:String, session:EditorConsoleSingleton.Context) -> Dictionary:
 	var ctx = EditorConsoleSingleton.Context.new_ctx("Bridge request", session)
 	EditorConsoleSingleton.Execution.execute_command_multiline(text, ctx)
+	# MCP clients don't render BBCode.
 	return {
-		"stdout": ctx.stdout,
-		"stderr": ctx.stderr,
+		"stdout": EditorConsoleSingleton.Context.plain_text(ctx.stdout),
+		"stderr": EditorConsoleSingleton.Context.plain_text(ctx.stderr),
 		"exit_code": ctx.exit_code,
 	}
 

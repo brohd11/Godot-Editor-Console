@@ -148,11 +148,16 @@ func _get_new_command_dir(ctx:Context) -> String:
 func _get_template():
 	return """extends EditorConsoleSingleton.CommandBase
 
+const _HELP = \
+"Describe this command."
+
 static func get_command_name() -> String:
 	return "%s"
 
 static func get_self_command_data() -> Dictionary:
-	return _command_data({&"help": "Describe this command."})
+	return _command_data({
+		&"help": _HELP
+	})
 
 func _execute(ctx:Context) -> int:
 	ctx.append_output("Command executed.")

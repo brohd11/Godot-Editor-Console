@@ -6,9 +6,14 @@ const TEMP_DIR = "res://temp_console/"
 ## Portable GDSh utilities. The manifest preload keeps them in plugin exports, and its
 ## (export-rewritten) path locates the directory.
 const UtilsManifest = preload("res://addons/addon_lib/gdsh_lib/utils/manifest.gd")
+## Portable SceneTree commands. The manifest preload keeps them in plugin exports, and its
+## (export-rewritten) path locates tree.gd.
+const TreeManifest = preload("res://addons/addon_lib/gdsh_lib/tree/manifest.gd")
 
 static func register_scopes():
+	var tree_manifest:Resource = TreeManifest # A typed variable reads the script resource, not a class member.
 	var paths = [
+		tree_manifest.resource_path.get_base_dir().path_join("tree.gd"),
 		"res://addons/editor_console/src/default_commands/script/script.gd",
 		"res://addons/editor_console/src/default_commands/resource/resource.gd",
 		"res://addons/editor_console/src/default_commands/editor/editor.gd",
