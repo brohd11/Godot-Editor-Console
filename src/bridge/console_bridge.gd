@@ -22,13 +22,15 @@ var _server: TCPServer
 
 ## Run a console command line non-interactively and return captured output.
 ## Each request has a fresh configured session and captures only its submission.
+## Waits its turn behind other console work, then for any async command to finish.
 static func run_command_capture(text:String) -> Dictionary:
-	return _capture(text, EditorConsoleSingleton.get_main_ctx())
+	return await EditorConsoleSingleton.run_serialized(
+			func(): return await _capture(text, EditorConsoleSingleton.get_main_ctx()))
 
 
 static func _capture(text:String, session:EditorConsoleSingleton.Context) -> Dictionary:
 	var ctx = EditorConsoleSingleton.Context.new_ctx("Bridge request", session)
-	EditorConsoleSingleton.Execution.execute_command_multiline(text, ctx)
+	await EditorConsoleSingleton.Execution.execute_command_multiline(text, ctx)
 	# MCP clients don't render BBCode.
 	return {
 		"stdout": EditorConsoleSingleton.Context.plain_text(ctx.stdout),
@@ -142,13 +144,18 @@ func _process(_delta: float) -> void:
 			var line := (conn.buf as String).substr(0, nl)
 			conn.buf = (conn.buf as String).substr(nl + 1) # consume before handling so a re-entrant frame can't re-run it
 			_handling = true
-			_handle_line(peer, line)
+			_serve(peer, line) # Not awaited: an async command replies in a later frame.
 			_handling = false
-			peer.disconnect_from_host()
-			continue # one request per connection; drop after responding
+			continue # one request per connection; _serve drops it after responding
 
 		keep.append(conn)
 	_conns = keep
+
+
+## Reply once the command finishes; requests arriving meanwhile queue behind it.
+func _serve(peer: StreamPeerTCP, line: String) -> void:
+	await _handle_line(peer, line)
+	peer.disconnect_from_host()
 
 
 func _handle_line(peer: StreamPeerTCP, line: String) -> void:
@@ -164,7 +171,7 @@ func _handle_line(peer: StreamPeerTCP, line: String) -> void:
 		elif _token != "" and str(req.get("token", "")) != _token:
 			resp = {"id": id, "stdout": "", "stderr": "Unauthorized", "exit_code": 1}
 		else:
-			var out: Dictionary = run_command_capture(str(req.get("cmd", "")))
+			var out: Dictionary = await run_command_capture(str(req.get("cmd", "")))
 			resp = {
 				"id": id,
 				"stdout": out.get("stdout", ""),
@@ -173,7 +180,9 @@ func _handle_line(peer: StreamPeerTCP, line: String) -> void:
 			}
 
 	var payload := JSON.stringify(resp) + "\n"
-	peer.put_data(payload.to_utf8_buffer())
+	peer.poll() # The client may have given up while the command ran.
+	if peer.get_status() == StreamPeerTCP.STATUS_CONNECTED:
+		peer.put_data(payload.to_utf8_buffer())
 
 
 

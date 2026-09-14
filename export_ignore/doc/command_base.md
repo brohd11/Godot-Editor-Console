@@ -38,7 +38,13 @@ command needs the submitting console. The binding may be absent for MCP calls.
 
 Use `ctx.append_output`, `ctx.append_error`, and an `ExitCode` return value.
 Pass the existing context when invoking `Execution.execute_command()` or
-`Execution.source_file()` from a command.
+`Execution.source_file()` from a command, and `await` it.
+
+`_execute` may `await` (for example `filesystem_changed` after a scan). Console
+submissions, MCP bridge requests and startup commands run one at a time and wait for
+it: input stays locked and other requests queue until the command returns. There is
+no cancellation yet, so a command that never resumes blocks the console until the
+editor reloads. Async commands cannot run inside `$(...)`.
 
 Directories named `child/child.gd` form subcommands. `_get_commands()` may supply
 custom routing; `_get_flags()` and `_process_flag()` define flags. `_get_target_positional_count()`

@@ -29,7 +29,7 @@ func _get_completions(ctx:Completion):
 
 func _execute(ctx:Context):
 	var file_path = positional_args[0]
-	var out = EditorConsoleSingleton.run_gdsh(file_path)
+	var out = await EditorConsoleSingleton.run_gdsh(file_path)
 	ctx.stdout = out.stdout
 	ctx.stderr = out.stderr
 	ctx.exit_code = out.exit_code

@@ -73,6 +73,9 @@ func set_console_text(text:String) -> void:
 	line_edit.set_caret_column(text.length())
 
 func _execute_submission(text:String, result:Sh.Context) -> void:
+	await EditorConsoleSingleton.run_serialized(_run_submission.bind(text, result))
+
+func _run_submission(text:String, result:Sh.Context) -> void:
 	if text == "os":
 		os_mode = not os_mode
 		console.set_highlighter(null if os_mode else _normal_highlighter)
@@ -83,7 +86,7 @@ func _execute_submission(text:String, result:Sh.Context) -> void:
 		result.exit_code = Adapter.execute(command, result)
 		result.last_status = result.exit_code
 	else:
-		Sh.Execute.execute_command_multiline(text, result)
+		await Sh.Execute.execute_command_multiline(text, result)
 
 ## `clear` builtin handler: this window's transcript, or the editor log when docked.
 func _clear_callback(_ctx:Sh.Context, history:bool) -> int:

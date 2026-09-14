@@ -68,7 +68,8 @@ static func expand(text:String, ctx:Sh.Context, seen:Dictionary={}) -> Dictionar
 					out += "$(" + body + ")"
 				else:
 					var child = Sh.Context.new_ctx("OS substitution", ctx, true)
-					Sh.Execute.execute_command_multiline(body, child)
+					if not Sh.Execute.run_substitution(child, {}, body):
+						return {"error": child.stderr.strip_edges(), "text": ""}
 					ctx.append_error(child.stderr)
 					var value = child.stdout.rstrip("\n")
 					if quote.is_empty():

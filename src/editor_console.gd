@@ -54,6 +54,11 @@ var undo_session := Context.Undo.Session.new()
 
 var _cache:= {}
 var _bridge:ConsoleBridge
+# Serial runner (run_serialized): console submissions, bridge requests and startup take turns.
+signal _serial_turn_freed
+var _serial_running := false
+var _serial_queue:Array[int] = []
+var _serial_next_ticket := 0
 
 var scope_dict:= {}
 var hidden_scope_dict:= {}
@@ -95,8 +100,7 @@ func _start_up_commands():
 	var cmds = "\n".join(startup).strip_edges()
 	if cmds.is_empty():
 		return
-	var main_ctx = get_main_ctx()
-	Execution.execute_command_multiline(cmds, main_ctx)
+	await run_serialized(func(): return await Execution.execute_command_multiline(cmds, get_main_ctx()))
 	
 	
 
@@ -365,10 +369,35 @@ func get_current_scope_data():
 static func execute_interactive(input_text:String, params:={}):
 	var container = params.get(&"console_container")
 	if is_instance_valid(container):
-		return container.console.execute(input_text)
+		return await container.console.execute(input_text)
 	var ctx = params.get(&"parent_ctx")
 	if ctx == null: ctx = get_main_ctx()
-	return Execution.execute_command_multiline(input_text, ctx)
+	return await Execution.execute_command_multiline(input_text, ctx)
+
+
+## Run top-level console work one caller at a time (console submissions, bridge requests,
+## startup), awaiting `work.call()` so async commands finish before the next turn. Never call
+## it from inside a command: the command would wait for its own turn.
+static func run_serialized(work:Callable):
+	if not instance_valid():
+		return await work.call()
+	return await get_instance()._run_serialized(work)
+
+
+func _run_serialized(work:Callable):
+	var ticket = _serial_next_ticket
+	_serial_next_ticket += 1
+	_serial_queue.append(ticket)
+	while _serial_running or _serial_queue.front() != ticket:
+		await _serial_turn_freed
+	_serial_queue.pop_front()
+	_serial_running = true
+	var result = await work.call()
+	_serial_running = false
+	# Deferred: the finished caller returns (and replies) before the next turn starts inside
+	# this emission, and a long queue does not nest every turn in the previous one's stack.
+	call_deferred("emit_signal", "_serial_turn_freed")
+	return result
 
 
 func _add_console_line_edit():
@@ -485,7 +514,7 @@ static func run_gdsh(file_path:String, main_ctx:Context=null):
 	if not is_instance_valid(main_ctx):
 		main_ctx = get_main_ctx()
 
-	Execution.source_file(file_path, main_ctx)
+	await Execution.source_file(file_path, main_ctx)
 	return main_ctx
 
 
