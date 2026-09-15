@@ -54,11 +54,16 @@ func _execute(ctx:Context):
 		ctx.append_output(md)
 	else:
 		var plugin_path = "res://addons/editor_console/"
-		if not DirAccess.dir_exists_absolute(plugin_path.path_join("export_ignore")):
-			ctx.append_error("Export ignore does not exist. Is this exported?")
+		var ignore_dir = ""
+		for dir_name in ["_export_ignore", "export_ignore"]: # both spellings; the underscored one wins
+			if DirAccess.dir_exists_absolute(plugin_path.path_join(dir_name)):
+				ignore_dir = plugin_path.path_join(dir_name)
+				break
+		if ignore_dir == "":
+			ctx.append_error("No _export_ignore or export_ignore folder. Is this exported?")
 			return ExitCode.ERR
-		
-		var f = FileAccess.open(plugin_path.path_join("export_ignore/doc/commands.md"), FileAccess.WRITE)
+
+		var f = FileAccess.open(ignore_dir.path_join("doc/commands.md"), FileAccess.WRITE)
 		f.store_string(md)
 
 

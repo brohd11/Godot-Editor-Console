@@ -1,7 +1,7 @@
 @tool
 extends Node
 
-const Sh = preload("res://addons/addon_lib/gdsh/gdsh.gd")
+const Sh = preload("res://addons/addon_lib/gdsh/_ns/gdsh.gd")
 
 const COMMAND_LIST_KEY = "command_list"
 

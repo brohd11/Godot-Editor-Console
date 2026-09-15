@@ -1,5 +1,5 @@
 class_name EditorConsoleSingleton #! singleton-module
-extends "res://addons/addon_lib/brohd/singleton/singleton_ref_count.gd" #! ext Singletons.RefCount
+extends "res://addons/addon_lib/singleton/singleton_ref_count.gd" #! ext Singletons.RefCount
 
 
 const PRINT_DEBUG = false # not PLUGIN_EXPORTED# or true
@@ -10,6 +10,7 @@ const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils
 const RightClickHandler = UtilsRemote.RightClickHandler
 const BottomPanel = UtilsRemote.BottomPanel
 const UNode = UtilsRemote.UNode
+const UFile = UtilsRemote.UFile
 const UString = UtilsRemote.UString
 const Pr = UtilsRemote.Pr
 const GetFiles = UtilsRemote.GetFiles
@@ -26,7 +27,7 @@ const ConsoleCommandSetBase = UtilsLocal.ConsoleCommandSetBase
 const CommandBase = UtilsLocal.CommandBase
 const Context = UtilsLocal.Context
 const Completion = UtilsLocal.Completion
-const GDSh = preload("res://addons/addon_lib/gdsh/gdsh.gd")
+const GDSh = preload("res://addons/addon_lib/gdsh/_ns/gdsh.gd")
 const Execution = UtilsLocal.Execution
 
 const ScriptEditorContext = preload("res://addons/editor_console/src/editor_plugins/script_editor.gd")
@@ -613,7 +614,7 @@ func _get_cached(key:String):
 		return _cache[key]
 	if key == "files":
 		var search = GetFiles.open("res://")
-		search.ignore_dir_names = [".git", "export_ignore"]
+		search.ignore_dir_names = [".git", "export_ignore", "_export_ignore"]
 		search.enter_gdignore = true # yes for now
 		var files = search.get_files()
 		_cache[key] = files

@@ -9,7 +9,8 @@
 				"file_extensions": [],
 				"files": []
 			},
-			"export_folder": "editor-console{{version=editor_console}}/editor_console",
+			"export_name": "editor-console{{version=editor_console}}",
+			"export_folder": "addons/editor_console",
 			"other_transfers": [],
 			"remote_dir": "res://addons/editor_console/src/remote",
 			"source": "res://addons/editor_console"

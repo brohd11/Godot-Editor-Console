@@ -1,6 +1,6 @@
 extends HBoxContainer
 ## Editor chrome around GDSh's prompt, input, history, and optional transcript.
-const Sh = preload("res://addons/addon_lib/gdsh/gdsh.gd")
+const Sh = preload("res://addons/addon_lib/gdsh/_ns/gdsh.gd")
 const Prompt = preload("res://addons/editor_console/src/container/editor_prompt.gd")
 const OSCompletion = preload("res://addons/editor_console/src/container/os_completion.gd")
 const Adapter = preload("res://addons/editor_console/src/utils/os_adapter.gd")
@@ -35,7 +35,7 @@ func _ready() -> void:
 	_normal_highlighter.highlight_globals = true
 	console.set_highlighter(_normal_highlighter)
 	console.context_factory = _build_ctx
-	new_ctx()
+	new_ctx.call_deferred() # TEST
 	if is_editor:
 		console.hide()
 		line_edit.hide()
