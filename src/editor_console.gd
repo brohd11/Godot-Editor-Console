@@ -27,7 +27,7 @@ const ConsoleCommandSetBase = UtilsLocal.ConsoleCommandSetBase
 const CommandBase = UtilsLocal.CommandBase
 const Context = UtilsLocal.Context
 const Completion = UtilsLocal.Completion
-const GDSh = preload("res://addons/addon_lib/gdsh/_ns/gdsh.gd")
+const GDSh = preload("res://addons/addon_lib/gdsh/_ns/gd_sh.gd")
 const Execution = UtilsLocal.Execution
 
 const ScriptEditorContext = preload("res://addons/editor_console/src/editor_plugins/script_editor.gd")

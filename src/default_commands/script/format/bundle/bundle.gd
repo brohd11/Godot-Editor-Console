@@ -1,7 +1,7 @@
 extends EditorConsoleSingleton.CommandBase
 
 const UFile = UtilsRemote.UFile
-const GDScriptParse = UtilsRemote.UStrGDScriptParse
+const MemberParse = UtilsRemote.MemberParse
 
 static func get_command_name() -> String:
 	return "bundle"
@@ -45,7 +45,7 @@ static func _resolve_const(script_editor:CodeEdit, ctx:Context):
 			line = ""
 		else:
 			stripped = UString.strip_comment(stripped)
-		var line_dec = GDScriptParse.get_line_declaration(stripped).strip_edges()
+		var line_dec = MemberParse.get_line_declaration(stripped).strip_edges()
 		if line_dec == "class": # classes just adjust indent
 			current_indent_level = indent + script_editor.indent_size
 		elif line_dec != "":
@@ -75,7 +75,7 @@ static func _resolve_const(script_editor:CodeEdit, ctx:Context):
 		
 		if not stripped.begins_with("const"):
 			continue
-		var const_data = GDScriptParse.get_var_or_const_info(stripped)
+		var const_data = MemberParse.get_var_or_const_info(stripped)
 		if const_data == null:
 			continue
 		
@@ -96,7 +96,7 @@ static func _resolve_const(script_editor:CodeEdit, ctx:Context):
 
 static func process_pending(script_editor:CodeEdit, line_number:int, pending:Array, completed:Dictionary, ctx:Context):
 	var pending_stripped = pending.pop_front()
-	var pending_const_data = GDScriptParse.get_var_or_const_info(pending_stripped)
+	var pending_const_data = MemberParse.get_var_or_const_info(pending_stripped)
 	var const_name = pending_const_data[0]
 	var assignment = pending_const_data[2]
 	if not check_history(const_name, assignment, completed, ctx):

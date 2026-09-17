@@ -20,7 +20,7 @@ func _execute(_ctx:Context) -> ExitCode:
 	return ExitCode.OK
 
 func format_script_type_hint() -> void:
-	var parser:EditorGDScriptParser.GDScriptParser = EditorGDScriptParser.get_parser()
+	var parser:GDScriptParser = EditorGDScriptParser.get_parser()
 	var code_edit:CodeEdit = ScriptEditorRef.get_current_code_edit()
 	VarInsertType.format_script(parser, code_edit)
 	

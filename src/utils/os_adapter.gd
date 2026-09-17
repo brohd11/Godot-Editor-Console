@@ -1,6 +1,6 @@
 extends RefCounted
 ## Editor-owned shell boundary. GDSh remains unaware of OS/double-dollar syntax.
-const Sh = preload("res://addons/addon_lib/gdsh/_ns/gdsh.gd")
+const Sh = preload("res://addons/addon_lib/gdsh/_ns/gd_sh.gd")
 const Lexer = preload("res://addons/addon_lib/gdsh/internal/lexer.gd")
 static var _request_id:int = 0
 

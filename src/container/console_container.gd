@@ -1,6 +1,6 @@
 extends HBoxContainer
 ## Editor chrome around GDSh's prompt, input, history, and optional transcript.
-const Sh = preload("res://addons/addon_lib/gdsh/_ns/gdsh.gd")
+const Sh = preload("res://addons/addon_lib/gdsh/_ns/gd_sh.gd")
 const Prompt = preload("res://addons/editor_console/src/container/editor_prompt.gd")
 const OSCompletion = preload("res://addons/editor_console/src/container/os_completion.gd")
 const Adapter = preload("res://addons/editor_console/src/utils/os_adapter.gd")
