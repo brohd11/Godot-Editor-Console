@@ -152,7 +152,23 @@ return # Return value code for function.
 scan # Search scripts for a pattern, reporting only UNCOMMENTED matches (code that will run).
 shift # Drop the first positional argument of the parent command (gdsh argument shifting).
 source # Run script in the current process.
-strip_edges # Strip edges of stdin.
+str # String ops on one text argument or on each stdin line.
+	└── basedir # Directory part of a path (String.get_base_dir).
+	└── basename # Path without its extension; the directory is kept (String.get_basename).
+	└── begins_with # Keep inputs that begin with a prefix; -b only sets the exit code.
+	└── contains # Keep inputs that contain a substring; -b only sets the exit code.
+	└── ends_with # Keep inputs that end with a suffix; -b only sets the exit code.
+	└── extension # Extension of a path, without the dot (String.get_extension).
+	└── file # File name of a path, with extension (String.get_file).
+	└── join # Append a path segment (String.path_join).
+	└── length # Character count of each input (String.length). For whole-stdin counts use 'count'.
+	└── lower # Lowercase (String.to_lower).
+	└── replace # Replace every occurrence of a substring (String.replace).
+	└── slice # Field of a string split by a delimiter.
+	└── strip_edges # Strip whitespace from both ends of each input (String.strip_edges).
+	└── trim_prefix # Remove a prefix if present (String.trim_prefix).
+	└── trim_suffix # Remove a suffix if present (String.trim_suffix).
+	└── upper # Uppercase (String.to_upper).
 tail # Output the last N lines of stdin (default 10).
 term # Launch an OS terminal in a project directory.
 test # Run selected tests in directory. '...' indicates recursive.
