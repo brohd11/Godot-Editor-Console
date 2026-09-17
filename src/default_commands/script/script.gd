@@ -123,11 +123,11 @@ func _execute(ctx:Context):
 	if text_flag:
 		if script_access_path == "script":
 			var current_editor = ScriptEditorRef.get_current_code_edit()
-			ctx.stdout = current_editor.text
+			ctx.write_output(current_editor.text)
 		else:
 			var script = ScriptUtil.get_script_from_ctx(ctx)
 			if is_instance_valid(script):
-				ctx.stdout = script.source_code
+				ctx.write_output(script.source_code)
 			else:
 				ctx.append_error("Could not get script: " + script_access_path)
 		return ExitCode.OK

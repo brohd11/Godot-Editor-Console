@@ -68,6 +68,10 @@ static func expand(text:String, ctx:Sh.Context, seen:Dictionary={}) -> Dictionar
 					out += "$(" + body + ")"
 				else:
 					var child = Sh.Context.new_ctx("OS substitution", ctx, true)
+					# Keep the child's stderr off the live channel: on failure its text is returned
+					# and reported by the caller, so streaming it here too would show the same
+					# diagnostic twice. The parent emits it on both paths.
+					child.begin_capture(false, true)
 					if not Sh.Execute.run_substitution(child, {}, body):
 						return {"error": child.stderr.strip_edges(), "text": ""}
 					ctx.append_error(child.stderr)
@@ -130,9 +134,10 @@ static func execute(text:String, ctx:Sh.Context) -> int:
 static func _change_directory(command:String, ctx:Sh.Context) -> int:
 	# Resolve shell variables/tilde in the shell before updating the session.
 	var probe = Sh.Context.new_ctx("OS cd", ctx, true)
+	probe.begin_capture(true, false) # Its stdout is the resolved path, not screen output.
 	var script = command + (" && cd" if OS.get_name() == "Windows" else " && pwd -P")
 	var status = _run_shell(script, probe)
-	ctx.append_error(probe.stderr)
+	ctx.absorb_error(probe.stderr) # The probe streamed its own diagnostics live.
 	if status != 0: return status
 	var target = probe.stdout.strip_edges().split("\n")[-1].strip_edges()
 	if not DirAccess.dir_exists_absolute(target):

@@ -46,6 +46,13 @@ it: input stays locked and other requests queue until the command returns. There
 no cancellation yet, so a command that never resumes blocks the console until the
 editor reloads. Async commands cannot run inside `$(...)`.
 
+Output streams to the console as it is produced, so a command that awaits shows its
+progress instead of appearing all at once when it returns. Use `ctx.append_output` as
+usual; to make a long loop visible, `await GDSh.Utils.yield_frame_if_due(ctx)` inside it,
+which only pauses when the output is screen-bound. `config stream off` disables streaming
+for display; piped output, `$(...)`, redirected files and MCP bridge results are
+identical either way.
+
 Directories named `child/child.gd` form subcommands. `_get_commands()` may supply
 custom routing; `_get_flags()` and `_process_flag()` define flags. `_get_target_positional_count()`
 can change the argument count based on flags. Command metadata and option dictionaries

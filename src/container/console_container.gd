@@ -90,6 +90,9 @@ func _run_submission(text:String, result:Sh.Context) -> void:
 
 ## `clear` builtin handler: this window's transcript, or the editor log when docked.
 func _clear_callback(_ctx:Sh.Context, history:bool) -> int:
+	# This clears the transcript directly, so drop queued live output too: a later flush would
+	# otherwise refill the view that was just cleared.
+	console.discard_pending_stream()
 	if history:
 		console.clear_history()
 	var rich_text = get_rich_text()

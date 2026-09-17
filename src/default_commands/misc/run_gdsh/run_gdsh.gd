@@ -30,6 +30,7 @@ func _get_completions(ctx:Completion):
 func _execute(ctx:Context):
 	var file_path = positional_args[0]
 	var out = await EditorConsoleSingleton.run_gdsh(file_path)
-	ctx.stdout = out.stdout
-	ctx.stderr = out.stderr
+	# The sourced session has no sink of its own, so this is where its output reaches the host.
+	ctx.write_output(out.stdout)
+	ctx.write_error(out.stderr)
 	ctx.exit_code = out.exit_code

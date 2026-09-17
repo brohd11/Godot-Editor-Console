@@ -124,8 +124,7 @@ func list_members(ctx:Context, script_name:String, script:Script) -> int:
 			
 		
 		_add_to_members_to_output(ctx, members, pr)
-	
-	ctx.strip_output_newlines()
+
 	return ExitCode.OK
 
 static func _get_members(script:GDScript, flag:String, inherited:bool):
