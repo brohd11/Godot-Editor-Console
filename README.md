@@ -7,7 +7,7 @@ windows through the tool menu.
 
 Provides editor/resource/script commands, undo integration,
 configuration and startup scripts, global-class calls, OS mode, and the optional
-MCP bridge. GDSh remains usable independently of the editor plugin.
+MCP bridge.
 
 ## Commands
 
@@ -85,4 +85,4 @@ python3 tests/editor_console/run_headless.py --godot godot
 python3 tests/gdsh/run_headless.py --godot godot --export
 ```
 
-The optional Go MCP server is described in [its repository](https://github.com/brohd11/Godot-Editor-Console-MCP).
+Optional Go [MCP server](https://github.com/brohd11/Godot-Editor-Console-MCP).
