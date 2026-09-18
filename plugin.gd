@@ -3,6 +3,7 @@ extends EditorPlugin
 
 const PLUGIN_NAME = "EditorConsole"
 const CONTAINER_PATH = "res://addons/editor_console/src/container/main_container.gd"
+const TERM_CONTAINER_PATH = "res://addons/editor_console/src/container/editor_terminal.gd"
 
 var dm_im:DockManager.InstanceManager
 
@@ -30,7 +31,7 @@ func _exit_tree() -> void:
 
 func _on_tool_menu():
 	var layout = EditorPanelSingleton.PluginSplitPanel.Layout.new()
-	layout.add_panel(CONTAINER_PATH)
+	layout.add_panel(TERM_CONTAINER_PATH)
 	var sps = EditorPanelSingleton.PluginSplitPanel.new()
 
 	dm_im.new_freeable_dock_manager(sps, DockManager.Slot.FLOATING)

@@ -34,6 +34,7 @@ static func register_hidden_scopes():
 	# Editor directories load afterwards, so they can override a utility.
 	var manifest:Resource = UtilsManifest # A typed variable reads the script resource, not a class member.
 	var data = GDShLoad.load_directory(manifest.resource_path.get_base_dir())
+	add_command_to_dict(EDITOR_COMMANDS_DIR.path_join("editor_console.gd"), data)
 	for cmd_dir in [HIDDEN_DIR, EDITOR_COMMANDS_DIR, TEMP_DIR]:
 		if not DirAccess.dir_exists_absolute(cmd_dir):
 			continue

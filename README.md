@@ -130,3 +130,7 @@ python3 tests/gdsh/run_headless.py --godot godot --export
 ```
 
 Optional Go [MCP server](https://github.com/brohd11/Godot-Editor-Console-MCP).
+
+Run `editor_console terminal` to try the separate floating rich-text terminal.
+It supports inline input, selectable scrollback, completion, and existing TUI commands.
+See the [terminal console guide](../addon_lib/gdsh/_export_ignore/docs/terminal_console.md).

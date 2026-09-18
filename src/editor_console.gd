@@ -42,6 +42,7 @@ var filter_line_edit:LineEdit
 var main_hsplit:HSplitContainer
 var editor_container:UtilsLocal.ConsoleContainer
 var console_containers:= []
+var terminal_consoles:Array = []
 
 var show_filter:bool = true
 
@@ -139,6 +140,9 @@ static func _instance_valid_err():
 	return false
 
 func _all_unregistered_callback():
+	for terminal in terminal_consoles.duplicate():
+		if is_instance_valid(terminal):
+			terminal.get_window().queue_free()
 	_remove_console_line_edit()
 	if is_instance_valid(script_editor_context):
 		var plugin = EditorPlugin.new()
@@ -513,6 +517,9 @@ func _can_show_filter():
 func update_consoles():
 	for container:ConsoleContainer in console_containers:
 		container.new_ctx() # this 
+	for terminal in terminal_consoles:
+		if is_instance_valid(terminal):
+			terminal.reset_context()
 
 
 func get_gdrc():
@@ -652,6 +659,19 @@ static func new_console(window:=false):
 	container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	win.close_requested.connect(win.queue_free)
 	
+	EditorInterface.get_base_control().add_child(win)
+	return win
+
+
+static func new_terminal_console() -> Window:
+	var terminal = preload("res://addons/editor_console/src/container/editor_terminal.gd").new()
+	var win = Window.new()
+	win.title = "GDSh Terminal"
+	win.size = Vector2i(800, 600)
+	win.initial_position = Window.WINDOW_INITIAL_POSITION_CENTER_SCREEN_WITH_KEYBOARD_FOCUS
+	win.add_child(terminal)
+	terminal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	win.close_requested.connect(win.queue_free)
 	EditorInterface.get_base_control().add_child(win)
 	return win
 
