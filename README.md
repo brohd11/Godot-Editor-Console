@@ -61,7 +61,8 @@ the list; held Enter does not repeat. Arrows, Page Up/Down, Home/End and wheel/p
 scrolling navigate, `R` rescans while preserving selection, and Escape exits.
 Editor Console's own addon is shown as locked because it hosts the view.
 
-The list uses `GDSh.TUICommand` and program-owned scrolling with no native scrollbar.
+The list uses `GDShTUI.ScreenCommand` and the reusable `GDShTUI.List` component, with no native scrollbar.
+See [GDSh TUI components](../addon_lib/gdsh_lib/tui/README.md) for screen navigation and composition.
 Custom TUIs override `update(message: GDSh.TUIMsg)` and `view() -> String`; see GDSh's
 [TUI guide](../addon_lib/gdsh/_export_ignore/docs/tui.md) for a complete list example,
 message types, viewport sizing and lifecycle hooks.
