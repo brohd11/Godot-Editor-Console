@@ -6,7 +6,7 @@ Editor Console adds a console to the Output panel, plus standalone
 windows through the tool menu.
 
 Provides editor/resource/script commands, undo integration,
-configuration and startup scripts, global-class calls, OS mode, and the optional
+configuration and startup scripts, script and live-node calls, OS mode, and the optional
 MCP bridge.
 
 ## Commands
@@ -24,8 +24,22 @@ hidden utils echo hello
 - [gdsh-lib-utils](https://github.com/brohd11/godot-gdsh-lib-utils.git)
 - [gdsh-lib-tree](https://github.com/brohd11/godot-gdsh-lib-tree.git)
 
-Editor-only utilities (`os`, `term`, `global`, `mcp`, etc) are hidden and accessible directly, 
+Editor-only utilities (`os`, `term`, `mcp`, etc) are hidden and accessible directly,
 they are listed under `misc editor_console`.
+
+Core targets work at runtime and in the editor:
+
+```text
+MyGlobalClass call greeting -- world
+script res://tools/example.gd list --methods
+node /root/Main call --engine get_child_count
+cn /root/Main
+Child get_path
+gdsh res://scripts/boot.gdsh first second
+```
+
+`script` without a target uses the current editor script. `format text` reads its
+live editor buffer; `script --text` reads the Script resource's source.
 
 ## OS mode
 

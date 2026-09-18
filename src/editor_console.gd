@@ -515,18 +515,6 @@ func update_consoles():
 		container.new_ctx() # this 
 
 
-static func run_gdsh(file_path:String, main_ctx:Context=null):
-	if not is_instance_valid(main_ctx):
-		main_ctx = get_main_ctx()
-
-	await Execution.source_file(file_path, main_ctx)
-	return main_ctx
-
-
-
-
-
-
 func get_gdrc():
 	var main_ctx = Context.new()
 	main_ctx.title = "MainCTX"

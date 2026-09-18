@@ -7,6 +7,7 @@ const _HELP = \
 const PREAMBLE = \
 "Editor console — commands compose like a Unix shell.
 - Pipe with | ; chain with && / || / ; ; multi-line gdsh scripts supported.
+- Run a .gdsh file with 'gdsh <path.gdsh> [args...]' in a subshell; 'source' uses the current scope.
 - Many commands read targets from stdin (node paths or res:// paths, one per line)
   and emit the same, so they chain: editor scene select | tree prop position
 - OS commands can be ran by prefixing with 'os', everything until the end of the line or the next pipe '|'
