@@ -4,14 +4,14 @@ const EditorGDScriptParser = preload("uid://t2dewmuth0sy") #! resolve ALibEditor
 const VarInsertType = preload("uid://ci11vn1timw1r") #! resolve ALibEditor.Utils.UGDScript.VarInsertType
 
 const _HELP = \
-"Attempt to infer the variable type of all variables declared in script.
-Usage: script infer"
+"Attempt to infer the variable type of all variables declared in the open script.
+Usage: format infer"
 
 static func get_command_name() -> String:
 	return "infer"
 
 static func get_self_command_data() -> Dictionary:
-	return Options.get_single_option_dict(get_command_name(), {
+	return _command_data({
 		&"help": _HELP,
 	})
 
@@ -23,4 +23,3 @@ func format_script_type_hint() -> void:
 	var parser:GDScriptParser = EditorGDScriptParser.get_parser()
 	var code_edit:CodeEdit = ScriptEditorRef.get_current_code_edit()
 	VarInsertType.format_script(parser, code_edit)
-	

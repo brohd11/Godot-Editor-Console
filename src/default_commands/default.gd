@@ -14,7 +14,7 @@ static func register_scopes():
 	var tree_manifest:Resource = TreeManifest # A typed variable reads the script resource, not a class member.
 	var paths = [
 		tree_manifest.resource_path.get_base_dir().path_join("tree.gd"),
-		"res://addons/editor_console/src/default_commands/script/script.gd",
+		"res://addons/editor_console/src/default_commands/format/format.gd",
 		"res://addons/editor_console/src/default_commands/resource/resource.gd",
 		"res://addons/editor_console/src/default_commands/editor/editor.gd",
 		"res://addons/editor_console/src/default_commands/settings/settings.gd",

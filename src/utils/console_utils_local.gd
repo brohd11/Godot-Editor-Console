@@ -65,7 +65,6 @@ class Config:
 	const SCOPE = &"config.scope"
 	const SCOPE_SET = &"config.scope_set"
 	const COMMAND_DIRS = &"config.command_dirs"
-	const GLOBAL_CLASSES = &"config.global_classes"
 	const SETTINGS = &"config.settings"
 	
 	static var _merged_config:Config
