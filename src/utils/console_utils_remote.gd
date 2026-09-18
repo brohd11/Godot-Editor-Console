@@ -1,6 +1,6 @@
 #! remote
 
-const DockManager = preload("res://addons/addon_lib/brohd/dock_manager/dock_manager.gd")
+const DockManager = preload("res://addons/addon_lib/dock_manager/dock_manager.gd")
 
 const BottomPanel = preload("uid://bectqj8saobq5") #! resolve ALibEditor.Nodes.BottomPanel
 const PopupHelper = preload("uid://bb13ihrvdkjdj") #! resolve PopupWrapper.PopupHelper
