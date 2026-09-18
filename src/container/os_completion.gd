@@ -1,4 +1,4 @@
-extends "res://addons/addon_lib/gdsh/completion.gd"
+extends "res://addons/addon_lib/gdsh/src/core/completion.gd"
 const Adapter = preload("res://addons/editor_console/src/utils/os_adapter.gd")
 
 func get_completions() -> Dictionary:

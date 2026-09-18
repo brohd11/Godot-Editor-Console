@@ -1,7 +1,7 @@
 extends RefCounted
 ## Editor-owned shell boundary. GDSh remains unaware of OS/double-dollar syntax.
 const Sh = preload("res://addons/addon_lib/gdsh/_ns/gd_sh.gd")
-const Lexer = preload("res://addons/addon_lib/gdsh/internal/lexer.gd")
+const Lexer = preload("res://addons/addon_lib/gdsh/src/core/lexer.gd")
 static var _request_id:int = 0
 
 static func shell_quote(value:String) -> String:

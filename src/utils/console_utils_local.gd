@@ -2,7 +2,7 @@
 const ConsoleCommandSetBase = preload("uid://bu27r1hpnfinp") # console_command_set_base.gd
 
 const CommandBase = preload("res://addons/editor_console/src/class/base/command_base.gd")
-const Options = preload("res://addons/addon_lib/gdsh/options.gd")
+const Options = preload("res://addons/addon_lib/gdsh/src/core/options.gd")
 
 
 const DefaultCommands = preload("res://addons/editor_console/src/default_commands/default.gd")
@@ -13,10 +13,10 @@ const ConsoleOS = preload("res://addons/editor_console/src/default_commands/misc
 const ConsoleMainContainer = preload("res://addons/editor_console/src/container/main_container.gd")
 const ConsoleContainer = preload("res://addons/editor_console/src/container/console_container.gd")
 
-const Context = preload("res://addons/addon_lib/gdsh/context.gd")
-const Completion = preload("res://addons/addon_lib/gdsh/completion.gd")
+const Context = preload("res://addons/addon_lib/gdsh/src/core/context.gd")
+const Completion = preload("res://addons/addon_lib/gdsh/src/core/completion.gd")
 const ConsoleUndo = preload("res://addons/editor_console/src/class/undo/console_undo.gd")
-const Execution = preload("res://addons/addon_lib/gdsh/execute.gd")
+const Execution = preload("res://addons/addon_lib/gdsh/src/core/execute.gd")
 
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 const UString = UtilsRemote.UString

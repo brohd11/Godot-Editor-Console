@@ -1,4 +1,4 @@
-extends "res://addons/addon_lib/gdsh/builtins/script/script.gd"
+extends "res://addons/addon_lib/gdsh/src/core/builtins/script/script.gd"
 ## Only base selection is editor-specific; member traversal and target commands are core's.
 
 var editor_base:Script

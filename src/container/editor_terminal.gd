@@ -1,4 +1,4 @@
-extends "res://addons/addon_lib/gdsh/terminal_console.gd"
+extends "res://addons/addon_lib/gdsh/src/ui/terminal_console.gd"
 ## Editor adapter for the optional floating terminal view.
 
 var dock_button:Button

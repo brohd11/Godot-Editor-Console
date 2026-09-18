@@ -1,4 +1,4 @@
-extends "res://addons/addon_lib/gdsh/command_base.gd"
+extends "res://addons/addon_lib/gdsh/src/core/command_base.gd"
 ## Adapter for plugin registrations that supply a Callable(Context).
 var callback:Callable
 

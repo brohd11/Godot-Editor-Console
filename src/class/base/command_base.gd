@@ -1,4 +1,4 @@
-extends "res://addons/addon_lib/gdsh/command_base.gd"
+extends "res://addons/addon_lib/gdsh/src/core/command_base.gd"
 ## GDSh command base with editor-only authoring helpers.
 const UtilsRemote = preload("res://addons/editor_console/src/utils/console_utils_remote.gd")
 const UtilsLocal = preload("res://addons/editor_console/src/utils/console_utils_local.gd")

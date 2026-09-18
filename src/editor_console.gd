@@ -43,6 +43,7 @@ var main_hsplit:HSplitContainer
 var editor_container:UtilsLocal.ConsoleContainer
 var console_containers:= []
 var terminal_consoles:Array = []
+var _terminal_windows:Array[WeakRef] = []
 
 var show_filter:bool = true
 
@@ -140,9 +141,12 @@ static func _instance_valid_err():
 	return false
 
 func _all_unregistered_callback():
-	for terminal in terminal_consoles.duplicate():
-		if is_instance_valid(terminal):
-			terminal.get_window().queue_free()
+	# DockManager owns embedded terminal hosts; only close windows we created.
+	for reference in _terminal_windows:
+		var window = reference.get_ref()
+		if is_instance_valid(window):
+			window.queue_free()
+	_terminal_windows.clear()
 	_remove_console_line_edit()
 	if is_instance_valid(script_editor_context):
 		var plugin = EditorPlugin.new()
@@ -664,6 +668,7 @@ static func new_console(window:=false):
 
 
 static func new_terminal_console() -> Window:
+	if not _instance_valid_err(): return null
 	var terminal = preload("res://addons/editor_console/src/container/editor_terminal.gd").new()
 	var win = Window.new()
 	win.title = "GDSh Terminal"
@@ -672,6 +677,7 @@ static func new_terminal_console() -> Window:
 	win.add_child(terminal)
 	terminal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	win.close_requested.connect(win.queue_free)
+	get_instance()._terminal_windows.append(weakref(win))
 	EditorInterface.get_base_control().add_child(win)
 	return win
 
