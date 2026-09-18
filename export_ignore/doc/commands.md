@@ -5,6 +5,12 @@ Run `help` or `<command> --help` for current metadata.
 
 The console has these commands built in:
 
+## editor plugin
+
+`editor plugin` opens an interactive addon list in a docked or floating console. Enter toggles enabled
+state, R refreshes, and Escape exits. Editor Console itself is non-toggleable here.
+`editor plugin enable` retains its existing noninteractive behavior.
+
 ## config
 
 ```text
@@ -30,7 +36,7 @@ config # Adjust configuration of editor console.
 editor # Editor control commands (play, open, scan, …).
 	└── open # Open a scene, script or resource in the editor.
 	└── play # Run the project.
-	└── plugin # Manage plugins in addons folder.
+	└── plugin # Open the interactive addon plugin list.
 		└── enable # Enable/disable plugin state.
 	└── redo # Redo the next action(s) in the edited scene's history, or the global history with --global.
 	└── restart # Restart the Godot editor.

@@ -4,9 +4,49 @@ var host:WeakRef
 ## A partial line held back while streaming into the editor log, which prints whole lines only.
 var _stream_residual:String
 var _stream_residual_error:=false
+var _tui_log:WeakRef
+var _tui_log_minimum:Vector2
 
 func _get_host():
 	return host.get_ref() if host != null else null
+
+func _get_editor_log() -> Control:
+	if not Engine.is_editor_hint():
+		return null
+	return EditorNodeRef.get_node_ref(EditorNodeRef.Nodes.EDITOR_LOG, false) as Control
+
+func _get_tui_parent() -> Control:
+	return super() if is_instance_valid(output) else _get_editor_log()
+
+func _get_tui_controls_to_hide(parent:Control) -> Array[Control]:
+	if parent == self:
+		return super(parent)
+	var controls:Array[Control] = []
+	for child in parent.get_children():
+		if child is Control:
+			controls.append(child)
+	return controls
+
+func _begin_tui(ctx:Context) -> TuiSession:
+	var parent = _get_tui_parent()
+	var minimum = parent.get_combined_minimum_size() if is_instance_valid(parent) else Vector2.ZERO
+	var session = super(ctx)
+	if session != null and parent != self:
+		_tui_log = weakref(parent)
+		_tui_log_minimum = parent.custom_minimum_size
+		# EditorBottomPanel sizes the dock from its contents. Hiding them would
+		# collapse it to the footer; retain the previous minimum until exit.
+		parent.custom_minimum_size.y = minimum.y
+	return session
+
+func _end_tui(session:TuiSession) -> void:
+	if active_tui != session:
+		return
+	var log_control = _tui_log.get_ref() if _tui_log != null else null
+	if is_instance_valid(log_control):
+		log_control.custom_minimum_size = _tui_log_minimum
+	_tui_log = null
+	super(session)
 
 func _add_to_history(command:String) -> void:
 	var container = _get_host()

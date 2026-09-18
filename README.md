@@ -53,6 +53,23 @@ reused and merged. Registration affects suggestions only: every valid class rema
 callable, and `script --class=` still completes all classes. List global classes with
 `script list_global`.
 
+## Interactive plugin list
+
+Run `editor plugin` in a docked or floating console to browse immediate `res://addons/*/plugin.cfg`
+entries and their enabled status. Enter toggles the selected addon without closing
+the list; held Enter does not repeat. Arrows, Page Up/Down, Home/End and wheel/pan
+scrolling navigate, `R` rescans while preserving selection, and Escape exits.
+Editor Console's own addon is shown as locked because it hosts the view.
+
+The list uses `GDSh.TUICommand` and program-owned scrolling with no native scrollbar.
+Custom TUIs override `update(message: GDSh.TUIMsg)` and `view() -> String`; see GDSh's
+[TUI guide](../addon_lib/gdsh/_export_ignore/docs/tui.md) for a complete list example,
+message types, viewport sizing and lifecycle hooks.
+`editor plugin enable` remains available for noninteractive use. The docked TUI temporarily
+replaces the editor log's content area and restores its controls on exit; log messages
+continue to accumulate while it is open. Commands with multiple modes can override
+`_execute(ctx)` and call `await run()` to enter their TUI.
+
 ## OS mode
 
 Enter `os` to toggle OS mode for the current console.
