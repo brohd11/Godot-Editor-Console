@@ -12,3 +12,10 @@ static func get_self_command_data():
 	return _command_data({
 		&"help": _HELP,
 	})
+
+
+func _resolve_subcommand(token:String, commands:Dictionary):
+	var exact = super._resolve_subcommand(token, commands)
+	if exact != null:
+		return exact
+	return commands.get("script") if token.begins_with("script.") else null

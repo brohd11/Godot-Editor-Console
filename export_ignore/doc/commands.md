@@ -12,6 +12,8 @@ config # Adjust configuration of editor console.
 	└── alias # Manage aliases in .gdrc file.
 	└── command # Manage EditorConsole commands.
 		└── new # Create a new command.
+	└── global # Configure global-class tools.
+		└── registry # Manage classes suggested as script targets.
 	└── open # Open config files:
 	└── reload # Reload config from files and default/registered commands.
 	└── scope # Adjust scope settings.
@@ -41,6 +43,11 @@ editor # Editor control commands (play, open, scan, …).
 		└── save # Save the currently edited scene.
 		└── select # Print the selected node paths, or select/deselect the node paths from stdin.
 	└── screenshot # Capture the editor to a PNG and print its absolute path (so an agent can read it back).
+	└── script # Operate on the script open in the editor, optionally through inner classes.
+		└── args # List the arguments of a method on the target script or node
+		└── call # Call a static script method or a method on a live node
+		└── get_path # Print a script's resource path or a live node's absolute path.
+		└── list # List members of the target script or live node
 	└── search # Search file contents across the project.
 	└── state # Print a snapshot of the editor's current state (orientation for an agent):
 	└── stop # Stop the running project.
@@ -164,13 +171,14 @@ mkdir # Create a directory (recursively) in the project.
 mv # Move or rename a file/directory in the project.
 new_ctx # Reset the console session (variables, functions, aliases, cwd).
 node # Target a node in the SceneTree. Paths are absolute, or relative to the working node (see cn).
-	└── call # Call a static script method or a method on a live node
-	└── list # List members of the target script or live node
 	└── args # List the arguments of a method on the target script or node
+	└── call # Call a static script method or a method on a live node
 	└── get_path # Print a script's resource path or a live node's absolute path.
+	└── list # List members of the target script or live node
 open # Reveal a project directory in the OS file manager. Desktop platforms only.
 os # Run an OS command. $name/$(...) expand in GDSh; $$name/$$(...) pass to the shell. Bare os toggles interactive OS mode.
 pwd # Print current working directory.
+pwn # Print the current working node path.
 realpath # Convert relative path to full path, globalized or local.
 return # Return value code for function.
 scan # Search scripts for a pattern, reporting only UNCOMMENTED matches (code that will run).
@@ -179,6 +187,7 @@ script # Target a GDScript: a global class name, a res:// / user:// / absolute p
 	└── call # Call a static script method or a method on a live node
 	└── get_path # Print a script's resource path or a live node's absolute path.
 	└── list # List members of the target script or live node
+	└── list_global # List global classes
 shift # Drop the first positional argument of the parent command (gdsh argument shifting).
 source # Run script in the current process.
 str # String ops on one text argument or on each stdin line.

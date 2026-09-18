@@ -1,5 +1,5 @@
 extends EditorConsoleSingleton.CommandBase
-## The live script-editor buffer, which `script --text` cannot give: core reads a Script's
+## The live script-editor buffer, which `editor script --text` cannot give: core reads a Script's
 ## source_code, so unsaved edits would not show.
 
 const _HELP = \

@@ -30,16 +30,28 @@ they are listed under `misc editor_console`.
 Core targets work at runtime and in the editor:
 
 ```text
-MyGlobalClass call greeting -- world
+MyGlobalClass.Inner call answer
+editor script.Inner call answer
+script list_global --name=My*
 script res://tools/example.gd list --methods
 node /root/Main call --engine get_child_count
 cn /root/Main
+pwn
 Child get_path
 gdsh res://scripts/boot.gdsh first second
 ```
 
-`script` without a target uses the current editor script. `format text` reads its
-live editor buffer; `script --text` reads the Script resource's source.
+`script` requires an explicit or piped target; `editor script` selects the current
+editor Script resource. Both support inner-class/preload chains, including
+`editor script.Inner.Nested` and bare `res://file.gd.Inner` targets. `format text`
+reads the live editor buffer; `editor script --text` reads the selected resource's source.
+
+`config global registry --add MyClass` registers project-level suggestions after
+`script`. Use `--rm` to remove names, no action flag to query their status, and
+`--global` to edit user configuration. Existing `config.global_classes` entries are
+reused and merged. Registration affects suggestions only: every valid class remains
+callable, and `script --class=` still completes all classes. List global classes with
+`script list_global`.
 
 ## OS mode
 

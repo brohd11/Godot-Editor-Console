@@ -534,8 +534,8 @@ func get_gdrc():
 	main_ctx.host_data["undo_session"] = undo_session
 	# `clear` without an interactive console (MCP/bridge) clears the editor log; consoles replace this.
 	main_ctx.host_data["clear_callback"] = func(_ctx, _history): clear_button.pressed.emit()
-	# GDSh `script`: the bare `script` target means whatever the script editor has open.
-	main_ctx.host_data["current_script"] = func(): return EditorInterface.get_script_editor().get_current_script()
+	# Suggestions only: registered classes remain separate from core target resolution.
+	main_ctx.host_data["script_targets"] = func(): return PackedStringArray(Config.get_merged_config().get_section(Config.GLOBAL_CLASSES, []))
 	# GDSh `script call`: console $VARs in arguments, and a stand-in for Script parameters that
 	# `--default` has to invent. These carry over what the editor CommandBase._call_method did.
 	main_ctx.host_data["substitute_args"] = func(args:Array):
@@ -657,7 +657,7 @@ static func new_console(window:=false):
 
 
 ## Only the editor-specific case is left: a dotted token whose head is a registered command,
-## such as `script.Inner call answer`. Global classes, node paths and .gdsh files are resolved by
+## for host-defined dotted command aliases. Script targets, node paths and .gdsh files are resolved by
 ## GDSh core (Context._resolve_bare).
 static func _resolve_editor_scope(name:String, ctx:Context):
 	var front = UString.get_member_access_front(name)
