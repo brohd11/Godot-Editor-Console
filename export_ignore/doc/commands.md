@@ -77,18 +77,8 @@ misc # Misc commands.
 	└── convert_data # Convert data between: json <-> yaml <-> binary
 	└── editor_console # Utility commands, all subcommands also accessible directly by name.
 		└── gdaddon # Launch a terminal with gdaddon running.
+		└── generate_command_doc # Generate a markdown command-tree doc (commands.md style) and print it.
 		└── hide_log # Toggle the output log.
-		└── mcp # Commands for the Editor Console MCP server.
-			└── add # Add the EditorConsole MCP to a coding agent.
-				└── claude # Add mcp exec to Claude Code in the project directory.
-				└── kimi # Add mcp exec to Kimi Code in the project directory.
-			└── bridge # Control the external command bridge (loopback TCP listener for the Go MCP server / CLI).
-			└── exec_path # Set the exec path for the EditorConsole mcp server binary.
-			└── generate_command_doc # Generate a markdown command-tree doc (commands.md style) and print it.
-			└── list_commands # List all available console commands, with a usage preamble.
-			└── remove # Remove the EditorConsole MCP from coding agent
-				└── claude # Remove mcp from Claude Code in the project directory.
-				└── kimi # Remove mcp from Kimi Code in the project directory.
 		└── os # Run an OS command. $name/$(...) expand in GDSh; $$name/$$(...) pass to the shell. Bare os toggles interactive OS mode.
 		└── term # Launch an OS terminal in a project directory.
 		└── test # Run selected tests in directory. '...' indicates recursive. Relative paths fall back to
@@ -155,6 +145,7 @@ expr # Run expression through Godot's Expression class.
 false # Returns ExitCode.FAIL
 find # Find files under the current directory by name (one path per line).
 gdaddon # Launch a terminal with gdaddon running.
+generate_command_doc # Generate a markdown command-tree doc (commands.md style) and print it.
 gdsh # Run a .gdsh script in a subshell, with its own $0, $1 and $#.
 grep # Keep stdin lines matching a pattern (substring by default).
 head # Output the first N lines of stdin (default 10).
@@ -162,17 +153,6 @@ help # List available visible and hidden GDSh commands.
 hide_log # Toggle the output log.
 ls # List files and directories under a project directory (one path per line).
 math # Run expression through Godot's Expression class.
-mcp # Commands for the Editor Console MCP server.
-	└── add # Add the EditorConsole MCP to a coding agent.
-		└── claude # Add mcp exec to Claude Code in the project directory.
-		└── kimi # Add mcp exec to Kimi Code in the project directory.
-	└── bridge # Control the external command bridge (loopback TCP listener for the Go MCP server / CLI).
-	└── exec_path # Set the exec path for the EditorConsole mcp server binary.
-	└── generate_command_doc # Generate a markdown command-tree doc (commands.md style) and print it.
-	└── list_commands # List all available console commands, with a usage preamble.
-	└── remove # Remove the EditorConsole MCP from coding agent
-		└── claude # Remove mcp from Claude Code in the project directory.
-		└── kimi # Remove mcp from Kimi Code in the project directory.
 mkdir # Create a directory (recursively) in the project.
 mv # Move or rename a file/directory in the project.
 new_ctx # Reset the console session (variables, functions, aliases, cwd).

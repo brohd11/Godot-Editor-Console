@@ -32,7 +32,6 @@ const Execution = UtilsLocal.Execution
 
 const ScriptEditorContext = preload("res://addons/editor_console/src/editor_plugins/script_editor.gd")
 const CallableCommand = preload("res://addons/editor_console/src/class/base/callable_command.gd")
-const ConsoleBridge = preload("res://addons/editor_console/src/bridge/console_bridge.gd")
 
 
 var right_click_handler:RightClickHandler
@@ -55,12 +54,11 @@ var undo_tracking:bool = true
 # When true, command output reaches the transcript as it is produced rather than only once the
 # submission finishes. Toggle via `config stream on|off`.
 var stream_output:bool = true
-# One compound undo buffer for every console and bridge request (`undoredo --compound`).
+# One compound undo buffer for every console and external request (`undoredo --compound`).
 var undo_session := Context.Undo.Session.new()
 
 var _cache:= {}
-var _bridge:ConsoleBridge
-# Serial runner (run_serialized): console submissions, bridge requests and startup take turns.
+# Serial runner (run_serialized): console submissions, external requests (godot-shell) and startup take turns.
 signal _serial_turn_freed
 var _serial_running := false
 var _serial_queue:Array[int] = []
@@ -186,8 +184,6 @@ func _load_default_commands():
 	hidden_scope_dict.clear()
 	hidden_scope_dict.merge(GDSh.Load.load_builtins())
 	variable_dict.clear()
-	
-	_cache.erase(ConsoleBridge.COMMAND_LIST_KEY)
 	
 	_get_scope_set_data(UtilsLocal.DefaultCommands)
 	scope_dict.merge(_temp_scope_dict, true)
@@ -388,7 +384,7 @@ static func execute_interactive(input_text:String, params:={}):
 	return await Execution.execute_command_multiline(input_text, ctx)
 
 
-## Run top-level console work one caller at a time (console submissions, bridge requests,
+## Run top-level console work one caller at a time (console submissions, godot-shell requests,
 ## startup), awaiting `work.call()` so async commands finish before the next turn. Never call
 ## it from inside a command: the command would wait for its own turn.
 static func run_serialized(work:Callable):
@@ -543,7 +539,7 @@ func get_gdrc():
 	main_ctx.host_data["undo_redo"] = func(): return EditorInterface.get_editor_undo_redo() if undo_tracking else null
 	# The main ctx is rebuilt per request, so the singleton keeps the compound buffer.
 	main_ctx.host_data["undo_session"] = undo_session
-	# `clear` without an interactive console (MCP/bridge) clears the editor log; consoles replace this.
+	# `clear` without an interactive console (e.g. godot-shell) clears the editor log; consoles replace this.
 	main_ctx.host_data["clear_callback"] = func(_ctx, _history): clear_button.pressed.emit()
 	# Suggestions only: registered classes remain separate from core target resolution.
 	main_ctx.host_data["script_targets"] = func(): return PackedStringArray(Config.get_merged_config().get_section(Config.GLOBAL_CLASSES, []))

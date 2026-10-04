@@ -6,8 +6,7 @@ Editor Console adds a console to the Output panel, plus standalone
 windows through the tool menu.
 
 Provides editor/resource/script commands, undo integration,
-configuration and startup scripts, script and live-node calls, OS mode, and the optional
-MCP bridge.
+configuration and startup scripts, script and live-node calls, and OS mode.
 
 ## Commands
 
@@ -24,7 +23,7 @@ hidden utils echo hello
 - [gdsh-lib-utils](https://github.com/brohd11/godot-gdsh-lib-utils.git)
 - [gdsh-lib-tree](https://github.com/brohd11/godot-gdsh-lib-tree.git)
 
-Editor-only utilities (`os`, `term`, `mcp`, etc) are hidden and accessible directly,
+Editor-only utilities (`os`, `term`, etc) are hidden and accessible directly,
 they are listed under `misc editor_console`.
 
 Core targets work at runtime and in the editor:
@@ -112,7 +111,6 @@ can be one in your home directory and one in your project for overides.
 Other config is handled in Godot's Editor Settings directory, `./addons/editor_console/config.yml`
 
 Each console instance keeps its own session. `new_ctx` or configuration reload rebuilds it from configuration.
-MCP calls use fresh configured sessions and return `stdout`, `stderr`, and `exit_code` for the requested submission.
 
 Custom commands use GDSh's `Context` and `Completion` types.
 See [command authoring](export_ignore/doc/command_base.md) and the
@@ -129,7 +127,9 @@ python3 tests/editor_console/run_headless.py --godot godot
 python3 tests/gdsh/run_headless.py --godot godot --export
 ```
 
-Optional Go [MCP server](https://github.com/brohd11/Godot-Editor-Console-MCP).
+To let an agent run console commands, use [godot-shell](https://github.com/brohd11/godot-shell):
+its editor addon offers this console's commands while Editor Console is enabled.
+The built-in MCP bridge (`mcp bridge`) and godot-editor-console-mcp are removed.
 
 Run `editor_console terminal` to try the separate floating rich-text terminal.
 It supports inline input, selectable scrollback, completion, and existing TUI commands.
