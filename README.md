@@ -61,9 +61,9 @@ scrolling navigate, `R` rescans while preserving selection, and Escape exits.
 Editor Console's own addon is shown as locked because it hosts the view.
 
 The list uses `GDShTUI.ScreenCommand` and the reusable `GDShTUI.List` component, with no native scrollbar.
-See [GDSh TUI components](../addon_lib/gdsh_lib/tui/README.md) for screen navigation and composition.
+See [GDSh TUI components](../_lib/gdsh_lib/tui/README.md) for screen navigation and composition.
 Custom TUIs override `update(message: GDSh.TUIMsg)` and `view() -> String`; see GDSh's
-[TUI guide](../addon_lib/gdsh/_export_ignore/docs/tui.md) for a complete list example,
+[TUI guide](../_lib/gdsh/_export_ignore/docs/tui.md) for a complete list example,
 message types, viewport sizing and lifecycle hooks.
 `editor plugin enable` remains available for noninteractive use. The docked TUI temporarily
 replaces the editor log's content area and restores its controls on exit; log messages
@@ -133,4 +133,4 @@ The built-in MCP bridge (`mcp bridge`) and godot-editor-console-mcp are removed.
 
 Run `editor_console terminal` to try the separate floating rich-text terminal.
 It supports inline input, selectable scrollback, completion, and existing TUI commands.
-See the [terminal console guide](../addon_lib/gdsh/_export_ignore/docs/terminal_console.md).
+See the [terminal console guide](../_lib/gdsh/_export_ignore/docs/terminal_console.md).

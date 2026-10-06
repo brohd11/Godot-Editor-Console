@@ -1,4 +1,4 @@
-extends "res://addons/addon_lib/gdsh/src/ui/console.gd"
+extends "res://addons/_lib/gdsh/src/ui/console.gd"
 ## Editor transcripts support command-produced BBCode, like the editor log.
 var host:WeakRef
 ## A partial line held back while streaming into the editor log, which prints whole lines only.

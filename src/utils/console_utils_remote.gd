@@ -1,6 +1,6 @@
 #! remote
 
-const DockManager = preload("res://addons/addon_lib/dock_manager/dock_manager.gd")
+const DockManager = preload("res://addons/_lib/dock_manager/dock_manager.gd")
 
 const BottomPanel = preload("uid://b0bnfv62aocty") #! resolve EditorNodeRef.Refs.BottomPanel
 const PopupHelper = preload("uid://ba5x2r7gyvmej") #! resolve UtilR.Nodes.Popups.PathHelper

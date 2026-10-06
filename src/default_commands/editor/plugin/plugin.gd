@@ -1,12 +1,12 @@
-extends "res://addons/addon_lib/gdsh_lib/tui/core/screen_command.gd"
+extends "res://addons/_lib/gdsh_lib/tui/core/screen_command.gd"
 ## Interactive plugin manager; editor services stay in the command, presentation in its screen.
-const ListComponent = preload("res://addons/addon_lib/gdsh_lib/tui/components/list.gd")
+const ListComponent = preload("res://addons/_lib/gdsh_lib/tui/components/list.gd")
 const _KEYS = "↑↓ Move · PgUp/Dn · Home/End · Enter Toggle · R Refresh · Esc Exit"
 var _plugins:Array[Dictionary] = []
 var _status_text:String
 var _screen:PluginScreen
 
-class PluginScreen extends "res://addons/addon_lib/gdsh_lib/tui/core/screen.gd":
+class PluginScreen extends "res://addons/_lib/gdsh_lib/tui/core/screen.gd":
 	var list = ListComponent.new()
 	var _backend:WeakRef
 	func _init(command) -> void:

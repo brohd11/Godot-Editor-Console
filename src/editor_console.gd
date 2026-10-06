@@ -1,5 +1,5 @@
 class_name EditorConsoleSingleton #! singleton-module
-extends "res://addons/addon_lib/singleton/singleton_ref_count.gd" #! ext Singletons.RefCount
+extends "res://addons/_lib/singleton/singleton_ref_count.gd" #! ext Singletons.RefCount
 
 
 const PRINT_DEBUG = false # not PLUGIN_EXPORTED# or true
@@ -27,7 +27,7 @@ const ConsoleCommandSetBase = UtilsLocal.ConsoleCommandSetBase
 const CommandBase = UtilsLocal.CommandBase
 const Context = UtilsLocal.Context
 const Completion = UtilsLocal.Completion
-const GDSh = preload("res://addons/addon_lib/gdsh/_ns/gd_sh.gd")
+const GDSh = preload("res://addons/_lib/gdsh/_ns/gd_sh.gd")
 const Execution = UtilsLocal.Execution
 
 const ScriptEditorContext = preload("res://addons/editor_console/src/editor_plugins/script_editor.gd")
