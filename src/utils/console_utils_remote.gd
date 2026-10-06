@@ -3,10 +3,10 @@
 const DockManager = preload("res://addons/addon_lib/dock_manager/dock_manager.gd")
 
 const BottomPanel = preload("uid://b0bnfv62aocty") #! resolve EditorNodeRef.Refs.BottomPanel
-const PopupHelper = preload("uid://bb13ihrvdkjdj") #! resolve PopupWrapper.PopupHelper
+const PopupHelper = preload("uid://ba5x2r7gyvmej") #! resolve UtilR.Nodes.Popups.PathHelper
 const RightClickHandler = preload("uid://mmtkf4h8er3m") #! resolve ClickHandlers.RightClickHandler
 
-const SettingHelperEditor = preload("uid://c4l4v4eufkmtx") #! resolve ALibEditor.Settings.SettingHelperEditor
+const SettingHelperEditor = preload("uid://dnov6vp7pjnbb") #! resolve SettingHelper.Editor
 const EditorIcons = preload("uid://viocyrti6wce") #! resolve ALibEditor.Singleton.EditorIcons
 
 const EditorColors = preload("uid://cpw0fsrs38esk") #! resolve UtilE.Colors

@@ -14,7 +14,7 @@ const INFO = "EditorConsole/Info"
 func _popup_menu(paths: PackedStringArray) -> void:
 	var script_editor = Engine.get_main_loop().root.get_node(paths[0])
 	var valid_items = _get_valid_items(script_editor)
-	PopupWrapper.create_context_plugin_items(self, script_editor, valid_items, _callback)
+	PopupWrapper.ContextPlugin.create_items(self, script_editor, valid_items, _callback)
 
 func _callback(script_editor:CodeEdit, path):
 	var word = script_editor.get_word_under_caret()
