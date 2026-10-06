@@ -412,7 +412,7 @@ func _run_serialized(work:Callable):
 func _add_console_line_edit():
 	_get_editor_log_button_refs()
 	
-	filter_line_edit = BottomPanel.get_filter_line_edit()
+	filter_line_edit = EditorNodeRef.get_registered(EditorNodeRef.Nodes.EDITOR_LOG_FILTER)
 	var vbox = filter_line_edit.get_parent()
 	main_hsplit = HSplitContainer.new()
 	main_hsplit.size_flags_horizontal = Control.SIZE_EXPAND_FILL

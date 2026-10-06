@@ -2,23 +2,25 @@
 
 const DockManager = preload("res://addons/addon_lib/dock_manager/dock_manager.gd")
 
-const BottomPanel = preload("uid://bectqj8saobq5") #! resolve ALibEditor.Nodes.BottomPanel
+const BottomPanel = preload("uid://b0bnfv62aocty") #! resolve EditorNodeRef.Refs.BottomPanel
 const PopupHelper = preload("uid://bb13ihrvdkjdj") #! resolve PopupWrapper.PopupHelper
 const RightClickHandler = preload("uid://mmtkf4h8er3m") #! resolve ClickHandlers.RightClickHandler
 
 const SettingHelperEditor = preload("uid://c4l4v4eufkmtx") #! resolve ALibEditor.Settings.SettingHelperEditor
-const EditorColors = preload("uid://bhb1vgeh8ibjq") #! resolve ALibEditor.Colors
 const EditorIcons = preload("uid://viocyrti6wce") #! resolve ALibEditor.Singleton.EditorIcons
-const UClassDetail = preload("uid://gyx3o6jv751x") #! resolve ALibEditor.Utils.UClassDetail
 
-const UFile = preload("uid://bl33psa06nv1e") #! resolve ALibRuntime.Utils.UFile.Methods
-const GetFiles = preload("uid://b3p6nfmpcltt0") #! resolve ALibRuntime.Utils.UFile.GetFiles
-const UNode = preload("uid://dsywt12xnn7oh") #! resolve ALibRuntime.Utils.UNode
-const UString = preload("uid://bbk1yedqm7a6a") #! resolve ALibRuntime.Utils.UString.Methods
-const Pr = preload("uid://b7y5tr5s8mgri") #! resolve ALibRuntime.Utils.UString.PrintRich
-const Filter = preload("uid://b1j5snv8mpgob") #! resolve ALibRuntime.Utils.UString.Filter
+const EditorColors = preload("uid://cpw0fsrs38esk") #! resolve UtilE.Colors
+const UClassDetail = preload("uid://0a4i0eyxcij7") #! resolve UtilR.Objects.UClassDetail
+
+const UFile = preload("uid://bqfy5cvhth0m1") #! resolve UtilR.Files.UFile
+const GetFiles = preload("uid://2kt1rv8kqr3u") #! resolve UtilR.Files.GetFiles
+const UNode = preload("uid://bnf4h0107r8b4") #! resolve UtilR.UNode
+const UString = preload("uid://dce8d0wuh35gs") #! resolve UtilR.Strings.UString
+const Pr = preload("uid://63vmnsxwd142") #! resolve UtilR.Strings.PrintRich
+const Filter = preload("uid://d10l2rjus6c3k") #! resolve UtilR.Strings.Filter
+const UOs = preload("uid://dppsxjnth11uc") #! resolve UtilR.UOs
 const MemberParse = preload("uid://ccgs5uvjcchb1") #! resolve GDScriptParser.MemberParse
+
 const UResource = preload("uid://72uu8yngsoht") #! resolve ALibRuntime.Utils.UResource
 const UTexture = preload("uid://ddu76iygjkxih") #! resolve ALibRuntime.Utils.UTexture
 const UList = preload("uid://cpehya7u8ggby") #! resolve ALibRuntime.Utils.UList
-const UOs = preload("uid://cnuejrhrodgbx") #! resolve ALibRuntime.Utils.UOs
