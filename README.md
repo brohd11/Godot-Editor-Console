@@ -127,8 +127,10 @@ python3 tests/editor_console/run_headless.py --godot godot
 python3 tests/gdsh/run_headless.py --godot godot --export
 ```
 
-To let an agent run console commands, use [godot-shell](https://github.com/brohd11/godot-shell):
-its editor addon offers this console's commands while Editor Console is enabled.
+To let an agent run console commands, use [mcp-sh-godot](https://github.com/brohd11/mcp-sh-godot):
+its editor addon offers this console's commands while Editor Console is enabled. Other outside
+callers can use `EditorConsoleSingleton.create_host()`, a `GDSh.Host` with the console's commands,
+context and queue.
 The built-in MCP bridge (`mcp bridge`) and godot-editor-console-mcp are removed.
 
 Run `editor_console terminal` to try the separate floating rich-text terminal.

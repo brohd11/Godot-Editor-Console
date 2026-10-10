@@ -32,6 +32,7 @@ const Execution = UtilsLocal.Execution
 
 const ScriptEditorContext = preload("res://addons/editor_console/src/editor_plugins/script_editor.gd")
 const CallableCommand = preload("res://addons/editor_console/src/class/base/callable_command.gd")
+const ConsoleHost = preload("res://addons/editor_console/src/console_host.gd")
 
 
 var right_click_handler:RightClickHandler
@@ -132,6 +133,14 @@ static func call_on_ready(callable:Callable):
 
 static func instance_valid():
 	return _instance_valid(SCRIPT)
+
+## A new GDSh.Host on this console for an outside caller such as mcp-sh-godot: the console's
+## commands, main ctx and serial queue, with the caller's own working directory and added
+## commands. It follows the console across reloads. Null while the console is not running.
+static func create_host():
+	if not instance_valid():
+		return null
+	return ConsoleHost.new()
 
 static func _instance_valid_err():
 	if instance_valid(): return true
