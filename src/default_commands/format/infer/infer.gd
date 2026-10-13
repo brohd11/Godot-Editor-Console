@@ -1,6 +1,6 @@
 extends EditorConsoleSingleton.CommandBase
 
-const EditorGDScriptParser = preload("uid://t2dewmuth0sy") #! resolve ALibEditor.Singleton.EditorGDScriptParser
+const EditorGDScriptParser = preload("uid://t2dewmuth0sy") #! resolve EditorParser.EditorGDScriptParser
 const VarInsertType = preload("uid://ci11vn1timw1r") #! resolve ALibEditor.Utils.UGDScript.VarInsertType
 
 const _HELP = \
