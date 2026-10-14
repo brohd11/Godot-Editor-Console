@@ -185,15 +185,19 @@ func _test_dir_for(name:String) -> String:
 		return ""
 	var test_dir = _package_test_dir(found.packages[name])
 	if test_dir == "":
-		_resolve_err = "Package '%s' has no %s" % [name, " or ".join(EXPORT_IGNORE_DIRS.map(func(d): return d.path_join(TEST_DIR)))]
+		_resolve_err = "Package '%s' has no tests in %s" % [name, " or ".join(EXPORT_IGNORE_DIRS.map(func(d): return d.path_join(TEST_DIR)))]
 	return test_dir
 
 
+## The package's test dir, or "". Empty ones don't count, since the test dir is auto-generated.
 static func _package_test_dir(pkg_dir:String) -> String:
 	for ignore in EXPORT_IGNORE_DIRS:
 		var path = pkg_dir.path_join(ignore).path_join(TEST_DIR)
-		if DirAccess.dir_exists_absolute(path):
-			return path
+		if not DirAccess.dir_exists_absolute(path):
+			continue
+		if DirAccess.get_files_at(path).is_empty() and DirAccess.get_directories_at(path).is_empty():
+			continue
+		return path
 	return ""
 
 
