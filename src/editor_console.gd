@@ -1,5 +1,5 @@
 class_name EditorConsoleSingleton #! singleton-module
-extends "res://addons/_lib/singleton/singleton_ref_count.gd" #! ext Singletons.RefCount
+extends "res://addons/_lib/singleton/src/singleton_ref_count.gd" #! ext Singletons.RefCount
 
 
 const PRINT_DEBUG = false # not PLUGIN_EXPORTED# or true

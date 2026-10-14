@@ -33,6 +33,6 @@
 		}
 	},
 	"plugin_folder": "EditorConsole{{version=editor_console}}",
-	"post_script": "res://addons/editor_console/export_ignore/pre_post_export.gd",
-	"pre_script": "res://addons/editor_console/export_ignore/pre_post_export.gd"
+	"post_script": "",
+	"pre_script": ""
 }
