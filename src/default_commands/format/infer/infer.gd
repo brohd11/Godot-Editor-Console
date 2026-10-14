@@ -1,7 +1,7 @@
 extends EditorConsoleSingleton.CommandBase
 
 const EditorGDScriptParser = preload("uid://t2dewmuth0sy") #! resolve EditorParser.EditorGDScriptParser
-const VarInsertType = preload("uid://ci11vn1timw1r") #! resolve ALibEditor.Utils.UGDScript.VarInsertType
+const VarInsertType = preload("uid://ci11vn1timw1r") #! resolve EditorParser.Other.VarInsertType
 
 const _HELP = \
 "Attempt to infer the variable type of all variables declared in the open script.

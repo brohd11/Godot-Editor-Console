@@ -115,6 +115,7 @@ func _on_filesystem_changed():
 		_cache = {}
 	_cache.erase("files")
 	_cache.erase("dirs")
+	_cache.erase("packages")
 
 static func get_singleton_name() -> String:
 	return "EditorConsoleSingleton"
@@ -628,6 +629,13 @@ static func get_file_paths():
 static func get_dir_paths():
 	return get_instance()._get_cached("dirs")
 
+## {packages: {name: dir}, ambiguous: {name: [dirs]}} for every dir under res://addons with a PACKAGE_CFGS file.
+static func get_packages() -> Dictionary:
+	return get_instance()._get_cached("packages")
+
+const PACKAGE_CFGS = ["plugin.cfg", "addon.cfg", "version.cfg"]
+const EXPORT_IGNORE_DIRS = ["_export_ignore", "export_ignore"] # preference order
+
 func _get_cached(key:String):
 	if _cache == null:
 		_cache = {}
@@ -635,14 +643,34 @@ func _get_cached(key:String):
 		return _cache[key]
 	if key == "files":
 		var search = GetFiles.open("res://")
-		search.ignore_dir_names = [".git", "export_ignore", "_export_ignore"]
+		search.ignore_dir_names = [".git"] + EXPORT_IGNORE_DIRS
 		search.enter_gdignore = true # yes for now
 		var files = search.get_files()
 		_cache[key] = files
 	elif key == "dirs":
 		_cache[key] = UFile.scan_for_dirs("res://", false, false)
-	
+	elif key == "packages":
+		_cache[key] = _build_packages(_get_cached("dirs"))
+
 	return _cache.get(key)
+
+func _build_packages(dirs:Array) -> Dictionary:
+	var found = {"packages": {}, "ambiguous": {}}
+	for dir:String in dirs:
+		if not dir.begins_with("res://addons/"):
+			continue
+		# ignore dirs hold export copies that carry their own plugin.cfg
+		var segments = dir.trim_prefix("res://").split("/")
+		if EXPORT_IGNORE_DIRS.any(func(d): return d in segments):
+			continue
+		if not PACKAGE_CFGS.any(func(c): return FileAccess.file_exists(dir.path_join(c))):
+			continue
+		var nm = dir.get_file()
+		if found.packages.has(nm):
+			found.ambiguous.get_or_add(nm, [found.packages[nm]]).append(dir)
+		else:
+			found.packages[nm] = dir
+	return found
 
 
 class EditorSet:
