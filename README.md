@@ -123,8 +123,8 @@ through `EditorConsoleSingleton.GDSh`.
 Run the isolated integration checks from the project root:
 
 ```sh
-python3 tests/editor_console/run_headless.py --godot godot
-python3 tests/gdsh/run_headless.py --godot godot --export
+python3 addons/editor_console/export_ignore/test/run_headless.py --godot godot
+python3 addons/_lib/gdsh/_export_ignore/test/run_headless.py --godot godot --export
 ```
 
 To let an agent run console commands, use [mcp-sh-godot](https://github.com/brohd11/mcp-sh-godot):
