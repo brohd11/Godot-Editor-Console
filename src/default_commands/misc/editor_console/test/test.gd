@@ -5,7 +5,6 @@ const _HELP = \
 isn't a dir in the cwd names a package, resolved to its _export_ignore/test/ (or export_ignore/test/).
 Usage: test [--verbose] [--all] [optional: package[/subdir][/...]]"
 
-const ENTRY_FUNCS = ["run", "run_test", "run_tests"]
 const EXPORT_IGNORE_DIRS = EditorConsoleSingleton.EXPORT_IGNORE_DIRS
 const TEST_DIR = "test"
 
@@ -91,65 +90,21 @@ func _execute(ctx:Context):
 
 
 func _run_files(ctx:Context, files:Array, label:String) -> int:
-	var ran_test:= false
-	var has_fail:= false
-	var has_err:= false
-	for path in files:
-		if not path.ends_with("_test.gd"):
-			continue
-
-		var script:GDScript = load(path)
-		var method_list = script.get_script_method_list()
-
-		var call_obj = script
-
-		var test_func = ""
-		var is_static = false
-		for dict in method_list:
-			if dict.name in ENTRY_FUNCS:
-				test_func = dict.name
-				is_static = bool(dict.flags & METHOD_FLAG_STATIC)
-				break
-
-		if test_func == "":
-			if report_invalid_test_flag:
-				has_err = true
-				ctx.append_error("Could not run tests in: %s" % path)
-			continue
-
-		ran_test = true
-		if not is_static:
-			call_obj = script.new()
-
-		# Awaited: suites may wait for frames (synchronous entries return immediately).
-		var res = await call_obj.call(test_func)
-		var exit = res.get("result", false)
-		if res.has("success"):
-			exit = res["success"]
-
-		var pass_str = "FAIL"
-		if exit is bool:
-			if exit:
-				pass_str = "PASS"
-			else:
-				has_fail = true
-		elif exit is int:
-			if exit == 0:
-				pass_str = "PASS"
-			else:
-				has_fail = true
-
-		ctx.append_output("Test: [%s] : %s" % [pass_str, path])
+	var report = await UtilsRemote.TestRunner.run_files(files)
+	for suite in report.suites:
+		ctx.append_output("Test: [%s] : %s" % ["PASS" if suite.passed else "FAIL", suite.path])
 		if verbose_flag:
-			for line in res.get("output", []):
-				ctx.append_output("\t" + line)
+			for line in suite.output:
+				ctx.append_output("\t" + str(line))
+	if report_invalid_test_flag:
+		for path in report.invalid:
+			ctx.append_error("Could not run tests in: %s" % path)
 
-	if not ran_test:
+	if report.suites.is_empty():
 		ctx.append_output("No tests found in: " + label)
-
-	if has_err:
+	if report_invalid_test_flag and not report.invalid.is_empty():
 		return ExitCode.ERR
-	if has_fail:
+	if report.failed > 0:
 		return ExitCode.FAIL
 	return ExitCode.OK
 
