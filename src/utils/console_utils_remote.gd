@@ -23,4 +23,4 @@ const MemberParse = preload("uid://ccgs5uvjcchb1") #! resolve GDScriptParser.Mem
 
 const UResource = preload("uid://72uu8yngsoht") #! resolve ALibRuntime.Utils.UResource
 const UTexture = preload("uid://ddu76iygjkxih") #! resolve ALibRuntime.Utils.UTexture
-const UList = preload("uid://cpehya7u8ggby") #! resolve ALibRuntime.Utils.UList
+const UList = preload("uid://cpehya7u8ggby") #! resolve UtilR.Collections.UList
