@@ -4,7 +4,7 @@ extends EditorConsoleSingleton.CommandBase
 const _HELP = \
 "Generate a markdown command-tree doc (commands.md style) and print it."
 
-const NAMES_TO_SKIP = ["builtins", "hidden", "utils", "plugin_exporter", "namespace", "temp"]
+const NAMES_TO_SKIP = ["builtins", "hidden", "utils", "package_exporter", "namespace", "temp"]
 
 var write_flag:=false
 
