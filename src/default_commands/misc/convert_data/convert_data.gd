@@ -25,7 +25,8 @@ static func get_command_name():
 static func get_self_command_data():
 	return _command_data({
 		&"help": _HELP,
-		&"positional_count": "max: 2"
+		&"positional_count": "max: 2",
+		&"allow_positional_paths": true,
 	})
 
 func _get_flags() -> Dictionary:
@@ -67,7 +68,11 @@ func _process_flag(flag:String):
 	elif flag == "--no-scan":
 		no_scan_flag = true
 
-func _get_completions(_ctx:Completion):
+func _get_completions(ctx:Completion):
+	if not ctx.token_before_cursor.begins_with("--"):
+		var options = _get_completion_std_w_context(ctx)
+		return options
+	
 	var flags = get_flags(true)
 	if _count_flags() > 0:
 		for f in flags.keys():
@@ -178,7 +183,7 @@ func _convert_data(data:Variant, data_file:String, export_file:String, ctx:Conte
 		success = UFile.write_to_json(data, export_file)
 	elif yaml_flag:
 		var err = YAMLParser.dump_to_file(data, export_file)
-		success = err != OK
+		success = err == OK
 	elif bin_flag:
 		var f = FileAccess.open(export_file, FileAccess.WRITE)
 		success = f.store_var(data)
