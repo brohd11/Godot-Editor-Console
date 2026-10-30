@@ -46,6 +46,8 @@ func _ready() -> void:
 		add_child(console_button)
 	apply_editor_styles()
 	custom_minimum_size.y = 28 * EditorInterface.get_editor_scale()
+	
+	await get_tree().process_frame
 	EditorConsoleSingleton.get_instance().console_containers.append(self)
 
 func _exit_tree() -> void:
