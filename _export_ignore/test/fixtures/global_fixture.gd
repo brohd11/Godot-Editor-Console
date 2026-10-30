@@ -1,7 +1,7 @@
 class_name EditorConsoleMigrationFixture
 extends RefCounted
 static var calls:int = 0
-const Inner = preload("res://addons/editor_console/export_ignore/test/fixtures/inner_fixture.gd")
+const Inner = preload("res://addons/editor_console/_export_ignore/test/fixtures/inner_fixture.gd")
 
 static func greeting(name:String) -> String:
 	calls += 1

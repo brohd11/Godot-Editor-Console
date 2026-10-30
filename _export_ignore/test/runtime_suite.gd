@@ -130,7 +130,7 @@ func run_frames():
 	await _test_prompt_completion(_ctx)
 	await _test_tui_serial_lifecycle()
 	await _test_docked_tui()
-	await preload("res://addons/editor_console/export_ignore/test/plugin_tui_tests.gd").new().run(self)
+	await preload("res://addons/editor_console/_export_ignore/test/plugin_tui_tests.gd").new().run(self)
 
 
 func _test_tui_serial_lifecycle() -> void:
