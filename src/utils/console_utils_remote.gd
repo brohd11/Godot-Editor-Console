@@ -22,6 +22,6 @@ const Filter = preload("uid://d10l2rjus6c3k") #! resolve UtilR.Strings.Filter
 const UOs = preload("uid://dppsxjnth11uc") #! resolve UtilR.UOs
 const MemberParse = preload("uid://ccgs5uvjcchb1") #! resolve GDScriptParser.MemberParse
 
-const UResource = preload("uid://72uu8yngsoht") #! resolve ALibRuntime.Utils.UResource
-const UTexture = preload("uid://ddu76iygjkxih") #! resolve ALibRuntime.Utils.UTexture
+const UResource = preload("uid://xwy6i4dlbtvs") #! resolve UtilR.Resources.UResource
+const UTexture = preload("uid://cp6d2gyih02s2") #! resolve UtilR.Resources.UTexture
 const UList = preload("uid://cpehya7u8ggby") #! resolve UtilR.Collections.UList
