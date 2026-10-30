@@ -17,7 +17,7 @@ def main():
     print(f'Isolated project: {project}', flush=True)
     try:
         # Every package's tests live under (_)export_ignore, so skip those and copy ours back in.
-        for directory in ['addons/_lib', 'addons/editor_console', 'addons/zyx_popup_wrapper', 'addons/editor_console/export_ignore/test']:
+        for directory in ['addons/_lib', 'addons/editor_console', 'addons/zyx_popup_wrapper', 'addons/editor_console/_export_ignore/test']:
             shutil.copytree(repo / directory, project / directory,
                             ignore=shutil.ignore_patterns('.git', 'export_ignore', '_export_ignore', '__pycache__', '*.py'))
         # Shared test-only TUI from GDSh's tests; it is deliberately absent from GDSh builtins.
@@ -35,8 +35,8 @@ renderer/rendering_method="gl_compatibility"
             [args.godot, '--headless', '--path', str(project), '--editor', '--import'],
             # Import registers global classes but does not compile every script body.
             [args.godot, '--headless', '--path', str(project), '--script', 'res://addons/editor_console/src/editor_console.gd', '--check-only'],
-            [args.godot, '--headless', '--path', str(project), '--script', 'res://addons/editor_console/export_ignore/test/runtime_test.gd', '--check-only'],
-            [args.godot, '--headless', '--path', str(project), '--script', 'res://addons/editor_console/export_ignore/test/runtime_test.gd'],
+            [args.godot, '--headless', '--path', str(project), '--script', 'res://addons/editor_console/_export_ignore/test/runtime_test.gd', '--check-only'],
+            [args.godot, '--headless', '--path', str(project), '--script', 'res://addons/editor_console/_export_ignore/test/runtime_test.gd'],
         ]
         for command in commands:
             stage = 'isolated import' if '--import' in command else (

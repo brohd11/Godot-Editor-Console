@@ -1,5 +1,5 @@
 extends SceneTree
-## Headless: python3 addons/editor_console/export_ignore/test/run_headless.py
+## Headless: python3 addons/editor_console/_export_ignore/test/run_headless.py
 ## Editor console: `test editor_console` runs the same checks, including prompt completion.
 const Suite = preload("res://addons/editor_console/_export_ignore/test/runtime_suite.gd")
 

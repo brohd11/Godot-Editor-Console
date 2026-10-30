@@ -3,6 +3,7 @@ extends RefCounted
 const Sh = preload("res://addons/_lib/gdsh/_ns/gd_sh.gd")
 const TUIList = preload("res://addons/_lib/gdsh/_export_ignore/test/fixtures/tui_list.gd")
 const Adapter = preload("res://addons/editor_console/src/utils/os_adapter.gd")
+const FIXTURE_PATH = "res://addons/editor_console/_export_ignore/test/fixtures/global_fixture.gd"
 var checks:int = 0
 var failures:int = 0
 var report:Array[String] = []
@@ -248,7 +249,7 @@ func _check_scripts(directory:String):
 			var checkable = script != null and (script.is_tool() or not Engine.is_editor_hint())
 			check(script != null and (not checkable or script.can_instantiate()), "parse " + directory.path_join(file))
 	for child in DirAccess.get_directories_at(directory):
-		if child.begins_with(".") or child == "export_ignore": continue
+		if child.begins_with(".") or child in EditorConsoleSingleton.EXPORT_IGNORE_DIRS: continue
 		_check_scripts(directory.path_join(child))
 
 func _result(text:String, ctx:Sh.Context) -> Sh.Context:
@@ -277,7 +278,7 @@ func _test_editor_behavior(ctx:Sh.Context):
 	ctx.scopes["plugin_callback"] = {"script": callback}
 	check(_result("plugin_callback one two", ctx).stdout.strip_edges() == "plugin:one two", "callable scope adapter")
 	check(_result("math 2 + 3", ctx).stdout.strip_edges() == "5", "editor math delegates to GDSh expr")
-	var fixture = load("res://addons/editor_console/export_ignore/test/fixtures/global_fixture.gd")
+	var fixture = load(FIXTURE_PATH)
 	fixture.calls = 0
 	_result("false && os echo $(EditorConsoleMigrationFixture call greeting -- skip)", ctx)
 	Sh.Completion.new("os echo $(EditorConsoleMigrationFixture call greeting -- skip)", ctx).get_completions()
@@ -309,7 +310,7 @@ func _test_editor_behavior(ctx:Sh.Context):
 		ctx.variables["$danger"] = "a; printf wrong"
 		check(_result("os printf '%s' $danger", ctx).stdout.strip_edges() == "a; printf wrong", "variable value cannot become shell code")
 		var cwd = ctx.cwd
-		var target = ProjectSettings.globalize_path("res://addons/editor_console/export_ignore/test")
+		var target = ProjectSettings.globalize_path(FIXTURE_PATH.get_base_dir().get_base_dir())
 		check(_result("os cd " + Adapter.shell_quote(target), ctx).exit_code == 0 and ctx.cwd == target, "OS cd persists into parent context")
 		ctx.cwd = cwd
 		var error_result = _result("os sh -c 'printf out; printf err >&2; exit 6'", ctx)
@@ -429,7 +430,7 @@ func _accept_path_choice(input, prefix:String, choice:String, expected:String):
 func _test_script_adapter(parent:Sh.Context):
 	var ctx = Sh.Context.new_ctx("editor script", parent)
 	var router = EditorRouterProbe.new()
-	router.selected = load("res://addons/editor_console/export_ignore/test/fixtures/global_fixture.gd")
+	router.selected = load(FIXTURE_PATH)
 	ctx.scopes["editor"] = {"script": router}
 	for head in ["editor script", "editor script.Inner"]:
 		var method = "greeting -- world" if head == "editor script" else "answer"

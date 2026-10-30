@@ -113,8 +113,8 @@ Other config is handled in Godot's Editor Settings directory, `./addons/editor_c
 Each console instance keeps its own session. `new_ctx` or configuration reload rebuilds it from configuration.
 
 Custom commands use GDSh's `Context` and `Completion` types.
-See [command authoring](export_ignore/doc/command_base.md) and the
-[command overview](export_ignore/doc/commands.md). The editor command base extends
+See [command authoring](_export_ignore/doc/command_base.md) and the
+[command overview](_export_ignore/doc/commands.md). The editor command base extends
 GDSh's base and keeps editor-specific helpers. GDSh is also available directly
 through `EditorConsoleSingleton.GDSh`.
 
@@ -123,7 +123,7 @@ through `EditorConsoleSingleton.GDSh`.
 Run the isolated integration checks from the project root:
 
 ```sh
-python3 addons/editor_console/export_ignore/test/run_headless.py --godot godot
+python3 addons/editor_console/_export_ignore/test/run_headless.py --godot godot
 python3 addons/_lib/gdsh/_export_ignore/test/run_headless.py --godot godot --export
 ```
 
