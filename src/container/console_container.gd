@@ -39,6 +39,9 @@ func _ready() -> void:
 	if is_editor:
 		console.hide()
 		line_edit.hide()
+		# The editor log row can be taller than the prompt's minimum (4.7); fill it like the filter does.
+		console._input_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		line_edit.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		console_button = Button.new()
 		console_button.icon = EditorInterface.get_editor_theme().get_icon("Terminal", &"EditorIcons")
 		console_button.focus_mode = Control.FOCUS_NONE
